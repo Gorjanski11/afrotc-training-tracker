@@ -120,3 +120,14 @@ export function computeCadetProgress(
 export function shouldFlagCadet(progress: CadetProgress): boolean {
   return progress.missedCount > 0;
 }
+
+/**
+ * "Overdue" (used by every overdue filter in the app) means status "due" OR
+ * "missed" -- at least one covering PMT has already happened without a
+ * qualifying completion logged, whether or not there's still a future PMT
+ * that could also satisfy it. "not-scheduled"/"upcoming"/"completed" are
+ * never overdue.
+ */
+export function isOverdue(status: ObjectiveDueStatus): boolean {
+  return status === "due" || status === "missed";
+}

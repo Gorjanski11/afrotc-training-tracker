@@ -4,9 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RosterSearchSelect } from "./RosterSearchSelect";
 import { PROFICIENCY_CODES, type ProficiencyCode } from "../domain/constants";
+import { getLookForCriteria } from "../domain/proficiencyCriteria";
+import { cn } from "@/lib/utils";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, TrainingObjective } from "../domain/types";
 
@@ -33,6 +36,8 @@ export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective,
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
+  const criteria = getLookForCriteria(objective);
+
   const handleSave = async () => {
     setSaving(true);
     setError(undefined);
@@ -57,7 +62,7 @@ export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>
             {existingCompletion ? "Edit" : "Log"} Training Objective {objective.number} for {cadet.name}
@@ -68,6 +73,26 @@ export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective,
         <p className="text-sm text-muted-foreground">
           Required proficiency at {cadet.devLevel}: <strong>{requiredProficiency}</strong>
         </p>
+
+        {criteria.length > 0 && (
+          <div className="grid gap-2 rounded-md border border-input bg-muted/30 p-3">
+            <p className="text-xs font-medium text-muted-foreground">What should've been observed, by proficiency level:</p>
+            {criteria.map((c) => (
+              <div key={c.code} className={cn("rounded-md p-2", c.code === proficiency && "bg-accent")}>
+                <div className="mb-1 flex items-center gap-2">
+                  <Badge variant={c.code === proficiency ? "default" : "outline"}>{c.code}</Badge>
+                  <span className="text-xs font-medium">{c.label}</span>
+                </div>
+                <p className="mb-1 text-xs text-muted-foreground">{c.frame}</p>
+                <ul className="list-inside list-disc space-y-0.5 text-xs text-muted-foreground">
+                  {c.bullets.map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="grid gap-4">
           <div className="grid gap-1.5">

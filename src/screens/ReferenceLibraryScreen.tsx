@@ -1,11 +1,29 @@
+import { useMemo, useState } from "react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Search } from "lucide-react";
 import { DEV_LEVELS } from "../domain/constants";
-import type { ProgramLearningOutcomeSection } from "../domain/types";
+import type { ProgramLearningOutcomeSection, TrainingObjective } from "../domain/types";
 
 interface Props {
   sections: ProgramLearningOutcomeSection[];
+}
+
+function matchesSearch(objective: TrainingObjective, query: string): boolean {
+  const haystack = [
+    objective.number,
+    objective.title,
+    objective.requirements,
+    objective.additionalInfo,
+    ...objective.performanceMeasures.map((pm) => pm.text),
+    ...objective.references,
+    ...objective.relatedLessons,
+  ]
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
 }
 
 /**
@@ -15,6 +33,26 @@ interface Props {
  * objective. No login required, no completion affordance -- open to everyone.
  */
 export function ReferenceLibraryScreen({ sections }: Props) {
+  const [search, setSearch] = useState("");
+  const [manualOpen, setManualOpen] = useState<string[]>([]);
+
+  const query = search.trim().toLowerCase();
+  const searching = query.length > 0;
+
+  const filteredSections = useMemo(() => {
+    if (!searching) return sections;
+    return sections
+      .map((section) => ({
+        ...section,
+        subAreas: section.subAreas
+          .map((sa) => ({ ...sa, objectives: sa.objectives.filter((o) => matchesSearch(o, query)) }))
+          .filter((sa) => sa.objectives.length > 0),
+      }))
+      .filter((section) => section.subAreas.length > 0);
+  }, [sections, searching, query]);
+
+  const openValue = searching ? filteredSections.map((s) => s.plo) : manualOpen;
+
   return (
     <div>
       <h2 className="mb-2 text-2xl font-semibold">Reference Library</h2>
@@ -23,8 +61,18 @@ export function ReferenceLibraryScreen({ sections }: Props) {
         are shown for context but are never tracked toward completion.
       </p>
 
-      <Accordion type="multiple">
-        {sections.map((section) => (
+      <div className="relative mb-4 w-80">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search by number, title, requirements, performance measures..."
+          className="pl-8"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <Accordion type="multiple" value={openValue} onValueChange={(v) => !searching && setManualOpen(v)}>
+        {filteredSections.map((section) => (
           <AccordionItem key={section.plo} value={section.plo}>
             <AccordionTrigger>{section.plo}</AccordionTrigger>
             <AccordionContent>
@@ -120,7 +168,10 @@ export function ReferenceLibraryScreen({ sections }: Props) {
         ))}
       </Accordion>
 
-      {sections.length === 0 && (
+      {filteredSections.length === 0 && searching && (
+        <p className="text-sm text-muted-foreground">No Training Objectives match "{search}".</p>
+      )}
+      {sections.length === 0 && !searching && (
         <p className="text-sm text-muted-foreground">
           No Training Objectives loaded yet. An admin can import the catalog from the Roster screen.
         </p>

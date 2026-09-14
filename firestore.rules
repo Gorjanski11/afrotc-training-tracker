@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Fully open: anyone with the site's URL can read and write every
+    // collection, no login of any kind. This is an intentional, explicit
+    // choice for a small-detachment tool with an unlisted URL -- not an
+    // oversight. There is no protection against accidental or malicious
+    // edits/deletes by anyone who has the link.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

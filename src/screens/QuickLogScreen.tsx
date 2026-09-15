@@ -37,13 +37,14 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   const [cadetSearch, setCadetSearch] = useState("");
   const [objectiveSearch, setObjectiveSearch] = useState("");
   const [showAllColumns, setShowAllColumns] = useState(false);
+  const [showAllCadets, setShowAllCadets] = useState(false);
   const [pending, setPending] = useState<Record<string, string>>({}); // `${cadetId}:${objectiveId}` -> ProficiencyCode | NONE
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
 
   const gradedObjectives = useMemo(() => catalog.filter((o) => o.graded), [catalog]);
 
-  const visibleCadets = useMemo(() => {
+  const searchedCadets = useMemo(() => {
     const query = cadetSearch.trim().toLowerCase();
     return [...cadets]
       .filter((c) => query === "" || c.name.toLowerCase().includes(query))
@@ -60,20 +61,38 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return map;
   }, [completions]);
 
-  /** Objective ids that are currently overdue (due or missed) for at least one visible cadet. */
+  /** Per searched cadet, the set of objective ids currently overdue (due or missed) for them. */
+  const overdueByCadet = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const cadet of searchedCadets) {
+      const overdue = new Set<string>();
+      if (cadet.devLevel) {
+        const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
+        for (const objective of gradedObjectives) {
+          if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
+          const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
+          if (isOverdue(info.status)) overdue.add(objective.id);
+        }
+      }
+      map.set(cadet.id, overdue);
+    }
+    return map;
+  }, [searchedCadets, gradedObjectives, pmtEvents, completionsByCadet]);
+
+  /** Default: only cadets who currently have at least one overdue Training Objective. */
+  const visibleCadets = useMemo(
+    () => (showAllCadets ? searchedCadets : searchedCadets.filter((c) => (overdueByCadet.get(c.id)?.size ?? 0) > 0)),
+    [searchedCadets, overdueByCadet, showAllCadets]
+  );
+
+  /** Objective ids that are currently overdue for at least one visible cadet -- default column scope. */
   const overdueObjectiveIds = useMemo(() => {
     const ids = new Set<string>();
     for (const cadet of visibleCadets) {
-      if (!cadet.devLevel) continue;
-      const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
-      for (const objective of gradedObjectives) {
-        if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
-        const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
-        if (isOverdue(info.status)) ids.add(objective.id);
-      }
+      for (const id of overdueByCadet.get(cadet.id) ?? []) ids.add(id);
     }
     return ids;
-  }, [visibleCadets, gradedObjectives, pmtEvents, completionsByCadet]);
+  }, [visibleCadets, overdueByCadet]);
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
@@ -186,6 +205,10 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           />
         </div>
         <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showAllCadets} onChange={(e) => setShowAllCadets(e.target.checked)} />
+          Show all cadets (default: only those with an overdue Training Objective)
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showAllColumns} onChange={(e) => setShowAllColumns(e.target.checked)} />
           Show all objectives (default: only currently overdue ones)
         </label>
@@ -250,7 +273,9 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
             {visibleCadets.length === 0 && (
               <TableRow>
                 <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
-                  No cadets match this filter.
+                  {searchedCadets.length === 0
+                    ? "No cadets match this filter."
+                    : "No cadets currently have an overdue Training Objective. Check \"Show all cadets\" to log ahead of schedule."}
                 </TableCell>
               </TableRow>
             )}

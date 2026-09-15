@@ -9,6 +9,7 @@ import { getObjectiveStatus, isOverdue } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
+import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
@@ -48,6 +49,12 @@ function defaultNotPassCode(required: ProficiencyCode, options: readonly Profici
   return below.reduce((best, p) => (PROFICIENCY_RANK[p] > PROFICIENCY_RANK[best] ? p : best));
 }
 
+function formatOccurrenceLabel(event: PmtEvent | undefined): string {
+  if (!event) return "Not yet scheduled";
+  const date = new Date(event.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${event.title} · ${date}`;
+}
+
 export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, createCompletion, updateCompletion, deleteCompletion, onSelectCadet }: Props) {
   const [cadetSearch, setCadetSearch] = useState("");
   const [objectiveSearch, setObjectiveSearch] = useState("");
@@ -56,6 +63,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   const [pending, setPending] = useState<Record<string, string>>({}); // `${cadetId}:${objectiveId}` -> ProficiencyCode | NONE
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
+  const [explanationObjective, setExplanationObjective] = useState<TrainingObjective | undefined>();
 
   // Loggable = has a proficiency code at ICL or SCL, whether or not the objective is graded.
   // Non-graded-but-leveled objectives are still columns here (available for optional logging);
@@ -99,6 +107,25 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       } else {
         map.set(objective.id, "lastChance");
       }
+    }
+    return map;
+  }, [loggableObjectives, pmtEvents]);
+
+  /**
+   * The single most relevant PMT occurrence per objective, for the column header: the soonest
+   * future one if it still repeats, otherwise the most recent past one, otherwise none.
+   */
+  const representativeOccurrenceByObjective = useMemo(() => {
+    const now = Date.now();
+    const map = new Map<string, PmtEvent | undefined>();
+    for (const objective of loggableObjectives) {
+      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id)).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+      if (occurrences.length === 0) {
+        map.set(objective.id, undefined);
+        continue;
+      }
+      const future = occurrences.find((e) => new Date(e.eventDate).getTime() > now);
+      map.set(objective.id, future ?? occurrences[occurrences.length - 1]);
     }
     return map;
   }, [loggableObjectives, pmtEvents]);
@@ -297,6 +324,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
               <TableHead className="sticky left-0 z-10 min-w-40 bg-background">Cadet</TableHead>
               {columns.map((objective) => {
                 const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
+                const occurrence = representativeOccurrenceByObjective.get(objective.id);
                 return (
                   <TableHead
                     key={objective.id}
@@ -310,13 +338,18 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                       className="-mx-3 -mt-2.5 mb-1.5 h-1"
                       style={{ background: schedule === "lastChance" ? "var(--destructive)" : schedule === "repeats" ? "var(--success)" : "transparent" }}
                     />
-                    <div className="text-xs font-medium">
-                      {objective.number}
-                      {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
-                    </div>
-                    <div className="line-clamp-2 text-[11px] font-normal text-muted-foreground" title={objective.title}>
-                      {objective.title}
-                    </div>
+                    <button
+                      type="button"
+                      className="w-full text-center hover:underline"
+                      title={`${objective.title} — click for the full requirements and pass criteria`}
+                      onClick={() => setExplanationObjective(objective)}
+                    >
+                      <div className="text-xs font-medium">
+                        {objective.number}
+                        {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                      </div>
+                      <div className="text-[11px] font-normal text-muted-foreground">{formatOccurrenceLabel(occurrence)}</div>
+                    </button>
                     {schedule === "lastChance" && <div className="mt-0.5 text-[10px] font-medium text-destructive">Last chance</div>}
                     {schedule === "repeats" && <div className="mt-0.5 text-[10px] font-medium text-success">Repeats later</div>}
                   </TableHead>
@@ -425,6 +458,10 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-success/60" /> Repeats later — at least one future PMT still covers it
           </span>
         </div>
+      )}
+
+      {explanationObjective && (
+        <ObjectiveExplanationDialog open onClose={() => setExplanationObjective(undefined)} objective={explanationObjective} />
       )}
     </div>
   );

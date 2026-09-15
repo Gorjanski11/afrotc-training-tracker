@@ -112,8 +112,9 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   }, [loggableObjectives, pmtEvents]);
 
   /**
-   * The single most relevant PMT occurrence per objective, for the column header: the soonest
-   * future one if it still repeats, otherwise the most recent past one, otherwise none.
+   * The single most relevant PMT occurrence per objective, for the column header: the most recent
+   * PAST one (the one to actually grade against), falling back to the soonest future one only if
+   * it's never been covered yet.
    */
   const representativeOccurrenceByObjective = useMemo(() => {
     const now = Date.now();
@@ -124,8 +125,8 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
         map.set(objective.id, undefined);
         continue;
       }
-      const future = occurrences.find((e) => new Date(e.eventDate).getTime() > now);
-      map.set(objective.id, future ?? occurrences[occurrences.length - 1]);
+      const past = [...occurrences].reverse().find((e) => new Date(e.eventDate).getTime() <= now);
+      map.set(objective.id, past ?? occurrences[0]);
     }
     return map;
   }, [loggableObjectives, pmtEvents]);

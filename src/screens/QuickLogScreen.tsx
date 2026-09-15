@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { PROFICIENCY_CODES, type ProficiencyCode } from "../domain/constants";
+import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
@@ -33,6 +33,19 @@ const NONE = "__none__";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Required-proficiency cells are usually a single code ("P2"), occasionally a composite ("P1/P2") -- Pass fills the lower/first-listed one, the minimum that satisfies the requirement. */
+function firstRequiredCode(cell: string): ProficiencyCode | undefined {
+  const first = cell.split("/")[0]?.trim();
+  return (PROFICIENCY_CODES as readonly string[]).includes(first) ? (first as ProficiencyCode) : undefined;
+}
+
+/** Default "Not Pass" selection: the nearest code below the required one (closest to "almost made it"), or the lowest code if the requirement is already the lowest (Ka). */
+function defaultNotPassCode(required: ProficiencyCode, options: readonly ProficiencyCode[]): ProficiencyCode {
+  const below = options.filter((p) => PROFICIENCY_RANK[p] < PROFICIENCY_RANK[required]);
+  if (below.length === 0) return options[0];
+  return below.reduce((best, p) => (PROFICIENCY_RANK[p] > PROFICIENCY_RANK[best] ? p : best));
 }
 
 export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, createCompletion, updateCompletion, deleteCompletion, onSelectCadet }: Props) {
@@ -288,7 +301,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   <TableHead
                     key={objective.id}
                     className={cn(
-                      "min-w-28 text-center align-bottom",
+                      "min-w-36 text-center align-bottom",
                       schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined
                     )}
                   >
@@ -334,21 +347,54 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   const key = cellKey(cadet.id, objective.id);
                   const value = getCellValue(cadet.id, objective.id);
                   const isDirty = key in pending;
+                  const requiredCode = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]) ?? "P1";
+                  const notPassOptions = PROFICIENCY_CODES.filter((p) => p !== requiredCode);
+                  const isPass = value === requiredCode;
+                  const isNotPass = value !== NONE && !isPass;
                   return (
                     <TableCell key={objective.id} className={cn("p-1 text-center", tint)}>
-                      <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, v)}>
-                        <SelectTrigger className={cn("h-7 px-2 text-xs", isDirty && "ring-2 ring-primary")}>
-                          <SelectValue placeholder="—" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NONE}>—</SelectItem>
-                          {PROFICIENCY_CODES.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={cn(
+                              "h-6 px-2 text-[11px]",
+                              isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
+                              isDirty && "ring-2 ring-primary"
+                            )}
+                            onClick={() => setCellValue(cadet.id, objective.id, isPass ? NONE : requiredCode)}
+                          >
+                            Pass
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={isNotPass ? "destructive" : "outline"}
+                            className={cn("h-6 px-2 text-[11px]", isDirty && "ring-2 ring-primary")}
+                            onClick={() =>
+                              setCellValue(cadet.id, objective.id, isNotPass ? NONE : defaultNotPassCode(requiredCode, notPassOptions))
+                            }
+                          >
+                            Not Pass
+                          </Button>
+                        </div>
+                        {isNotPass && (
+                          <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, v)}>
+                            <SelectTrigger className="h-6 w-full px-1.5 text-[11px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {notPassOptions.map((p) => (
+                                <SelectItem key={p} value={p}>
+                                  {p}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
                     </TableCell>
                   );
                 })}

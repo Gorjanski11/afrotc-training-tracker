@@ -30,8 +30,10 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
 
   const devLevel = cadet.devLevel;
 
+  // Includes non-graded objectives that still carry a proficiency code at this level -- loggable,
+  // just never required (filtered out of the overdueOnly view below since they're never overdue).
   const applicableObjectives = useMemo(
-    () => (devLevel ? objectives.filter((o) => o.graded && o.proficiencyByLevel[devLevel] !== "") : []),
+    () => (devLevel ? objectives.filter((o) => o.proficiencyByLevel[devLevel] !== "") : []),
     [objectives, devLevel]
   );
 
@@ -43,7 +45,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
         const firstOccurrenceDate = info.occurrences[0]?.eventDate;
         return { objective, info, firstOccurrenceDate };
       })
-      .filter((r) => !overdueOnly || isOverdue(r.info.status));
+      .filter((r) => !overdueOnly || (r.objective.graded && isOverdue(r.info.status)));
   }, [applicableObjectives, devLevel, pmtEvents, cadetCompletions, overdueOnly]);
 
   const sortedRows = useMemo(() => {
@@ -120,7 +122,10 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   <button className="text-left text-primary hover:underline" onClick={() => onOpenObjective(objective)}>
                     <span className="font-medium">{objective.number}</span> — <span className="text-xs">{objective.title}</span>
                   </button>
-                  <div className="text-xs text-muted-foreground">Required: {requiredCode}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Required: {requiredCode}
+                    {!objective.graded && " (optional, never overdue)"}
+                  </div>
                 </TableCell>
                 {columns.map((event) => {
                   const covers = event.objectiveIds.includes(objective.id);
@@ -133,6 +138,8 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   }
                   const done = info.bestCompletion && isOnOrAfterDay(info.bestCompletion.dateCompleted ?? "", event.eventDate);
                   const isPast = new Date(event.eventDate).getTime() <= Date.now();
+                  // Non-graded objectives are loggable but never read as overdue/missed, regardless of schedule.
+                  const optional = !objective.graded;
                   return (
                     <TableCell key={event.id} className="text-center">
                       <button
@@ -140,7 +147,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                           "w-full rounded px-1.5 py-0.5 text-xs",
                           done
                             ? "bg-success/15 text-success"
-                            : !isPast
+                            : optional || !isPast
                               ? "text-muted-foreground"
                               : info.status === "missed"
                                 ? "bg-destructive/15 text-destructive"
@@ -148,7 +155,15 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         )}
                         onClick={() => onOpenObjective(objective)}
                       >
-                        {done ? `✓ ${info.bestCompletion?.proficiencyAchieved}` : !isPast ? "Upcoming" : info.status === "missed" ? "Missed" : "Due"}
+                        {done
+                          ? `✓ ${info.bestCompletion?.proficiencyAchieved}`
+                          : optional
+                            ? "Optional"
+                            : !isPast
+                              ? "Upcoming"
+                              : info.status === "missed"
+                                ? "Missed"
+                                : "Due"}
                       </button>
                     </TableCell>
                   );

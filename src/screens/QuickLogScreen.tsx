@@ -42,7 +42,11 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
 
-  const gradedObjectives = useMemo(() => catalog.filter((o) => o.graded), [catalog]);
+  // Loggable = has a proficiency code at ICL or SCL, whether or not the objective is graded.
+  // Non-graded-but-leveled objectives are still columns here (available for optional logging);
+  // they just never contribute to overdueByCadet below, so they only show by default once
+  // "Show all objectives" is checked, never as part of the default overdue-only column set.
+  const loggableObjectives = useMemo(() => catalog.filter((o) => o.proficiencyByLevel.ICL !== "" || o.proficiencyByLevel.SCL !== ""), [catalog]);
 
   const searchedCadets = useMemo(() => {
     const query = cadetSearch.trim().toLowerCase();
@@ -68,7 +72,8 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       const overdue = new Set<string>();
       if (cadet.devLevel) {
         const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
-        for (const objective of gradedObjectives) {
+        for (const objective of loggableObjectives) {
+          if (!objective.graded) continue; // non-graded objectives are loggable but never overdue
           if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
           const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
           if (isOverdue(info.status)) overdue.add(objective.id);
@@ -77,7 +82,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       map.set(cadet.id, overdue);
     }
     return map;
-  }, [searchedCadets, gradedObjectives, pmtEvents, completionsByCadet]);
+  }, [searchedCadets, loggableObjectives, pmtEvents, completionsByCadet]);
 
   /** Default: only cadets who currently have at least one overdue Training Objective. */
   const visibleCadets = useMemo(
@@ -96,11 +101,11 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
-    return gradedObjectives
+    return loggableObjectives
       .filter((o) => showAllColumns || overdueObjectiveIds.has(o.id))
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
-  }, [gradedObjectives, showAllColumns, overdueObjectiveIds, objectiveSearch]);
+  }, [loggableObjectives, showAllColumns, overdueObjectiveIds, objectiveSearch]);
 
   const cellKey = (cadetId: string, objectiveId: string) => `${cadetId}:${objectiveId}`;
 
@@ -221,7 +226,10 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
               <TableHead className="sticky left-0 z-10 min-w-40 bg-background">Cadet</TableHead>
               {columns.map((objective) => (
                 <TableHead key={objective.id} className="min-w-28 text-center align-bottom">
-                  <div className="text-xs font-medium">{objective.number}</div>
+                  <div className="text-xs font-medium">
+                    {objective.number}
+                    {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                  </div>
                   <div className="line-clamp-2 text-[11px] font-normal text-muted-foreground" title={objective.title}>
                     {objective.title}
                   </div>

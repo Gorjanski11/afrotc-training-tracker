@@ -108,11 +108,14 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
                   const rows = subArea.objectives
                     .map((objective) => {
                       const required = cadet.devLevel ? objective.proficiencyByLevel[cadet.devLevel] : "";
-                      const applicable = objective.graded && required !== "";
+                      // Applicable/clickable whenever this level has a proficiency code, even if the
+                      // objective is non-graded -- non-graded objectives are loggable but never required
+                      // (see computeCadetProgress, which still excludes them from the denominator).
+                      const applicable = required !== "";
                       const info = cadet.devLevel && applicable ? getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions) : undefined;
                       return { objective, required, applicable, info };
                     })
-                    .filter((r) => !overdueOnly || (r.info && isOverdue(r.info.status)));
+                    .filter((r) => !overdueOnly || (r.objective.graded && r.info && isOverdue(r.info.status)));
 
                   if (rows.length === 0) return null;
 
@@ -156,12 +159,28 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
                                     </Button>
                                   </span>
                                 </TableCell>
-                                <TableCell>{objective.graded ? required || "N/A" : "—"}</TableCell>
                                 <TableCell>
-                                  {!objective.graded ? (
-                                    <Badge variant="outline">Reference only — not graded</Badge>
-                                  ) : !applicable ? (
+                                  <span className="flex items-center gap-1.5">
+                                    {required || "N/A"}
+                                    {!objective.graded && applicable && (
+                                      <Badge variant="outline" className="text-[10px]">
+                                        Optional
+                                      </Badge>
+                                    )}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  {!applicable ? (
                                     <span className="text-sm text-muted-foreground">Not required at this level</span>
+                                  ) : !objective.graded ? (
+                                    info?.status === "completed" ? (
+                                      <span className="flex items-center gap-2 text-sm">
+                                        <CheckCircle2 className="h-4 w-4 text-success" />
+                                        {info.bestCompletion?.proficiencyAchieved} on {info.bestCompletion?.dateCompleted?.slice(0, 10)}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">Not logged — click to log (optional, never overdue)</span>
+                                    )
                                   ) : info?.status === "completed" ? (
                                     <span className="flex items-center gap-2 text-sm">
                                       <CheckCircle2 className="h-4 w-4 text-success" />

@@ -68,31 +68,50 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   }, [completions]);
 
   /**
+   * Schedule fact per objective, independent of any cadet or graded/optional status: does it still
+   * have a future PMT that could cover it? "repeats" = at least one occurrence is still upcoming
+   * (another chance later, whether or not one has already passed too). "lastChance" = it's had at
+   * least one occurrence and every one of them is already in the past -- nothing left on the
+   * calendar to cover it again. "none" = no PMT has ever covered it at all.
+   */
+  const scheduleStatusByObjective = useMemo(() => {
+    const now = Date.now();
+    const map = new Map<string, "repeats" | "lastChance" | "none">();
+    for (const objective of loggableObjectives) {
+      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id));
+      if (occurrences.length === 0) {
+        map.set(objective.id, "none");
+      } else if (occurrences.some((e) => new Date(e.eventDate).getTime() > now)) {
+        map.set(objective.id, "repeats");
+      } else {
+        map.set(objective.id, "lastChance");
+      }
+    }
+    return map;
+  }, [loggableObjectives, pmtEvents]);
+
+  /**
    * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
-   * optional (non-graded) objective ids that are actually on the schedule -- covered by at least
-   * one PMT event, past OR future. Past means the cadet already had the chance; future means they
-   * still can when that session happens. Either way it's worth surfacing, even though it never
-   * counts as overdue.
+   * every objective id (graded or optional) that's applicable at this cadet's level at all --
+   * used below to scope "on the schedule" to objectives that actually apply to someone visible.
    */
   const columnEligibilityByCadet = useMemo(() => {
-    const map = new Map<string, { overdue: Set<string>; scheduledOptional: Set<string> }>();
+    const map = new Map<string, { overdue: Set<string>; applicable: Set<string> }>();
     for (const cadet of searchedCadets) {
       const overdue = new Set<string>();
-      const scheduledOptional = new Set<string>();
+      const applicable = new Set<string>();
       if (cadet.devLevel) {
         const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
         for (const objective of loggableObjectives) {
           if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
+          applicable.add(objective.id);
           if (objective.graded) {
             const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
             if (isOverdue(info.status)) overdue.add(objective.id);
-          } else {
-            const hasAnyPmt = pmtEvents.some((e) => e.objectiveIds.includes(objective.id));
-            if (hasAnyPmt) scheduledOptional.add(objective.id);
           }
         }
       }
-      map.set(cadet.id, { overdue, scheduledOptional });
+      map.set(cadet.id, { overdue, applicable });
     }
     return map;
   }, [searchedCadets, loggableObjectives, pmtEvents, completionsByCadet]);
@@ -112,49 +131,33 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return ids;
   }, [visibleCadets, columnEligibilityByCadet]);
 
-  /** Optional objective ids covered by any PMT (past or future), for at least one visible cadet. */
-  const scheduledOptionalObjectiveIds = useMemo(() => {
+  /**
+   * Objective ids -- graded or optional -- that are on the PMT schedule at all (past or future)
+   * and applicable to at least one visible cadet's level. Every overdue objective is already a
+   * subset of this (due/missed both require at least one occurrence), so this single set covers
+   * the whole "overdue + still-relevant-to-the-schedule" middle scope on its own.
+   */
+  const scheduledObjectiveIds = useMemo(() => {
     const ids = new Set<string>();
     for (const cadet of visibleCadets) {
-      for (const id of columnEligibilityByCadet.get(cadet.id)?.scheduledOptional ?? []) ids.add(id);
+      for (const id of columnEligibilityByCadet.get(cadet.id)?.applicable ?? []) {
+        if (scheduleStatusByObjective.get(id) !== "none") ids.add(id);
+      }
     }
     return ids;
-  }, [visibleCadets, columnEligibilityByCadet]);
+  }, [visibleCadets, columnEligibilityByCadet, scheduleStatusByObjective]);
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
     return loggableObjectives
       .filter((o) => {
         if (columnScope === "all") return true;
-        if (columnScope === "overdueAndScheduledOptional") return overdueObjectiveIds.has(o.id) || scheduledOptionalObjectiveIds.has(o.id);
+        if (columnScope === "overdueAndScheduledOptional") return scheduledObjectiveIds.has(o.id);
         return overdueObjectiveIds.has(o.id);
       })
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
-  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledOptionalObjectiveIds, objectiveSearch]);
-
-  /**
-   * Schedule fact per objective, independent of any cadet: does it still have a future PMT that
-   * could cover it? "repeats" = at least one occurrence is still upcoming (another chance later,
-   * whether or not one has already passed too). "lastChance" = it's had at least one occurrence
-   * and every one of them is already in the past -- nothing left on the calendar to cover it again.
-   * "none" = no PMT has ever covered it at all.
-   */
-  const scheduleStatusByObjective = useMemo(() => {
-    const now = Date.now();
-    const map = new Map<string, "repeats" | "lastChance" | "none">();
-    for (const objective of columns) {
-      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id));
-      if (occurrences.length === 0) {
-        map.set(objective.id, "none");
-      } else if (occurrences.some((e) => new Date(e.eventDate).getTime() > now)) {
-        map.set(objective.id, "repeats");
-      } else {
-        map.set(objective.id, "lastChance");
-      }
-    }
-    return map;
-  }, [columns, pmtEvents]);
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch]);
 
   const cellKey = (cadetId: string, objectiveId: string) => `${cadetId}:${objectiveId}`;
 
@@ -268,7 +271,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="overdue">Objectives: overdue only (default)</SelectItem>
-            <SelectItem value="overdueAndScheduledOptional">Objectives: overdue + optional ones on the PMT schedule</SelectItem>
+            <SelectItem value="overdueAndScheduledOptional">Objectives: everything on the PMT schedule (overdue, upcoming, and optional)</SelectItem>
             <SelectItem value="all">Objectives: show all</SelectItem>
           </SelectContent>
         </Select>

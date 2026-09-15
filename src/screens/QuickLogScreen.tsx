@@ -12,7 +12,7 @@ import { PROFICIENCY_CODES, type ProficiencyCode } from "../domain/constants";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
-type ColumnScope = "overdue" | "overdueAndPastOptional" | "all";
+type ColumnScope = "overdue" | "overdueAndScheduledOptional" | "all";
 
 interface Props {
   cadets: Cadet[];
@@ -69,16 +69,16 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
 
   /**
    * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
-   * optional (non-graded) objective ids that have already been covered by at least one PMT event
-   * whose date has passed -- the cadet had a real chance to demonstrate it, so it's worth surfacing
-   * even though it never counts as overdue.
+   * optional (non-graded) objective ids that are actually on the schedule -- covered by at least
+   * one PMT event, past OR future. Past means the cadet already had the chance; future means they
+   * still can when that session happens. Either way it's worth surfacing, even though it never
+   * counts as overdue.
    */
   const columnEligibilityByCadet = useMemo(() => {
-    const map = new Map<string, { overdue: Set<string>; pastOptional: Set<string> }>();
-    const now = Date.now();
+    const map = new Map<string, { overdue: Set<string>; scheduledOptional: Set<string> }>();
     for (const cadet of searchedCadets) {
       const overdue = new Set<string>();
-      const pastOptional = new Set<string>();
+      const scheduledOptional = new Set<string>();
       if (cadet.devLevel) {
         const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
         for (const objective of loggableObjectives) {
@@ -87,12 +87,12 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
             const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
             if (isOverdue(info.status)) overdue.add(objective.id);
           } else {
-            const hasPastPmt = pmtEvents.some((e) => e.objectiveIds.includes(objective.id) && new Date(e.eventDate).getTime() <= now);
-            if (hasPastPmt) pastOptional.add(objective.id);
+            const hasAnyPmt = pmtEvents.some((e) => e.objectiveIds.includes(objective.id));
+            if (hasAnyPmt) scheduledOptional.add(objective.id);
           }
         }
       }
-      map.set(cadet.id, { overdue, pastOptional });
+      map.set(cadet.id, { overdue, scheduledOptional });
     }
     return map;
   }, [searchedCadets, loggableObjectives, pmtEvents, completionsByCadet]);
@@ -112,11 +112,11 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return ids;
   }, [visibleCadets, columnEligibilityByCadet]);
 
-  /** Optional objective ids already covered by a past PMT, for at least one visible cadet. */
-  const pastOptionalObjectiveIds = useMemo(() => {
+  /** Optional objective ids covered by any PMT (past or future), for at least one visible cadet. */
+  const scheduledOptionalObjectiveIds = useMemo(() => {
     const ids = new Set<string>();
     for (const cadet of visibleCadets) {
-      for (const id of columnEligibilityByCadet.get(cadet.id)?.pastOptional ?? []) ids.add(id);
+      for (const id of columnEligibilityByCadet.get(cadet.id)?.scheduledOptional ?? []) ids.add(id);
     }
     return ids;
   }, [visibleCadets, columnEligibilityByCadet]);
@@ -126,12 +126,12 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return loggableObjectives
       .filter((o) => {
         if (columnScope === "all") return true;
-        if (columnScope === "overdueAndPastOptional") return overdueObjectiveIds.has(o.id) || pastOptionalObjectiveIds.has(o.id);
+        if (columnScope === "overdueAndScheduledOptional") return overdueObjectiveIds.has(o.id) || scheduledOptionalObjectiveIds.has(o.id);
         return overdueObjectiveIds.has(o.id);
       })
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
-  }, [loggableObjectives, columnScope, overdueObjectiveIds, pastOptionalObjectiveIds, objectiveSearch]);
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledOptionalObjectiveIds, objectiveSearch]);
 
   /**
    * Schedule fact per objective, independent of any cadet: does it still have a future PMT that
@@ -268,7 +268,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="overdue">Objectives: overdue only (default)</SelectItem>
-            <SelectItem value="overdueAndPastOptional">Objectives: overdue + optional ones covered by a past PMT</SelectItem>
+            <SelectItem value="overdueAndScheduledOptional">Objectives: overdue + optional ones on the PMT schedule</SelectItem>
             <SelectItem value="all">Objectives: show all</SelectItem>
           </SelectContent>
         </Select>

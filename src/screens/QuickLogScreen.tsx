@@ -12,6 +12,8 @@ import { PROFICIENCY_CODES, type ProficiencyCode } from "../domain/constants";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
+type ColumnScope = "overdue" | "overdueAndPastOptional" | "all";
+
 interface Props {
   cadets: Cadet[];
   catalog: TrainingObjective[];
@@ -36,7 +38,7 @@ function todayIso(): string {
 export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, createCompletion, updateCompletion, deleteCompletion, onSelectCadet }: Props) {
   const [cadetSearch, setCadetSearch] = useState("");
   const [objectiveSearch, setObjectiveSearch] = useState("");
-  const [showAllColumns, setShowAllColumns] = useState(false);
+  const [columnScope, setColumnScope] = useState<ColumnScope>("overdue");
   const [showAllCadets, setShowAllCadets] = useState(false);
   const [pending, setPending] = useState<Record<string, string>>({}); // `${cadetId}:${objectiveId}` -> ProficiencyCode | NONE
   const [saving, setSaving] = useState(false);
@@ -65,47 +67,94 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return map;
   }, [completions]);
 
-  /** Per searched cadet, the set of objective ids currently overdue (due or missed) for them. */
-  const overdueByCadet = useMemo(() => {
-    const map = new Map<string, Set<string>>();
+  /**
+   * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
+   * optional (non-graded) objective ids that have already been covered by at least one PMT event
+   * whose date has passed -- the cadet had a real chance to demonstrate it, so it's worth surfacing
+   * even though it never counts as overdue.
+   */
+  const columnEligibilityByCadet = useMemo(() => {
+    const map = new Map<string, { overdue: Set<string>; pastOptional: Set<string> }>();
+    const now = Date.now();
     for (const cadet of searchedCadets) {
       const overdue = new Set<string>();
+      const pastOptional = new Set<string>();
       if (cadet.devLevel) {
         const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
         for (const objective of loggableObjectives) {
-          if (!objective.graded) continue; // non-graded objectives are loggable but never overdue
           if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
-          const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
-          if (isOverdue(info.status)) overdue.add(objective.id);
+          if (objective.graded) {
+            const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
+            if (isOverdue(info.status)) overdue.add(objective.id);
+          } else {
+            const hasPastPmt = pmtEvents.some((e) => e.objectiveIds.includes(objective.id) && new Date(e.eventDate).getTime() <= now);
+            if (hasPastPmt) pastOptional.add(objective.id);
+          }
         }
       }
-      map.set(cadet.id, overdue);
+      map.set(cadet.id, { overdue, pastOptional });
     }
     return map;
   }, [searchedCadets, loggableObjectives, pmtEvents, completionsByCadet]);
 
   /** Default: only cadets who currently have at least one overdue Training Objective. */
   const visibleCadets = useMemo(
-    () => (showAllCadets ? searchedCadets : searchedCadets.filter((c) => (overdueByCadet.get(c.id)?.size ?? 0) > 0)),
-    [searchedCadets, overdueByCadet, showAllCadets]
+    () => (showAllCadets ? searchedCadets : searchedCadets.filter((c) => (columnEligibilityByCadet.get(c.id)?.overdue.size ?? 0) > 0)),
+    [searchedCadets, columnEligibilityByCadet, showAllCadets]
   );
 
-  /** Objective ids that are currently overdue for at least one visible cadet -- default column scope. */
+  /** Objective ids that are currently overdue for at least one visible cadet. */
   const overdueObjectiveIds = useMemo(() => {
     const ids = new Set<string>();
     for (const cadet of visibleCadets) {
-      for (const id of overdueByCadet.get(cadet.id) ?? []) ids.add(id);
+      for (const id of columnEligibilityByCadet.get(cadet.id)?.overdue ?? []) ids.add(id);
     }
     return ids;
-  }, [visibleCadets, overdueByCadet]);
+  }, [visibleCadets, columnEligibilityByCadet]);
+
+  /** Optional objective ids already covered by a past PMT, for at least one visible cadet. */
+  const pastOptionalObjectiveIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const cadet of visibleCadets) {
+      for (const id of columnEligibilityByCadet.get(cadet.id)?.pastOptional ?? []) ids.add(id);
+    }
+    return ids;
+  }, [visibleCadets, columnEligibilityByCadet]);
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
     return loggableObjectives
-      .filter((o) => showAllColumns || overdueObjectiveIds.has(o.id))
+      .filter((o) => {
+        if (columnScope === "all") return true;
+        if (columnScope === "overdueAndPastOptional") return overdueObjectiveIds.has(o.id) || pastOptionalObjectiveIds.has(o.id);
+        return overdueObjectiveIds.has(o.id);
+      })
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
-  }, [loggableObjectives, showAllColumns, overdueObjectiveIds, objectiveSearch]);
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, pastOptionalObjectiveIds, objectiveSearch]);
+
+  /**
+   * Schedule fact per objective, independent of any cadet: does it still have a future PMT that
+   * could cover it? "repeats" = at least one occurrence is still upcoming (another chance later,
+   * whether or not one has already passed too). "lastChance" = it's had at least one occurrence
+   * and every one of them is already in the past -- nothing left on the calendar to cover it again.
+   * "none" = no PMT has ever covered it at all.
+   */
+  const scheduleStatusByObjective = useMemo(() => {
+    const now = Date.now();
+    const map = new Map<string, "repeats" | "lastChance" | "none">();
+    for (const objective of columns) {
+      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id));
+      if (occurrences.length === 0) {
+        map.set(objective.id, "none");
+      } else if (occurrences.some((e) => new Date(e.eventDate).getTime() > now)) {
+        map.set(objective.id, "repeats");
+      } else {
+        map.set(objective.id, "lastChance");
+      }
+    }
+    return map;
+  }, [columns, pmtEvents]);
 
   const cellKey = (cadetId: string, objectiveId: string) => `${cadetId}:${objectiveId}`;
 
@@ -213,10 +262,16 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           <input type="checkbox" checked={showAllCadets} onChange={(e) => setShowAllCadets(e.target.checked)} />
           Show all cadets (default: only those with an overdue Training Objective)
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showAllColumns} onChange={(e) => setShowAllColumns(e.target.checked)} />
-          Show all objectives (default: only currently overdue ones)
-        </label>
+        <Select value={columnScope} onValueChange={(v) => setColumnScope(v as ColumnScope)}>
+          <SelectTrigger className="w-80">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overdue">Objectives: overdue only (default)</SelectItem>
+            <SelectItem value="overdueAndPastOptional">Objectives: overdue + optional ones covered by a past PMT</SelectItem>
+            <SelectItem value="all">Objectives: show all</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-x-auto rounded-md border border-input">
@@ -224,17 +279,33 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           <TableHeader>
             <TableRow>
               <TableHead className="sticky left-0 z-10 min-w-40 bg-background">Cadet</TableHead>
-              {columns.map((objective) => (
-                <TableHead key={objective.id} className="min-w-28 text-center align-bottom">
-                  <div className="text-xs font-medium">
-                    {objective.number}
-                    {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
-                  </div>
-                  <div className="line-clamp-2 text-[11px] font-normal text-muted-foreground" title={objective.title}>
-                    {objective.title}
-                  </div>
-                </TableHead>
-              ))}
+              {columns.map((objective) => {
+                const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
+                return (
+                  <TableHead
+                    key={objective.id}
+                    className={cn(
+                      "min-w-28 text-center align-bottom",
+                      schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined
+                    )}
+                  >
+                    {/* background-color bar, not a border -- this project's `* { border-color }` reset silently wins over border-t-* utilities */}
+                    <div
+                      className="-mx-3 -mt-2.5 mb-1.5 h-1"
+                      style={{ background: schedule === "lastChance" ? "var(--destructive)" : schedule === "repeats" ? "var(--success)" : "transparent" }}
+                    />
+                    <div className="text-xs font-medium">
+                      {objective.number}
+                      {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
+                    </div>
+                    <div className="line-clamp-2 text-[11px] font-normal text-muted-foreground" title={objective.title}>
+                      {objective.title}
+                    </div>
+                    {schedule === "lastChance" && <div className="mt-0.5 text-[10px] font-medium text-destructive">Last chance</div>}
+                    {schedule === "repeats" && <div className="mt-0.5 text-[10px] font-medium text-success">Repeats later</div>}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -247,10 +318,12 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   <div className="text-xs text-muted-foreground">{cadet.devLevel ?? "no level"}</div>
                 </TableCell>
                 {columns.map((objective) => {
+                  const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
+                  const tint = schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined;
                   const applicable = cadet.devLevel && objective.proficiencyByLevel[cadet.devLevel] !== "";
                   if (!applicable) {
                     return (
-                      <TableCell key={objective.id} className="text-center text-xs text-muted-foreground">
+                      <TableCell key={objective.id} className={cn("text-center text-xs text-muted-foreground", tint)}>
                         N/A
                       </TableCell>
                     );
@@ -259,7 +332,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   const value = getCellValue(cadet.id, objective.id);
                   const isDirty = key in pending;
                   return (
-                    <TableCell key={objective.id} className="p-1 text-center">
+                    <TableCell key={objective.id} className={cn("p-1 text-center", tint)}>
                       <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, v)}>
                         <SelectTrigger className={cn("h-7 px-2 text-xs", isDirty && "ring-2 ring-primary")}>
                           <SelectValue placeholder="—" />
@@ -290,10 +363,19 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           </TableBody>
         </Table>
       </div>
-      {columns.length === 0 && (
+      {columns.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">
-          No overdue Training Objectives right now. Check "Show all objectives" to log ahead of schedule.
+          No Training Objectives match the current column filter. Widen it with the "Objectives" dropdown above.
         </p>
+      ) : (
+        <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-destructive/60" /> Last chance — no future PMT covers this objective
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-success/60" /> Repeats later — at least one future PMT still covers it
+          </span>
+        </div>
       )}
     </div>
   );

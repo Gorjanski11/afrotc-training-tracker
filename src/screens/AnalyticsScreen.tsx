@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Table2, BarChart3 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEV_LEVELS, PLO_SECTIONS, type DevLevel } from "../domain/constants";
 import {
@@ -25,12 +27,26 @@ interface Props {
   onSelectCadet: (cadetId: string) => void;
 }
 
-function StatTile({ label, value, tone }: { label: string; value: string; tone?: "critical" }) {
+function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
   return (
-    <div className="rounded-lg border border-input p-4">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className={cn("mt-1 text-3xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
-    </div>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}>
+      <Card className="hover:shadow-md">
+        <CardContent className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              tone === "critical" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+            )}
+          >
+            {icon}
+          </span>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground">{label}</div>
+            <div className={cn("text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -68,7 +84,10 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
 
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-semibold">Analytics</h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
+        <BarChart2 className="h-5 w-5 text-primary" />
+        Analytics
+      </h2>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>
@@ -100,20 +119,41 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Overall completion" value={`${summary.overallPercent}%`} />
-        <StatTile label="Required / completed" value={`${summary.totalCompleted}/${summary.totalRequired}`} />
-        <StatTile label="Cadets flagged" value={String(summary.flaggedCount)} tone={summary.flaggedCount > 0 ? "critical" : undefined} />
-        <StatTile label="Overdue objective-instances" value={String(summary.overdueInstances)} tone={summary.overdueInstances > 0 ? "critical" : undefined} />
+        <StatTile icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall completion" value={`${summary.overallPercent}%`} index={0} />
+        <StatTile
+          icon={<CheckCircle2 className="h-4.5 w-4.5" />}
+          label="Required / completed"
+          value={`${summary.totalCompleted}/${summary.totalRequired}`}
+          index={1}
+        />
+        <StatTile
+          icon={<AlertTriangle className="h-4.5 w-4.5" />}
+          label="Cadets flagged"
+          value={String(summary.flaggedCount)}
+          tone={summary.flaggedCount > 0 ? "critical" : undefined}
+          index={2}
+        />
+        <StatTile
+          icon={<Clock className="h-4.5 w-4.5" />}
+          label="Overdue objective-instances"
+          value={String(summary.overdueInstances)}
+          tone={summary.overdueInstances > 0 ? "critical" : undefined}
+          index={3}
+        />
       </div>
 
-      <div className="mb-6 rounded-lg border border-input p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Completion % by cadet</h3>
+      <Card className="mb-6">
+        <CardHeader className="mb-1 flex-row items-center justify-between space-y-0">
+          <CardTitle>
+            <BarChart3 className="h-4 w-4 text-primary" />
+            Completion % by cadet
+          </CardTitle>
           <Button variant="outline" size="sm" onClick={() => setCadetTableView((v) => !v)}>
             {cadetTableView ? <BarChart3 className="h-4 w-4" /> : <Table2 className="h-4 w-4" />}
             {cadetTableView ? "Chart view" : "Table view"}
           </Button>
-        </div>
+        </CardHeader>
+        <CardContent className="pt-1">
         {byCadet.length === 0 ? (
           <p className="text-sm text-muted-foreground">No cadets match this filter.</p>
         ) : cadetTableView ? (
@@ -184,11 +224,18 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
             <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-critical)" }} /> Flagged (has a missed objective)
           </span>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-input p-4">
-          <h3 className="mb-3 text-sm font-semibold">Completion % by PLO section</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <ListOrdered className="h-4 w-4 text-primary" />
+              Completion % by PLO section
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           {byPlo.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing due yet.</p>
           ) : (
@@ -209,10 +256,17 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
               </BarChart>
             </ResponsiveContainer>
           )}
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="rounded-lg border border-input p-4">
-          <h3 className="mb-3 text-sm font-semibold">Most-overdue objectives (active cadets)</h3>
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Most-overdue objectives (active cadets)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           {mostOverdue.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nothing overdue right now.</p>
           ) : (
@@ -230,7 +284,8 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
               ))}
             </div>
           )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

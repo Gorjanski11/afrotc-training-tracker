@@ -3,7 +3,8 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Search } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { BookOpen, Search } from "lucide-react";
 import { DEV_LEVELS } from "../domain/constants";
 import type { ProgramLearningOutcomeSection, TrainingObjective } from "../domain/types";
 
@@ -55,7 +56,10 @@ export function ReferenceLibraryScreen({ sections }: Props) {
 
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-semibold">Reference Library</h2>
+      <h2 className="mb-2 flex items-center gap-2 text-2xl font-semibold">
+        <BookOpen className="h-5 w-5 text-primary" />
+        Reference Library
+      </h2>
       <p className="mb-4 text-sm text-muted-foreground">
         The complete AFROTCI 36-2011 Vol 1 Training Objectives catalog, independent of any cadet. "Reference only — not graded" objectives
         are shown for context but are never tracked toward completion.
@@ -81,15 +85,15 @@ export function ReferenceLibraryScreen({ sections }: Props) {
                   <h4 className="mb-2 text-sm font-medium text-muted-foreground">{subArea.subArea}</h4>
                   <div className="grid gap-4">
                     {subArea.objectives.map((objective) => (
-                      <div key={objective.id} className="rounded-lg border border-input p-4">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <h5 className="text-base font-semibold">
+                      <Card key={objective.id} className="hover:shadow-md">
+                        <CardHeader className="flex-row flex-wrap items-center gap-2 space-y-0">
+                          <CardTitle className="text-base">
                             {objective.number} — {objective.title}
-                          </h5>
+                          </CardTitle>
                           {!objective.graded && <Badge variant="outline">Reference only — not graded</Badge>}
-                        </div>
+                        </CardHeader>
 
-                        <div className="grid gap-3 text-sm">
+                        <CardContent className="grid gap-3 pt-2 text-sm">
                           {objective.requirements && (
                             <div>
                               <span className="font-medium">Requirements: </span>
@@ -157,8 +161,8 @@ export function ReferenceLibraryScreen({ sections }: Props) {
                               </TableRow>
                             </TableBody>
                           </Table>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     ))}
                   </div>
                 </div>

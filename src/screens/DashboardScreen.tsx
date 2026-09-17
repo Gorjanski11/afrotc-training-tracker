@@ -1,14 +1,52 @@
 import { useMemo, useState } from "react";
+import { motion } from "motion/react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Search } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { AlertTriangle, LayoutDashboard, Search, Users, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DEV_LEVELS, type DevLevel } from "../domain/constants";
 import { computeCadetProgress, shouldFlagCadet } from "../domain/progress";
+import { computeCohortSummary } from "../domain/analytics";
 import { compareByLastName } from "../domain/nameUtils";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
+
+interface HeroStatProps {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone?: "critical";
+  index: number;
+}
+
+function HeroStat({ icon, label, value, tone, index }: HeroStatProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
+    >
+      <Card className="hover:shadow-md">
+        <CardContent className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+              tone === "critical" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+            )}
+          >
+            {icon}
+          </span>
+          <div>
+            <div className="text-xs font-medium text-muted-foreground">{label}</div>
+            <div className={cn("text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
 
 type SortKey = "name" | "devLevel" | "percent";
 
@@ -60,9 +98,34 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
     }
   };
 
+  const summary = useMemo(() => computeCohortSummary(cadets, catalog, completions, pmtEvents), [cadets, catalog, completions, pmtEvents]);
+
   return (
     <div>
-      <h2 className="mb-4 text-2xl font-semibold">Roster Dashboard</h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
+        <LayoutDashboard className="h-5 w-5 text-primary" />
+        Roster Dashboard
+      </h2>
+
+      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(cadets.length)} index={0} />
+        <HeroStat icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall completion" value={`${summary.overallPercent}%`} index={1} />
+        <HeroStat
+          icon={<AlertTriangle className="h-4.5 w-4.5" />}
+          label="Cadets flagged"
+          value={String(summary.flaggedCount)}
+          tone={summary.flaggedCount > 0 ? "critical" : undefined}
+          index={2}
+        />
+        <HeroStat
+          icon={<Clock className="h-4.5 w-4.5" />}
+          label="Overdue objective-instances"
+          value={String(summary.overdueInstances)}
+          tone={summary.overdueInstances > 0 ? "critical" : undefined}
+          index={3}
+        />
+      </div>
+
       <div className="mb-4 flex items-center gap-4">
         <div className="relative w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

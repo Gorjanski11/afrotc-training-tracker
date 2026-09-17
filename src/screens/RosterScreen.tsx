@@ -3,7 +3,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Pencil, Trash2, Search, UploadCloud } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Pencil, Trash2, Search, UploadCloud, Users } from "lucide-react";
 import { computeCadetProgress } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
 import { CadetFormDialog } from "../components/CadetFormDialog";
@@ -86,7 +87,10 @@ export function RosterScreen({ cadets, catalog, completions, pmtEvents, createCa
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">Roster Management</h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">
+          <Users className="h-5 w-5 text-primary" />
+          Roster Management
+        </h2>
         <Button
           onClick={() => {
             setEditingCadet(undefined);
@@ -98,15 +102,17 @@ export function RosterScreen({ cadets, catalog, completions, pmtEvents, createCa
         </Button>
       </div>
 
-      <div className="mb-4 flex items-center gap-4 rounded-lg border border-input p-3">
-        <Button variant="outline" onClick={handleImport} disabled={importing}>
-          <UploadCloud />
-          {importing ? "Importing..." : "Import / Re-sync Training Objectives Catalog"}
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          {importMessage ?? `Catalog currently has ${catalog.length} Training Objective(s). Safe to re-run after fixing a transcription typo.`}
-        </span>
-      </div>
+      <Card className="mb-4">
+        <CardContent className="flex items-center gap-4 p-3">
+          <Button variant="outline" onClick={handleImport} disabled={importing}>
+            <UploadCloud />
+            {importing ? "Importing..." : "Import / Re-sync Training Objectives Catalog"}
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            {importMessage ?? `Catalog currently has ${catalog.length} Training Objective(s). Safe to re-run after fixing a transcription typo.`}
+          </span>
+        </CardContent>
+      </Card>
 
       <div className="mb-4 relative w-64">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

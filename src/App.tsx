@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Moon, Sun, ShieldHalf, LayoutDashboard, UserRound, BarChart3, BookOpen, CalendarDays, Users, ListChecks } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useTrainingObjectives, type TrainingObjectiveSeed } from "./hooks/useTrainingObjectives";
 import { useCompletions } from "./hooks/useCompletions";
@@ -17,6 +19,15 @@ import { AnalyticsScreen } from "./screens/AnalyticsScreen";
 import trainingObjectivesSeed from "./data/trainingObjectivesSeed.json";
 
 type Screen = "dashboard" | "cadet" | "reference" | "calendar" | "roster" | "quicklog" | "analytics";
+
+/** Fades/settles a tab panel in on mount -- replays each time a tab becomes active, since Radix Tabs mounts each panel fresh. */
+function AnimatedPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
+      {children}
+    </motion.div>
+  );
+}
 
 // No login of any kind -- everyone who has the link can view and edit
 // everything (Dashboard, Cadet Detail, Reference Library, Calendar, Roster).
@@ -53,35 +64,77 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-input px-8 py-3">
-        <div className="flex items-baseline gap-4">
-          <h1 className="text-xl font-semibold">AFROTC Training Objective Tracker</h1>
-          <span className="text-sm text-muted-foreground">AFROTCI 36-2011 Vol 1</span>
+      <header className="flex items-center justify-between border-b border-input bg-background px-8 py-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <ShieldHalf className="h-4 w-4" />
+          </span>
+          <div className="flex items-baseline gap-4">
+            <h1 className="text-xl font-semibold">AFROTC Training Objective Tracker</h1>
+            <span className="text-sm text-muted-foreground">AFROTCI 36-2011 Vol 1</span>
+          </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle dark mode">
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle dark mode" className="overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={theme}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="flex"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </motion.span>
+          </AnimatePresence>
         </Button>
       </header>
 
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
         <nav className="px-8">
           <TabsList>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="dashboard">
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Dashboard
+            </TabsTrigger>
             <TabsTrigger value="cadet" disabled={!selectedCadetId}>
+              <UserRound className="h-3.5 w-3.5" />
               Cadet Detail
             </TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="reference">Reference Library</TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            <TabsTrigger value="roster">Roster</TabsTrigger>
-            <TabsTrigger value="quicklog">Quick Log</TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger value="reference">
+              <BookOpen className="h-3.5 w-3.5" />
+              Reference Library
+            </TabsTrigger>
+            <TabsTrigger value="calendar">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Calendar
+            </TabsTrigger>
+            <TabsTrigger value="roster">
+              <Users className="h-3.5 w-3.5" />
+              Roster
+            </TabsTrigger>
+            <TabsTrigger value="quicklog">
+              <ListChecks className="h-3.5 w-3.5" />
+              Quick Log
+            </TabsTrigger>
           </TabsList>
         </nav>
 
         <main className="flex-1 overflow-auto p-6">
           {dataLoading ? (
-            <div className="flex h-full items-center justify-center">
-              <span className="text-muted-foreground">Loading data...</span>
+            <div className="space-y-4">
+              <div className="flex gap-4">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+              <Skeleton className="h-10 w-72" />
+              <Skeleton className="h-64 w-full" />
             </div>
           ) : loadError ? (
             <div className="flex h-full items-center justify-center">
@@ -90,73 +143,87 @@ function App() {
           ) : (
             <>
               <TabsContent value="dashboard">
-                <DashboardScreen
-                  cadets={cadetsState.cadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  onSelectCadet={goToCadet}
-                />
+                <AnimatedPanel>
+                  <DashboardScreen
+                    cadets={cadetsState.cadets}
+                    catalog={catalogState.catalog}
+                    completions={completionsState.completions}
+                    pmtEvents={pmtEventsState.events}
+                    onSelectCadet={goToCadet}
+                  />
+                </AnimatedPanel>
               </TabsContent>
               <TabsContent value="cadet">
-                {selectedCadetId && (
-                  <CadetDetailScreen
-                    cadetId={selectedCadetId}
+                <AnimatedPanel>
+                  {selectedCadetId && (
+                    <CadetDetailScreen
+                      cadetId={selectedCadetId}
+                      cadets={cadetsState.cadets}
+                      sections={catalogState.sections}
+                      completions={completionsState.completions}
+                      pmtEvents={pmtEventsState.events}
+                      createCompletion={completionsState.createCompletion}
+                      updateCompletion={completionsState.updateCompletion}
+                      onSelectCadet={goToCadet}
+                    />
+                  )}
+                </AnimatedPanel>
+              </TabsContent>
+              <TabsContent value="analytics">
+                <AnimatedPanel>
+                  <AnalyticsScreen
                     cadets={cadetsState.cadets}
-                    sections={catalogState.sections}
+                    catalog={catalogState.catalog}
+                    completions={completionsState.completions}
+                    pmtEvents={pmtEventsState.events}
+                    onSelectCadet={goToCadet}
+                  />
+                </AnimatedPanel>
+              </TabsContent>
+              <TabsContent value="reference">
+                <AnimatedPanel>
+                  <ReferenceLibraryScreen sections={catalogState.sections} />
+                </AnimatedPanel>
+              </TabsContent>
+              <TabsContent value="calendar">
+                <AnimatedPanel>
+                  <CalendarScreen
+                    events={pmtEventsState.events}
+                    catalog={catalogState.catalog}
+                    createEvent={pmtEventsState.createEvent}
+                    updateEvent={pmtEventsState.updateEvent}
+                    deleteEvent={pmtEventsState.deleteEvent}
+                  />
+                </AnimatedPanel>
+              </TabsContent>
+              <TabsContent value="roster">
+                <AnimatedPanel>
+                  <RosterScreen
+                    cadets={cadetsState.cadets}
+                    catalog={catalogState.catalog}
+                    completions={completionsState.completions}
+                    pmtEvents={pmtEventsState.events}
+                    createCadet={cadetsState.createCadet}
+                    updateCadet={cadetsState.updateCadet}
+                    deleteCadet={deleteCadet}
+                    onSelectCadet={goToCadet}
+                    importCatalog={importCatalog}
+                  />
+                </AnimatedPanel>
+              </TabsContent>
+              <TabsContent value="quicklog">
+                <AnimatedPanel>
+                  <QuickLogScreen
+                    cadets={cadetsState.cadets}
+                    catalog={catalogState.catalog}
                     completions={completionsState.completions}
                     pmtEvents={pmtEventsState.events}
                     createCompletion={completionsState.createCompletion}
                     updateCompletion={completionsState.updateCompletion}
+                    deleteCompletion={completionsState.deleteCompletion}
                     onSelectCadet={goToCadet}
                   />
-                )}
-              </TabsContent>
-              <TabsContent value="analytics">
-                <AnalyticsScreen
-                  cadets={cadetsState.cadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  onSelectCadet={goToCadet}
-                />
-              </TabsContent>
-              <TabsContent value="reference">
-                <ReferenceLibraryScreen sections={catalogState.sections} />
-              </TabsContent>
-              <TabsContent value="calendar">
-                <CalendarScreen
-                  events={pmtEventsState.events}
-                  catalog={catalogState.catalog}
-                  createEvent={pmtEventsState.createEvent}
-                  updateEvent={pmtEventsState.updateEvent}
-                  deleteEvent={pmtEventsState.deleteEvent}
-                />
-              </TabsContent>
-              <TabsContent value="roster">
-                <RosterScreen
-                  cadets={cadetsState.cadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  createCadet={cadetsState.createCadet}
-                  updateCadet={cadetsState.updateCadet}
-                  deleteCadet={deleteCadet}
-                  onSelectCadet={goToCadet}
-                  importCatalog={importCatalog}
-                />
-              </TabsContent>
-              <TabsContent value="quicklog">
-                <QuickLogScreen
-                  cadets={cadetsState.cadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  createCompletion={completionsState.createCompletion}
-                  updateCompletion={completionsState.updateCompletion}
-                  deleteCompletion={completionsState.deleteCompletion}
-                  onSelectCadet={goToCadet}
-                />
+                </AnimatedPanel>
               </TabsContent>
             </>
           )}

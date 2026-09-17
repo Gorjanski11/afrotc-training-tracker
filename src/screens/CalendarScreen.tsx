@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildMonthGrid, buildWeekDays, isSameDay, isSameMonth, addMonths, addDays } from "../domain/calendarUtils";
 import { EventDetailDialog } from "../components/EventDetailDialog";
@@ -73,7 +73,10 @@ export function CalendarScreen({ events, catalog, createEvent, updateEvent, dele
 
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-semibold">PMT Calendar</h2>
+      <h2 className="mb-2 flex items-center gap-2 text-2xl font-semibold">
+        <CalendarDays className="h-5 w-5 text-primary" />
+        PMT Calendar
+      </h2>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

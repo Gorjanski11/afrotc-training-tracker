@@ -7,7 +7,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  /* Air Force blue -- the one new hue introduced into the core token slots (button/tab/progress/ring all key off --primary/--ring). */
+  --primary: oklch(0.32 0.12 258);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -23,9 +24,14 @@
   --warning-foreground: oklch(0.145 0 0);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.55 0.13 258);
   --radius: 0.5rem;
   color-scheme: light;
+
+  /* Gold accent -- a raw var by design (not wired into @theme inline, same precedent as the chart tokens below),
+     used sparingly for small highlight moments (active-tab dot, hero-card emphasis) so it can't collide with or
+     destabilize the existing Tailwind color slots. */
+  --accent-gold: oklch(0.75 0.14 85);
 
   /* Chart palette (validated categorical/status hues, light mode) -- see dataviz skill references/palette.md. */
   --chart-series-1: #2a78d6;
@@ -53,8 +59,8 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
+  --primary: oklch(0.72 0.11 258);
+  --primary-foreground: oklch(0.145 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
@@ -69,8 +75,10 @@
   --warning-foreground: oklch(0.145 0 0);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.68 0.12 258);
   color-scheme: dark;
+
+  --accent-gold: oklch(0.8 0.15 85);
 
   /* Chart palette (validated categorical/status hues, dark mode) -- see dataviz skill references/palette.md. */
   --chart-series-1: #3987e5;
@@ -120,8 +128,14 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-* {
-  border-color: var(--border);
+/* Wrapped in @layer base (not left bare/unlayered) so Tailwind's own @layer utilities -- including any
+   border-{color} utility -- can still win over this reset via normal layer ordering. Previously this sat
+   unlayered and silently beat every border-color utility project-wide (see QuickLogScreen's accent-bar
+   workaround, now simplified back to a real border-t-* utility now that this is fixed). */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
 }
 
 body {
@@ -132,4 +146,17 @@ body {
   color: var(--foreground);
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
+}
+
+/* Subtle entrance for Radix Dialog/Popover content -- plays on mount only (Radix unmounts on close rather
+   than transitioning out, so no exit keyframe is defined). */
+@keyframes content-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

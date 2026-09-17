@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Save } from "lucide-react";
+import { Search, Save, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
@@ -273,7 +273,10 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     <div>
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Quick Log</h2>
+          <h2 className="flex items-center gap-2 text-2xl font-semibold">
+            <ListChecks className="h-5 w-5 text-primary" />
+            Quick Log
+          </h2>
           <p className="text-sm text-muted-foreground">
             Mark proficiency directly in the grid. Every entry here is logged as today ({todayIso()}) by{" "}
             <strong>{QUICK_LOG_EVALUATOR}</strong> — to backdate an entry or credit a different evaluator, edit it from Cadet Detail instead.
@@ -330,15 +333,14 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   <TableHead
                     key={objective.id}
                     className={cn(
-                      "min-w-36 text-center align-bottom",
-                      schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined
+                      "min-w-36 border-t-4 pt-1.5 text-center align-bottom",
+                      schedule === "lastChance"
+                        ? "border-t-destructive bg-destructive/5"
+                        : schedule === "repeats"
+                          ? "border-t-success bg-success/5"
+                          : "border-t-transparent"
                     )}
                   >
-                    {/* background-color bar, not a border -- this project's `* { border-color }` reset silently wins over border-t-* utilities */}
-                    <div
-                      className="-mx-3 -mt-2.5 mb-1.5 h-1"
-                      style={{ background: schedule === "lastChance" ? "var(--destructive)" : schedule === "repeats" ? "var(--success)" : "transparent" }}
-                    />
                     <button
                       type="button"
                       className="w-full text-center hover:underline"

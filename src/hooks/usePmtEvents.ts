@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { PmtEventType } from "../domain/constants";
 import type { PmtEvent } from "../domain/types";
 
@@ -31,7 +32,7 @@ function mapPmtEvent(id: string, data: Record<string, unknown>): PmtEvent {
     pocic2: (data.pocic2 as string) ?? "",
     pocic3: (data.pocic3 as string) ?? "",
     pocsup: (data.pocsup as string) ?? "",
-    trainingWeek: data.trainingWeek as number | undefined,
+    trainingWeek: (data.trainingWeek as number | null | undefined) ?? undefined,
     objectiveIds: (data.objectiveIds as string[]) ?? [],
     notes: (data.notes as string) ?? "",
   };
@@ -61,7 +62,7 @@ export function usePmtEvents() {
 
   const createEvent = useCallback(
     async (input: PmtEventInput) => {
-      const ref = await addDoc(collection(db, COLLECTION), { ...input, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await refetch();
       return { id: ref.id, ...input } satisfies PmtEvent;
     },
@@ -70,7 +71,7 @@ export function usePmtEvents() {
 
   const updateEvent = useCallback(
     async (id: string, input: PmtEventInput) => {
-      await updateDoc(doc(db, COLLECTION, id), { ...input, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
       await refetch();
       return { id, ...input } satisfies PmtEvent;
     },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, serverTimestamp, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { ProficiencyCode } from "../domain/constants";
 import type { Completion } from "../domain/types";
 
@@ -29,7 +30,7 @@ function mapCompletion(id: string, data: Record<string, unknown>): Completion {
     dateCompleted: data.dateCompleted as string | undefined,
     evaluator: (data.evaluator as string) ?? "",
     notes: (data.notes as string) ?? "",
-    pmtEventId: data.pmtEventId as string | undefined,
+    pmtEventId: (data.pmtEventId as string | null | undefined) ?? undefined,
   };
 }
 
@@ -57,7 +58,7 @@ export function useCompletions() {
 
   const createCompletion = useCallback(
     async (input: CompletionInput) => {
-      const ref = await addDoc(collection(db, COLLECTION), { ...input, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await refetch();
       return { id: ref.id, ...input } satisfies Completion;
     },
@@ -66,7 +67,7 @@ export function useCompletions() {
 
   const updateCompletion = useCallback(
     async (id: string, input: CompletionInput) => {
-      await updateDoc(doc(db, COLLECTION, id), { ...input, updatedAt: serverTimestamp() });
+      await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
       await refetch();
       return { id, ...input } satisfies Completion;
     },

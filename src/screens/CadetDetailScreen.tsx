@@ -232,13 +232,8 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
           objective={dialogObjective}
           requiredProficiency={activeRequiredProficiency}
           existingCompletion={activeCompletion}
-          onSave={async (input) => {
-            if (activeCompletion) {
-              await updateCompletion(activeCompletion.id, input);
-            } else {
-              await createCompletion(input);
-            }
-          }}
+          createCompletion={createCompletion}
+          updateCompletion={updateCompletion}
         />
       )}
 

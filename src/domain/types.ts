@@ -60,6 +60,14 @@ export interface Completion {
   dateCompleted: string | undefined;
   evaluator: string;
   notes: string;
+  /**
+   * Which PMT occurrence this was graded at. For objectives covered by only one PMT this is
+   * mostly informational; for objectives covered by several (material split across sessions),
+   * it's what lets each occurrence carry its own independent Pass/Not Pass/Partial in Quick Log --
+   * there is no "cumulative" tracking, a Pass logged at any one occurrence is what makes
+   * bestCompletionForObjective (and therefore the whole objective) read as completed.
+   */
+  pmtEventId: string | undefined;
 }
 
 export interface PmtEvent {

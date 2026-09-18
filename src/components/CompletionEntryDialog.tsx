@@ -16,42 +16,88 @@ import type { Cadet, Completion, TrainingObjective } from "../domain/types";
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** The cadet whose cell/row was clicked to open this dialog -- always included when Multiple Partial is used. */
   cadet: Cadet;
   cadets: Cadet[];
   objective: TrainingObjective;
   requiredProficiency: ProficiencyCode;
+  /** Which PMT occurrence this entry applies to -- undefined for objectives that only ever occur once. */
+  pmtEventId?: string;
   existingCompletion?: Completion;
-  onSave: (input: CompletionInput) => Promise<void>;
+  createCompletion: (input: CompletionInput) => Promise<Completion>;
+  updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
+  /**
+   * Only offered for objectives whose material is split across several PMT occurrences: lets one
+   * evaluation apply identically to a whole group of cadets at once, since everyone at that session
+   * typically covered the same material together. Needs a way to find each additional cadet's
+   * existing completion for this same objective+occurrence, to update rather than duplicate it.
+   */
+  allowMultiplePartial?: boolean;
+  findExistingCompletion?: (cadetId: string) => Completion | undefined;
 }
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective, requiredProficiency, existingCompletion, onSave }: Props) {
+export function CompletionEntryDialog({
+  open,
+  onClose,
+  cadet,
+  cadets,
+  objective,
+  requiredProficiency,
+  pmtEventId,
+  existingCompletion,
+  createCompletion,
+  updateCompletion,
+  allowMultiplePartial,
+  findExistingCompletion,
+}: Props) {
   const [proficiency, setProficiency] = useState<ProficiencyCode>(existingCompletion?.proficiencyAchieved ?? requiredProficiency);
   const [dateCompleted, setDateCompleted] = useState(existingCompletion?.dateCompleted?.slice(0, 10) ?? todayIso());
   const [evaluator, setEvaluator] = useState(existingCompletion?.evaluator ?? "");
   const [notes, setNotes] = useState(existingCompletion?.notes ?? "");
+  const [multiplePartial, setMultiplePartial] = useState(false);
+  const [selectedCadetIds, setSelectedCadetIds] = useState<Set<string>>(() => new Set([cadet.id]));
+  const [cadetSearch, setCadetSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
   const criteria = getLookForCriteria(objective);
 
+  const toggleCadet = (id: string) => {
+    setSelectedCadetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const searchedCadets = cadets.filter((c) => c.name.toLowerCase().includes(cadetSearch.trim().toLowerCase()));
+
   const handleSave = async () => {
     setSaving(true);
     setError(undefined);
     try {
-      await onSave({
-        cadetId: cadet.id,
-        cadetName: cadet.name,
-        objectiveId: objective.id,
-        objectiveNumber: objective.number,
-        proficiencyAchieved: proficiency,
-        dateCompleted,
-        evaluator,
-        notes,
-      });
+      const targets = multiplePartial ? cadets.filter((c) => selectedCadetIds.has(c.id)) : [cadet];
+      for (const target of targets) {
+        const existing = target.id === cadet.id ? existingCompletion : findExistingCompletion?.(target.id);
+        const input: CompletionInput = {
+          cadetId: target.id,
+          cadetName: target.name,
+          objectiveId: objective.id,
+          objectiveNumber: objective.number,
+          proficiencyAchieved: proficiency,
+          dateCompleted,
+          evaluator,
+          notes,
+          pmtEventId,
+        };
+        if (existing) await updateCompletion(existing.id, input);
+        else await createCompletion(input);
+      }
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");
@@ -126,6 +172,35 @@ export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective,
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" />
           </div>
 
+          {allowMultiplePartial && (
+            <div className="grid gap-2 rounded-md border border-input p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input type="checkbox" checked={multiplePartial} onChange={(e) => setMultiplePartial(e.target.checked)} />
+                Multiple Partial -- apply this exact evaluation to several cadets at once
+              </label>
+              {multiplePartial && (
+                <div className="grid gap-2">
+                  <Input
+                    placeholder="Filter cadets..."
+                    value={cadetSearch}
+                    onChange={(e) => setCadetSearch(e.target.value)}
+                    className="h-8"
+                  />
+                  <div className="grid max-h-48 gap-1 overflow-y-auto rounded-md border border-input p-2">
+                    {searchedCadets.map((c) => (
+                      <label key={c.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent">
+                        <input type="checkbox" checked={selectedCadetIds.has(c.id)} onChange={() => toggleCadet(c.id)} />
+                        {c.name}
+                      </label>
+                    ))}
+                    {searchedCadets.length === 0 && <p className="p-1 text-xs text-muted-foreground">No cadets match.</p>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{selectedCadetIds.size} cadet(s) selected.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
 
@@ -133,8 +208,8 @@ export function CompletionEntryDialog({ open, onClose, cadet, cadets, objective,
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={saving || !dateCompleted}>
-            {saving ? "Saving..." : "Save"}
+          <Button onClick={handleSave} disabled={saving || !dateCompleted || (multiplePartial && selectedCadetIds.size === 0)}>
+            {saving ? "Saving..." : multiplePartial ? `Save (${selectedCadetIds.size})` : "Save"}
           </Button>
         </DialogFooter>
       </DialogContent>

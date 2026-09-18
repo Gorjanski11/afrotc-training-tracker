@@ -13,6 +13,7 @@ export interface CompletionInput {
   dateCompleted: string;
   evaluator: string;
   notes: string;
+  pmtEventId: string | undefined;
 }
 
 const COLLECTION = "completions";
@@ -28,6 +29,7 @@ function mapCompletion(id: string, data: Record<string, unknown>): Completion {
     dateCompleted: data.dateCompleted as string | undefined,
     evaluator: (data.evaluator as string) ?? "",
     notes: (data.notes as string) ?? "",
+    pmtEventId: data.pmtEventId as string | undefined,
   };
 }
 

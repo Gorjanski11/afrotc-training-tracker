@@ -10,8 +10,30 @@ import { compareByLastName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
+import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
+
+/**
+ * One grid column. Objectives covered by only one PMT get a single column (occurrence is that
+ * PMT, or undefined if never scheduled). Objectives whose material is split across several PMTs
+ * get one column PER occurrence, each independently gradeable -- there's no cumulative tracking;
+ * a Pass logged at any one occurrence is what makes the whole objective read as completed
+ * (bestCompletionForObjective already picks the best of however many completions an objective has).
+ */
+interface QuickLogColumn {
+  key: string;
+  objective: TrainingObjective;
+  occurrence: PmtEvent | undefined;
+  isMultiOccurrence: boolean;
+}
+
+interface PartialDialogTarget {
+  cadet: Cadet;
+  objective: TrainingObjective;
+  occurrence: PmtEvent;
+  requiredCode: ProficiencyCode;
+}
 
 type ColumnScope = "overdue" | "overdueAndScheduledOptional" | "all";
 
@@ -64,6 +86,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
   const [explanationObjective, setExplanationObjective] = useState<TrainingObjective | undefined>();
+  const [partialTarget, setPartialTarget] = useState<PartialDialogTarget | undefined>();
 
   // Loggable = has a proficiency code at ICL or SCL, whether or not the objective is graded.
   // Non-graded-but-leveled objectives are still columns here (available for optional logging);
@@ -88,6 +111,21 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     return map;
   }, [completions]);
 
+  /** Every PMT occurrence covering each objective, date-sorted -- the basis for both schedule status and column layout. */
+  const occurrencesByObjective = useMemo(() => {
+    const map = new Map<string, PmtEvent[]>();
+    for (const objective of loggableObjectives) {
+      map.set(
+        objective.id,
+        pmtEvents.filter((e) => e.objectiveIds.includes(objective.id)).sort((a, b) => a.eventDate.localeCompare(b.eventDate))
+      );
+    }
+    return map;
+  }, [loggableObjectives, pmtEvents]);
+
+  /** True when an objective's material is split across more than one PMT -- gets one gradeable column per occurrence instead of one column total. */
+  const isMultiOccurrenceObjective = (objectiveId: string): boolean => (occurrencesByObjective.get(objectiveId)?.length ?? 0) > 1;
+
   /**
    * Schedule fact per objective, independent of any cadet or graded/optional status: does it still
    * have a future PMT that could cover it? "repeats" = at least one occurrence is still upcoming
@@ -99,7 +137,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     const now = Date.now();
     const map = new Map<string, "repeats" | "lastChance" | "none">();
     for (const objective of loggableObjectives) {
-      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id));
+      const occurrences = occurrencesByObjective.get(objective.id) ?? [];
       if (occurrences.length === 0) {
         map.set(objective.id, "none");
       } else if (occurrences.some((e) => new Date(e.eventDate).getTime() > now)) {
@@ -109,27 +147,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       }
     }
     return map;
-  }, [loggableObjectives, pmtEvents]);
-
-  /**
-   * The single most relevant PMT occurrence per objective, for the column header: the most recent
-   * PAST one (the one to actually grade against), falling back to the soonest future one only if
-   * it's never been covered yet.
-   */
-  const representativeOccurrenceByObjective = useMemo(() => {
-    const now = Date.now();
-    const map = new Map<string, PmtEvent | undefined>();
-    for (const objective of loggableObjectives) {
-      const occurrences = pmtEvents.filter((e) => e.objectiveIds.includes(objective.id)).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
-      if (occurrences.length === 0) {
-        map.set(objective.id, undefined);
-        continue;
-      }
-      const past = [...occurrences].reverse().find((e) => new Date(e.eventDate).getTime() <= now);
-      map.set(objective.id, past ?? occurrences[0]);
-    }
-    return map;
-  }, [loggableObjectives, pmtEvents]);
+  }, [loggableObjectives, occurrencesByObjective]);
 
   /**
    * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
@@ -190,7 +208,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
-    return loggableObjectives
+    const qualifying = loggableObjectives
       .filter((o) => {
         if (columnScope === "all") return true;
         if (columnScope === "overdueAndScheduledOptional") return scheduledObjectiveIds.has(o.id);
@@ -198,23 +216,39 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       })
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
-  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch]);
 
-  const cellKey = (cadetId: string, objectiveId: string) => `${cadetId}:${objectiveId}`;
+    const result: QuickLogColumn[] = [];
+    for (const objective of qualifying) {
+      const occurrences = occurrencesByObjective.get(objective.id) ?? [];
+      if (occurrences.length > 1) {
+        for (const occurrence of occurrences) {
+          result.push({ key: `${objective.id}:${occurrence.id}`, objective, occurrence, isMultiOccurrence: true });
+        }
+      } else {
+        result.push({ key: objective.id, objective, occurrence: occurrences[0], isMultiOccurrence: false });
+      }
+    }
+    return result;
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective]);
 
-  const getExistingCompletion = (cadetId: string, objectiveId: string): Completion | undefined => {
-    return (completionsByCadet.get(cadetId) ?? []).find((c) => c.objectiveId === objectiveId);
+  const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
+
+  /** Single-occurrence objectives match by objectiveId alone (legacy completions may predate pmtEventId); multi-occurrence ones must match the specific occurrence too. */
+  const getExistingCompletion = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): Completion | undefined => {
+    const list = completionsByCadet.get(cadetId) ?? [];
+    if (isMultiOccurrence) return list.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
+    return list.find((c) => c.objectiveId === objectiveId);
   };
 
-  const getCellValue = (cadetId: string, objectiveId: string): string => {
-    const key = cellKey(cadetId, objectiveId);
+  const getCellValue = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): string => {
+    const key = cellKey(cadetId, objectiveId, pmtEventId);
     if (key in pending) return pending[key];
-    return getExistingCompletion(cadetId, objectiveId)?.proficiencyAchieved ?? NONE;
+    return getExistingCompletion(cadetId, objectiveId, pmtEventId, isMultiOccurrence)?.proficiencyAchieved ?? NONE;
   };
 
-  const setCellValue = (cadetId: string, objectiveId: string, value: string) => {
-    const key = cellKey(cadetId, objectiveId);
-    const existing = getExistingCompletion(cadetId, objectiveId);
+  const setCellValue = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean, value: string) => {
+    const key = cellKey(cadetId, objectiveId, pmtEventId);
+    const existing = getExistingCompletion(cadetId, objectiveId, pmtEventId, isMultiOccurrence);
     const original = existing?.proficiencyAchieved ?? NONE;
     setPending((prev) => {
       const next = { ...prev };
@@ -234,11 +268,12 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
     setSaveError(undefined);
     try {
       for (const [key, value] of Object.entries(pending)) {
-        const [cadetId, objectiveId] = key.split(":");
+        const [cadetId, objectiveId, pmtEventIdRaw] = key.split(":");
+        const pmtEventId = pmtEventIdRaw === "" ? undefined : pmtEventIdRaw;
         const cadet = cadets.find((c) => c.id === cadetId);
         const objective = catalog.find((o) => o.id === objectiveId);
         if (!cadet || !objective) continue;
-        const existing = getExistingCompletion(cadetId, objectiveId);
+        const existing = getExistingCompletion(cadetId, objectiveId, pmtEventId, isMultiOccurrenceObjective(objectiveId));
 
         if (value === NONE) {
           if (existing) await deleteCompletion(existing.id);
@@ -254,6 +289,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           dateCompleted: todayIso(),
           evaluator: QUICK_LOG_EVALUATOR,
           notes: existing?.notes ?? "",
+          pmtEventId,
         };
         if (existing) {
           await updateCompletion(existing.id, input);
@@ -326,12 +362,12 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           <TableHeader>
             <TableRow>
               <TableHead className="sticky left-0 z-10 min-w-40 bg-background">Cadet</TableHead>
-              {columns.map((objective) => {
+              {columns.map((col) => {
+                const { objective, occurrence } = col;
                 const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
-                const occurrence = representativeOccurrenceByObjective.get(objective.id);
                 return (
                   <TableHead
-                    key={objective.id}
+                    key={col.key}
                     className={cn(
                       "min-w-36 border-t-4 pt-1.5 text-center align-bottom",
                       schedule === "lastChance"
@@ -369,26 +405,28 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   </button>
                   <div className="text-xs text-muted-foreground">{cadet.devLevel ?? "no level"}</div>
                 </TableCell>
-                {columns.map((objective) => {
+                {columns.map((col) => {
+                  const { objective, occurrence, isMultiOccurrence } = col;
                   const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
                   const tint = schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined;
                   const applicable = cadet.devLevel && objective.proficiencyByLevel[cadet.devLevel] !== "";
                   if (!applicable) {
                     return (
-                      <TableCell key={objective.id} className={cn("text-center text-xs text-muted-foreground", tint)}>
+                      <TableCell key={col.key} className={cn("text-center text-xs text-muted-foreground", tint)}>
                         N/A
                       </TableCell>
                     );
                   }
-                  const key = cellKey(cadet.id, objective.id);
-                  const value = getCellValue(cadet.id, objective.id);
+                  const pmtEventId = occurrence?.id;
+                  const key = cellKey(cadet.id, objective.id, pmtEventId);
+                  const value = getCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
                   const isDirty = key in pending;
                   const requiredCode = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]) ?? "P1";
                   const notPassOptions = PROFICIENCY_CODES.filter((p) => p !== requiredCode);
                   const isPass = value === requiredCode;
                   const isNotPass = value !== NONE && !isPass;
                   return (
-                    <TableCell key={objective.id} className={cn("p-1 text-center", tint)}>
+                    <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex gap-1">
                           <Button
@@ -400,7 +438,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                               isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
                               isDirty && "ring-2 ring-primary"
                             )}
-                            onClick={() => setCellValue(cadet.id, objective.id, isPass ? NONE : requiredCode)}
+                            onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isPass ? NONE : requiredCode)}
                           >
                             Pass
                           </Button>
@@ -410,14 +448,32 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                             variant={isNotPass ? "destructive" : "outline"}
                             className={cn("h-6 px-2 text-[11px]", isDirty && "ring-2 ring-primary")}
                             onClick={() =>
-                              setCellValue(cadet.id, objective.id, isNotPass ? NONE : defaultNotPassCode(requiredCode, notPassOptions))
+                              setCellValue(
+                                cadet.id,
+                                objective.id,
+                                pmtEventId,
+                                isMultiOccurrence,
+                                isNotPass ? NONE : defaultNotPassCode(requiredCode, notPassOptions)
+                              )
                             }
                           >
                             Not Pass
                           </Button>
+                          {isMultiOccurrence && occurrence && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[11px]"
+                              title="Material for this Training Objective is split across several PMTs -- log partial progress at this specific session, optionally for several cadets at once."
+                              onClick={() => setPartialTarget({ cadet, objective, occurrence, requiredCode })}
+                            >
+                              Partial
+                            </Button>
+                          )}
                         </div>
                         {isNotPass && (
-                          <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, v)}>
+                          <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, v)}>
                             <SelectTrigger className="h-6 w-full px-1.5 text-[11px]">
                               <SelectValue />
                             </SelectTrigger>
@@ -465,6 +521,23 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
 
       {explanationObjective && (
         <ObjectiveExplanationDialog open onClose={() => setExplanationObjective(undefined)} objective={explanationObjective} />
+      )}
+
+      {partialTarget && (
+        <CompletionEntryDialog
+          open
+          onClose={() => setPartialTarget(undefined)}
+          cadet={partialTarget.cadet}
+          cadets={cadets}
+          objective={partialTarget.objective}
+          requiredProficiency={partialTarget.requiredCode}
+          pmtEventId={partialTarget.occurrence.id}
+          existingCompletion={getExistingCompletion(partialTarget.cadet.id, partialTarget.objective.id, partialTarget.occurrence.id, true)}
+          createCompletion={createCompletion}
+          updateCompletion={updateCompletion}
+          allowMultiplePartial
+          findExistingCompletion={(cadetId) => getExistingCompletion(cadetId, partialTarget.objective.id, partialTarget.occurrence.id, true)}
+        />
       )}
     </div>
   );

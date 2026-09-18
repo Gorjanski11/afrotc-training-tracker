@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
@@ -82,6 +82,8 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   const [objectiveSearch, setObjectiveSearch] = useState("");
   const [columnScope, setColumnScope] = useState<ColumnScope>("overdue");
   const [showAllCadets, setShowAllCadets] = useState(false);
+  const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
+  const [levelFilter, setLevelFilter] = useState<DevLevel | "All">("All");
   const [pending, setPending] = useState<Record<string, string>>({}); // `${cadetId}:${objectiveId}` -> ProficiencyCode | NONE
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
@@ -94,12 +96,17 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
   // "Show all objectives" is checked, never as part of the default overdue-only column set.
   const loggableObjectives = useMemo(() => catalog.filter((o) => o.proficiencyByLevel.ICL !== "" || o.proficiencyByLevel.SCL !== ""), [catalog]);
 
+  const availableFlights = useMemo(() => FLIGHTS.filter((f) => cadets.some((c) => c.flight === f)), [cadets]);
+  const availableLevels = useMemo(() => DEV_LEVELS.filter((l) => cadets.some((c) => c.devLevel === l)), [cadets]);
+
   const searchedCadets = useMemo(() => {
     const query = cadetSearch.trim().toLowerCase();
     return [...cadets]
       .filter((c) => query === "" || c.name.toLowerCase().includes(query))
+      .filter((c) => flightFilter === "All" || c.flight === flightFilter)
+      .filter((c) => levelFilter === "All" || c.devLevel === levelFilter)
       .sort((a, b) => compareByLastName(a.name, b.name));
-  }, [cadets, cadetSearch]);
+  }, [cadets, cadetSearch, flightFilter, levelFilter]);
 
   const completionsByCadet = useMemo(() => {
     const map = new Map<string, Completion[]>();
@@ -341,6 +348,36 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
             onChange={(e) => setObjectiveSearch(e.target.value)}
           />
         </div>
+        {availableFlights.length > 0 && (
+          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {availableFlights.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {availableLevels.length > 0 && (
+          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as DevLevel | "All")}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All levels</SelectItem>
+              {availableLevels.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showAllCadets} onChange={(e) => setShowAllCadets(e.target.checked)} />
           Show all cadets (default: only those with an overdue Training Objective)

@@ -64,6 +64,9 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
 
+  // Inactive cadets are dropped from the Dashboard entirely -- they're not being actively tracked.
+  const visibleCadets = useMemo(() => cadets.filter((c) => c.status !== "Inactive"), [cadets]);
+
   const rows = useMemo(() => {
     const completionsByCadet = new Map<string, Completion[]>();
     for (const c of completions) {
@@ -74,7 +77,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
 
     const query = search.trim().toLowerCase();
 
-    return cadets
+    return visibleCadets
       .filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter)
       .filter((c) => query === "" || c.name.toLowerCase().includes(query))
       .map((cadet) => {
@@ -88,7 +91,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
         else cmp = a.progress.percent - b.progress.percent;
         return sortAsc ? cmp : -cmp;
       });
-  }, [cadets, catalog, completions, pmtEvents, devLevelFilter, search, sortKey, sortAsc]);
+  }, [visibleCadets, catalog, completions, pmtEvents, devLevelFilter, search, sortKey, sortAsc]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -98,7 +101,10 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
     }
   };
 
-  const summary = useMemo(() => computeCohortSummary(cadets, catalog, completions, pmtEvents), [cadets, catalog, completions, pmtEvents]);
+  const summary = useMemo(
+    () => computeCohortSummary(visibleCadets, catalog, completions, pmtEvents),
+    [visibleCadets, catalog, completions, pmtEvents]
+  );
 
   return (
     <div>
@@ -108,7 +114,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
       </h2>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(cadets.length)} index={0} />
+        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(visibleCadets.length)} index={0} />
         <HeroStat icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall completion" value={`${summary.overallPercent}%`} index={1} />
         <HeroStat
           icon={<AlertTriangle className="h-4.5 w-4.5" />}

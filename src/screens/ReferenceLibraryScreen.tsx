@@ -5,11 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { BookOpen, Search } from "lucide-react";
-import { DEV_LEVELS } from "../domain/constants";
+import { DEV_LEVELS, type DevLevel } from "../domain/constants";
 import type { ProgramLearningOutcomeSection, TrainingObjective } from "../domain/types";
 
 interface Props {
   sections: ProgramLearningOutcomeSection[];
+  /** Restricts the proficiency table to one cohort's levels (POC or GMC) -- all four if omitted. */
+  devLevels?: readonly DevLevel[];
 }
 
 function matchesSearch(objective: TrainingObjective, query: string): boolean {
@@ -33,7 +35,7 @@ function matchesSearch(objective: TrainingObjective, query: string): boolean {
  * Additional Information), organized Program Learning Outcome -> sub-area ->
  * objective. No login required, no completion affordance -- open to everyone.
  */
-export function ReferenceLibraryScreen({ sections }: Props) {
+export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Props) {
   const [search, setSearch] = useState("");
   const [manualOpen, setManualOpen] = useState<string[]>([]);
 
@@ -146,7 +148,7 @@ export function ReferenceLibraryScreen({ sections }: Props) {
                           <Table aria-label={`Proficiency requirements for Training Objective ${objective.number}`} className="mt-1">
                             <TableHeader>
                               <TableRow>
-                                {DEV_LEVELS.map((lvl) => (
+                                {devLevels.map((lvl) => (
                                   <TableHead key={lvl} className="w-24">
                                     {lvl}
                                   </TableHead>
@@ -155,7 +157,7 @@ export function ReferenceLibraryScreen({ sections }: Props) {
                             </TableHeader>
                             <TableBody>
                               <TableRow>
-                                {DEV_LEVELS.map((lvl) => (
+                                {devLevels.map((lvl) => (
                                   <TableCell key={lvl}>{objective.proficiencyByLevel[lvl] || "N/A"}</TableCell>
                                 ))}
                               </TableRow>

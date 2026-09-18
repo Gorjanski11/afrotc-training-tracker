@@ -14,9 +14,11 @@ interface Props {
   onClose: () => void;
   existingCadet?: Cadet;
   onSave: (input: CadetInput) => Promise<void>;
+  /** Restricts the Dev Level picker to one cohort (POC or GMC) -- all four if omitted. */
+  allowedDevLevels?: readonly DevLevel[];
 }
 
-export function CadetFormDialog({ open, onClose, existingCadet, onSave }: Props) {
+export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedDevLevels = DEV_LEVELS }: Props) {
   const [name, setName] = useState(existingCadet?.name ?? "");
   const [asClass, setAsClass] = useState<AsClass | undefined>(existingCadet?.asClass);
   const [devLevel, setDevLevel] = useState<DevLevel | undefined>(existingCadet?.devLevel);
@@ -80,7 +82,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave }: Props)
                 <SelectValue placeholder="Select dev level" />
               </SelectTrigger>
               <SelectContent>
-                {DEV_LEVELS.map((lvl) => (
+                {allowedDevLevels.map((lvl) => (
                   <SelectItem key={lvl} value={lvl}>
                     {lvl}
                   </SelectItem>

@@ -11,6 +11,7 @@ import { CadetFormDialog } from "../components/CadetFormDialog";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import type { CadetInput } from "../hooks/useCadets";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
+import type { DevLevel } from "../domain/constants";
 
 type SortKey = "name" | "asClass" | "devLevel" | "status" | "percent";
 
@@ -25,9 +26,22 @@ interface Props {
   onSelectCadet: (cadetId: string) => void;
   /** Admin-only: (re-)import the Training Objectives catalog from the bundled seed JSON. Idempotent -- safe to re-run. */
   importCatalog: () => Promise<number>;
+  /** Restricts the Dev Level picker in Add/Edit Cadet to one cohort (POC or GMC) -- all four if omitted. */
+  allowedDevLevels?: readonly DevLevel[];
 }
 
-export function RosterScreen({ cadets, catalog, completions, pmtEvents, createCadet, updateCadet, deleteCadet, onSelectCadet, importCatalog }: Props) {
+export function RosterScreen({
+  cadets,
+  catalog,
+  completions,
+  pmtEvents,
+  createCadet,
+  updateCadet,
+  deleteCadet,
+  onSelectCadet,
+  importCatalog,
+  allowedDevLevels,
+}: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCadet, setEditingCadet] = useState<Cadet | undefined>();
   const [deletingCadet, setDeletingCadet] = useState<Cadet | undefined>();
@@ -190,6 +204,7 @@ export function RosterScreen({ cadets, catalog, completions, pmtEvents, createCa
           open
           onClose={() => setFormOpen(false)}
           existingCadet={editingCadet}
+          allowedDevLevels={allowedDevLevels}
           onSave={async (input) => {
             if (editingCadet) {
               await updateCadet(editingCadet.id, input);

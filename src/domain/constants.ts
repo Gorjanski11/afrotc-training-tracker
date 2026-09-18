@@ -36,8 +36,10 @@ export const PROFICIENCY_RANK: Record<ProficiencyCode, number> = {
   P3: 5,
 };
 
-// PMT (Practical Military Training) session types tracked on the Calendar tab.
-export const PMT_EVENT_TYPES = ["LLAB", "FM", "D&C"] as const;
+// PMT (Practical Military Training) session types tracked on the Calendar tab. This calendar is
+// shared with the separate Accountability site (same pmtEvents collection, same Firebase project)
+// -- "PT" exists for pure physical-training sessions that Accountability tracks attendance for.
+export const PMT_EVENT_TYPES = ["LLAB", "FM", "D&C", "PT"] as const;
 export type PmtEventType = (typeof PMT_EVENT_TYPES)[number];
 
 // The 5 Program Learning Outcome sections from AFROTCI 36-2011 Vol 1, in document order.

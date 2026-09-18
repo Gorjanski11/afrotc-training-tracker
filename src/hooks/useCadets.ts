@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import type { AsClass, CadetStatus, DevLevel } from "../domain/constants";
+import type { AsClass, CadetStatus, DevLevel, Flight } from "../domain/constants";
 import type { Cadet } from "../domain/types";
 
 export interface CadetInput {
@@ -10,6 +10,8 @@ export interface CadetInput {
   devLevel: DevLevel;
   status: CadetStatus;
   notes: string;
+  email: string;
+  flight: Flight | undefined;
 }
 
 const COLLECTION = "cadets";
@@ -22,6 +24,8 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
     devLevel: data.devLevel as DevLevel | undefined,
     status: data.status as CadetStatus | undefined,
     notes: (data.notes as string) ?? "",
+    email: data.email as string | undefined,
+    flight: data.flight as Flight | undefined,
   };
 }
 

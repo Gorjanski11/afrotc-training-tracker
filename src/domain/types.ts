@@ -1,4 +1,4 @@
-import type { AsClass, CadetStatus, DevLevel, PmtEventType, ProficiencyCode } from "./constants";
+import type { AsClass, CadetStatus, DevLevel, Flight, PmtEventType, ProficiencyCode } from "./constants";
 
 export interface Cadet {
   id: string;
@@ -7,6 +7,10 @@ export interface Cadet {
   devLevel: DevLevel | undefined;
   status: CadetStatus | undefined;
   notes: string;
+  /** Shared across POC ("TO's" ICL/SCL) and GMC (BC/BCL) -- one roster for both cohorts. */
+  email: string | undefined;
+  /** GMC only -- POC cadets never have a Flight. */
+  flight: Flight | undefined;
 }
 
 /**

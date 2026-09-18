@@ -26,7 +26,7 @@ function mapObjective(id: string, data: Record<string, unknown>): TrainingObject
     relatedLessons: (data.relatedLessons as string[]) ?? [],
     instructor: (data.instructor as string) ?? "",
     additionalInfo: (data.additionalInfo as string) ?? "",
-    proficiencyByLevel: (data.proficiencyByLevel as TrainingObjective["proficiencyByLevel"]) ?? { ICL: "", SCL: "" },
+    proficiencyByLevel: (data.proficiencyByLevel as TrainingObjective["proficiencyByLevel"]) ?? { BC: "", BCL: "", ICL: "", SCL: "" },
   };
 }
 

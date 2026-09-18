@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AS_CLASSES, CADET_STATUSES, DEV_LEVELS, type AsClass, type CadetStatus, type DevLevel } from "../domain/constants";
+import { AS_CLASSES, CADET_STATUSES, DEV_LEVELS, FLIGHTS, GMC_DEV_LEVELS, type AsClass, type CadetStatus, type DevLevel, type Flight } from "../domain/constants";
 import type { CadetInput } from "../hooks/useCadets";
 import type { Cadet } from "../domain/types";
 
@@ -22,9 +22,12 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave }: Props)
   const [devLevel, setDevLevel] = useState<DevLevel | undefined>(existingCadet?.devLevel);
   const [status, setStatus] = useState<CadetStatus>(existingCadet?.status ?? "Active");
   const [notes, setNotes] = useState(existingCadet?.notes ?? "");
+  const [email, setEmail] = useState(existingCadet?.email ?? "");
+  const [flight, setFlight] = useState<Flight | undefined>(existingCadet?.flight);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
+  const isGmc = devLevel ? (GMC_DEV_LEVELS as readonly string[]).includes(devLevel) : false;
   const valid = name.trim().length > 0 && asClass && devLevel && status;
 
   const handleSave = async () => {
@@ -32,7 +35,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave }: Props)
     setSaving(true);
     setError(undefined);
     try {
-      await onSave({ name: name.trim(), asClass, devLevel, status, notes });
+      await onSave({ name: name.trim(), asClass, devLevel, status, notes, email: email.trim(), flight: isGmc ? flight : undefined });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");
@@ -100,6 +103,29 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave }: Props)
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {isGmc && (
+            <div className="grid gap-1.5">
+              <Label>Flight</Label>
+              <Select value={flight ?? ""} onValueChange={(v) => setFlight(v as Flight)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          <div className="grid gap-1.5">
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Optional" />
           </div>
 
           <div className="grid gap-1.5">

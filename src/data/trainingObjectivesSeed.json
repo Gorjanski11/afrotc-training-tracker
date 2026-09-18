@@ -8,17 +8,43 @@
     "graded": false,
     "requirements": "This lesson is designed to teach the Cadet Honor Code. It should be taught by a BCL with cadre participation. Cadets are required to know the intent and purpose along with the four elements of the Honor Code.",
     "performanceMeasures": [
-      { "text": "Recalls the four elements of the AFROTC Honor Code.", "optional": false },
-      { "text": "Identifies the intent and purpose of the Code in promoting integrity and trust.", "optional": false },
-      { "text": "Describes how honesty and moral courage support team cohesion.", "optional": false },
-      { "text": "Explains how ethical decision-making aligns with DAF Core Values.", "optional": false },
-      { "text": "Demonstrates adherence to the Code during simulated or real ethical situations.", "optional": true }
+      {
+        "text": "Recalls the four elements of the AFROTC Honor Code.",
+        "optional": false
+      },
+      {
+        "text": "Identifies the intent and purpose of the Code in promoting integrity and trust.",
+        "optional": false
+      },
+      {
+        "text": "Describes how honesty and moral courage support team cohesion.",
+        "optional": false
+      },
+      {
+        "text": "Explains how ethical decision-making aligns with DAF Core Values.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrates adherence to the Code during simulated or real ethical situations.",
+        "optional": true
+      }
     ],
-    "references": ["AFROTCI 36-2011, VOL 3 Cadet Operation", "DAFH 1, Airman"],
-    "relatedLessons": ["Core Values (AS100)", "Ethical Decision-Making series (AS200 & AS300)"],
+    "references": [
+      "AFROTCI 36-2011, VOL 3 Cadet Operation",
+      "DAFH 1, Airman"
+    ],
+    "relatedLessons": [
+      "Core Values (AS100)",
+      "Ethical Decision-Making series (AS200 & AS300)"
+    ],
     "instructor": "BCL with cadre participation, ICL with cadre guidance, or SCL",
     "additionalInfo": "This should be one of the first lessons presented to new cadets.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Kb",
+      "BCL": "",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "1.2",
@@ -29,17 +55,42 @@
     "graded": false,
     "requirements": "Cadets will know the Cadet Honor Code and understand the procedures for reporting suspected violations. Emphasis should be placed on utilizing the cadet chain of command and direct cadre involvement when necessary. Additionally, cadets should be able to summarize the proper and improper use of the Cadet Honor Code. Emphasis should be focused on improper questions, questions without purpose, and questions without probable cause. Lastly, cadets should be able to identify the difference between breaking a rule and violating the Cadet Honor Code.",
     "performanceMeasures": [
-      { "text": "Recalls proper channels for reporting violations.", "optional": false },
-      { "text": "Identifies differences between policy infractions and Honor Code breaches.", "optional": false },
-      { "text": "Describes steps for initiating a report using cadet and cadre channels.", "optional": false },
-      { "text": "Explains appropriate standards of confidentiality and professionalism.", "optional": false },
-      { "text": "Demonstrates proper reporting conduct in a simulated ethical scenario.", "optional": true }
+      {
+        "text": "Recalls proper channels for reporting violations.",
+        "optional": false
+      },
+      {
+        "text": "Identifies differences between policy infractions and Honor Code breaches.",
+        "optional": false
+      },
+      {
+        "text": "Describes steps for initiating a report using cadet and cadre channels.",
+        "optional": false
+      },
+      {
+        "text": "Explains appropriate standards of confidentiality and professionalism.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrates proper reporting conduct in a simulated ethical scenario.",
+        "optional": true
+      }
     ],
-    "references": ["N/A"],
-    "relatedLessons": ["Core Values (AS100)", "Ethical Decision-Making series (AS200 & AS300)"],
+    "references": [
+      "N/A"
+    ],
+    "relatedLessons": [
+      "Core Values (AS100)",
+      "Ethical Decision-Making series (AS200 & AS300)"
+    ],
     "instructor": "BCL with cadre participation, ICL with cadre guidance, or SCL",
     "additionalInfo": "This should be one of the first lessons presented to your new cadets. Detachments will have different methods to report violations, and the process should be understood by all cadets at each respective detachment.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Ka",
+      "BCL": "Kb",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "2.1",
@@ -50,13 +101,30 @@
     "graded": true,
     "requirements": "This objective can be accomplished through mission scenarios, team building exercises, or assigned special projects. As the development of effective followership skills is an evolutionary process, cadets should demonstrate effective followership skills IAW the current academic models. To obtain the required proficiency level, cadets should be able to demonstrate strong participation skills while being effective contributors, demonstrate a strong understanding of followership skills, anticipate the needs of the leader, perform their roles based on the leader's intent, and evaluate the followership of team members using the AFROTC Followership Evaluation Form. Like followership, the development of effective leadership skills is an evolutionary process, cadets should demonstrate effective leadership skills IAW the current academic models. To obtain the required proficiency level, cadets should be given an opportunity to apply the basics of leadership throughout their first year in the program with a focus on leading small teams towards mission accomplishment. Additionally, cadets should be able to apply all aspects of leadership skills, effectively lead teams, and evaluate the performance of team leaders using the AFROTC Field Leadership Evaluation Form.",
     "performanceMeasures": [
-      { "text": "Takes initiative to begin their assigned task without further prompting.", "optional": false },
-      { "text": "Issues a clear plan of action within a reasonable timeline.", "optional": false },
-      { "text": "Assigns specific, individual tasks to each team member.", "optional": false },
-      { "text": "Adjusts the initial plan appropriately based on team feedback or changing circumstances.", "optional": false },
-      { "text": "Demonstrates effective teamwork, discipline, and followership during group events.", "optional": false }
+      {
+        "text": "Takes initiative to begin their assigned task without further prompting.",
+        "optional": false
+      },
+      {
+        "text": "Issues a clear plan of action within a reasonable timeline.",
+        "optional": false
+      },
+      {
+        "text": "Assigns specific, individual tasks to each team member.",
+        "optional": false
+      },
+      {
+        "text": "Adjusts the initial plan appropriately based on team feedback or changing circumstances.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrates effective teamwork, discipline, and followership during group events.",
+        "optional": false
+      }
     ],
-    "references": ["The Airman Handbook"],
+    "references": [
+      "The Airman Handbook"
+    ],
     "relatedLessons": [
       "Followership (AS100)",
       "Initiative (AS100)",
@@ -69,7 +137,12 @@
     ],
     "instructor": "ICL with cadre guidance or SCL",
     "additionalInfo": "",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "2.2",
@@ -80,13 +153,30 @@
     "graded": true,
     "requirements": "This objective seeks to assess the group leadership skills of project officers in charge of leading, planning, and executing medium scale events such as Leadership Laboratory, Physical Training, or special events. ICL cadets should be able to demonstrate effective planning skills, time management, and leadership behaviors upon completion of this objective. Furthermore, this objective seeks to instill the concept of mission debrief into all AFROTC training activities with a goal of building a culture of learning through shared experience. The progression of this objective requires cadets to debrief training events by facilitating group discussion, recalling points of failure and/or success, and identifying learning points while fully appreciating the concept of an effective debrief and how it ties to future mission success, identifying root causes, pinpointing catalysts for success, and capturing critical learning points from the activity. SCL cadets should be highly competent, proven project managers and leaders, and be able to effectively evaluate the performance of subordinate cadets.",
     "performanceMeasures": [
-      { "text": "Develop a comprehensive written plan, that includes a risk assessment, for the event.", "optional": false },
-      { "text": "Use appropriate delegation to assign roles to subordinates.", "optional": false },
-      { "text": "Execute a formal pre-event briefing to all participants.", "optional": false },
-      { "text": "Implement a contingency plan in response to an unexpected problem.", "optional": false },
-      { "text": "Conduct a post-event debrief using a structured feedback model.", "optional": false }
+      {
+        "text": "Develop a comprehensive written plan, that includes a risk assessment, for the event.",
+        "optional": false
+      },
+      {
+        "text": "Use appropriate delegation to assign roles to subordinates.",
+        "optional": false
+      },
+      {
+        "text": "Execute a formal pre-event briefing to all participants.",
+        "optional": false
+      },
+      {
+        "text": "Implement a contingency plan in response to an unexpected problem.",
+        "optional": false
+      },
+      {
+        "text": "Conduct a post-event debrief using a structured feedback model.",
+        "optional": false
+      }
     ],
-    "references": ["N/A"],
+    "references": [
+      "N/A"
+    ],
     "relatedLessons": [
       "Initiative (AS100)",
       "Problem Solving (AS100)",
@@ -101,7 +191,12 @@
     ],
     "instructor": "SCL with cadre guidance",
     "additionalInfo": "Cadets commonly mistake end-of-scenario feedback for debriefs. While feedback is primarily focused on the individual being evaluated, a debrief is the team's opportunity to openly discuss \"how\" the mission was executed, drill down to the root cause for any issues that occurred during the mission and focus on areas of learning to help propel the team to future success. The debrief process is deeply rooted in the aviation community, however, the concepts can be applied cross-functionally. The instructor should strive to note the value of candid and constructive debriefs as a foundational element of continued officer professional development and mission accomplishment.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "2.3",
@@ -112,13 +207,31 @@
     "graded": false,
     "requirements": "This training requires a private, controlled environment conducive to sensitive discussions. All participants must be provided with scenario-based case studies detailing potential \"red flag\" behaviors, bystander intervention opportunities, and reporting dilemmas. A subject matter expert, either the Detachment SAPR Victim Advocate or a certified instructor, must be present to facilitate the discussion and provide accurate information. Cadets will need access to key reference materials outlining reporting options (restricted vs. unrestricted) and the specific responsibilities of a leader when made aware of an incident. The session must conclude with a \"safe talk\" period where cadets can ask questions directly to the SAPR VA without fear of reprisal.",
     "performanceMeasures": [
-      { "text": "Explain bystander intervention and identify opportunities to act in high-risk situations.", "optional": false },
-      { "text": "Describe the key elements of a command climate that effectively prevents sexual assault.", "optional": false },
-      { "text": "Summarize the immediate actions and reporting procedures a leader is required to follow upon receiving a report of sexual assault.", "optional": false },
-      { "text": "Explain the differences between a restricted and unrestricted report.", "optional": false },
-      { "text": "Discuss why prioritizing a victim's well-being is a critical leadership responsibility.", "optional": false }
+      {
+        "text": "Explain bystander intervention and identify opportunities to act in high-risk situations.",
+        "optional": false
+      },
+      {
+        "text": "Describe the key elements of a command climate that effectively prevents sexual assault.",
+        "optional": false
+      },
+      {
+        "text": "Summarize the immediate actions and reporting procedures a leader is required to follow upon receiving a report of sexual assault.",
+        "optional": false
+      },
+      {
+        "text": "Explain the differences between a restricted and unrestricted report.",
+        "optional": false
+      },
+      {
+        "text": "Discuss why prioritizing a victim's well-being is a critical leadership responsibility.",
+        "optional": false
+      }
     ],
-    "references": ["DAFI 90-6001, Sexual Assault Prevention and Response", "The Uniform Code of Military Justice (UCMJ)"],
+    "references": [
+      "DAFI 90-6001, Sexual Assault Prevention and Response",
+      "The Uniform Code of Military Justice (UCMJ)"
+    ],
     "relatedLessons": [
       "USAF and USSF Core Values (AS100)",
       "Professionalism, Standards, and Accountability (AS100)",
@@ -129,7 +242,12 @@
     ],
     "instructor": "Detachment or Region SAPR Victim Advocate (VA) or other cadre member with current SAPR training certification.",
     "additionalInfo": "This objective frames sexual assault not merely as an issue of compliance, but as a critical test of ethical leadership. By requiring cadets to explain and summarize key concepts, this training ensures they have the foundational knowledge necessary to act as a Leader of Character. This understanding is the basis for developing the moral courage, empathy, and procedural knowledge required to effectively combat sexual assault, foster a culture of trust, and ensure the well-being of every Airman and Guardian entrusted to their care.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "Kb",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "3.1",
@@ -140,17 +258,44 @@
     "graded": true,
     "requirements": "Every detachment must have a cadet mentoring program. Detachments have the flexibility to develop and administer the program as they determine. To achieve the required proficiency POC cadets should incorporate lessons from the AS curriculum in mentorship and development of GMC cadets.",
     "performanceMeasures": [
-      { "text": "Conduct an initial mentoring session while executing the program's documentation requirements.", "optional": false },
-      { "text": "Use counseling skills to help a mentee navigate a specific challenge.", "optional": false },
-      { "text": "Demonstrate a practical military skill to the mentee.", "optional": false },
-      { "text": "Implement a networking strategy for the mentee.", "optional": false },
-      { "text": "Applies mentoring methods to guide a GMC cadet toward specific goals.", "optional": false }
+      {
+        "text": "Conduct an initial mentoring session while executing the program's documentation requirements.",
+        "optional": false
+      },
+      {
+        "text": "Use counseling skills to help a mentee navigate a specific challenge.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrate a practical military skill to the mentee.",
+        "optional": false
+      },
+      {
+        "text": "Implement a networking strategy for the mentee.",
+        "optional": false
+      },
+      {
+        "text": "Applies mentoring methods to guide a GMC cadet toward specific goals.",
+        "optional": false
+      }
     ],
-    "references": ["DAFMAN 36-2643, Coaching and Mentoring Program", "AFH 1, Airman"],
-    "relatedLessons": ["Self-Awareness (AS200)", "Listening (AS200)", "Mentoring (AS300)"],
+    "references": [
+      "DAFMAN 36-2643, Coaching and Mentoring Program",
+      "AFH 1, Airman"
+    ],
+    "relatedLessons": [
+      "Self-Awareness (AS200)",
+      "Listening (AS200)",
+      "Mentoring (AS300)"
+    ],
     "instructor": "Cadre or SCL/ICL cadet (with cadre advisement)",
     "additionalInfo": "It is recommended that the mentor is not the mentee's primary cadet supervisor.",
-    "proficiencyByLevel": { "ICL": "P1", "SCL": "P2" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P1",
+      "SCL": "P2"
+    }
   },
   {
     "number": "3.2",
@@ -161,11 +306,26 @@
     "graded": true,
     "requirements": "To achieve this objective, cadets must be placed in a leadership position within the organizational chart and demonstrate leadership responsibility within the cadet corps. Cadets must conduct the LLAB program, guided by the operations plan and LLAB training objectives. Cadets may identify problems, procedures or activities and apply quality principles to improve the program. To achieve the required proficiency cadets should incorporate lessons from the AS curriculum in effective supervision of GMC cadets. In conjunction with the academic curriculum, ICL cadets will apply lessons learned in their roles within the organization as they provide feedback to subordinates. SCL cadets will continue building on their skills as they attain a higher level of proficiency in providing/receiving feedback and evaluating subordinates.",
     "performanceMeasures": [
-      { "text": "Complete a self-assessment using the ACA.", "optional": false },
-      { "text": "Construct written feedback for a subordinate cadet on an ACA.", "optional": false },
-      { "text": "Conduct a mock ACA feedback session with a peer.", "optional": false },
-      { "text": "Use the ACA to guide a mentorship discussion.", "optional": false },
-      { "text": "Illustrate the difference between performance and personal life goals/issues during a feedback session.", "optional": false }
+      {
+        "text": "Complete a self-assessment using the ACA.",
+        "optional": false
+      },
+      {
+        "text": "Construct written feedback for a subordinate cadet on an ACA.",
+        "optional": false
+      },
+      {
+        "text": "Conduct a mock ACA feedback session with a peer.",
+        "optional": false
+      },
+      {
+        "text": "Use the ACA to guide a mentorship discussion.",
+        "optional": false
+      },
+      {
+        "text": "Illustrate the difference between performance and personal life goals/issues during a feedback session.",
+        "optional": false
+      }
     ],
     "references": [
       "AFROTCI 36-2011, VOL 3 Cadet Operations",
@@ -187,7 +347,12 @@
     ],
     "instructor": "Cadre or SCL/ICL cadet (with cadre advisement)",
     "additionalInfo": "If a cadet is unable to serve in a leadership position see AFROTCI 36-2011, VOL 3 Cadet Operations for OFC waiver authority. Recommend introducing the Airman Comprehensive Assessment (ACA) forms to ICL cadets as early in the academic as possible.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P2" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P2"
+    }
   },
   {
     "number": "3.3",
@@ -198,11 +363,26 @@
     "graded": true,
     "requirements": "Cadets will gain exposure to writing effective narrative performance statements through the academic curriculum and practical application. The intent is to understand the basic components of an Airman Leadership Quality statement and be able to identify aspects of an effective narrative statement.",
     "performanceMeasures": [
-      { "text": "Construct a narrative statement from a list of accomplishments.", "optional": false },
-      { "text": "Translate informal bullet points into a formal ALQ narrative.", "optional": false },
-      { "text": "Revise a poorly written ALQ statement to meet standards.", "optional": false },
-      { "text": "Use a set of ALQ narratives to conduct a mock ranking board.", "optional": false },
-      { "text": "Classify a cadet's actions from a scenario under the correct ALQ.", "optional": false }
+      {
+        "text": "Construct a narrative statement from a list of accomplishments.",
+        "optional": false
+      },
+      {
+        "text": "Translate informal bullet points into a formal ALQ narrative.",
+        "optional": false
+      },
+      {
+        "text": "Revise a poorly written ALQ statement to meet standards.",
+        "optional": false
+      },
+      {
+        "text": "Use a set of ALQ narratives to conduct a mock ranking board.",
+        "optional": false
+      },
+      {
+        "text": "Classify a cadet's actions from a scenario under the correct ALQ.",
+        "optional": false
+      }
     ],
     "references": [
       "AFI 36-2406, Officer and Enlisted Evaluations Systems",
@@ -212,10 +392,20 @@
       "AFH 1, The Airman Handbook",
       "AF1206, Nomination for Award"
     ],
-    "relatedLessons": ["DAF Evaluation Systems (AS300)", "Establishing Expectations (AS300)", "Feedback (AS300)", "Performance Statements (AS300)"],
+    "relatedLessons": [
+      "DAF Evaluation Systems (AS300)",
+      "Establishing Expectations (AS300)",
+      "Feedback (AS300)",
+      "Performance Statements (AS300)"
+    ],
     "instructor": "Cadre or SCL/ICL cadet (with cadre advisement)",
     "additionalInfo": "The OFC has discretion concerning which ACA feedback form is utilized. Cadre will determine effective progression and administer a program that meets the needs of the detachment.",
-    "proficiencyByLevel": { "ICL": "P1", "SCL": "P2" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P1",
+      "SCL": "P2"
+    }
   },
   {
     "number": "3.4",
@@ -226,11 +416,26 @@
     "graded": true,
     "requirements": "The intent is to understand the sections, ratings, and mechanics of drafting the performance briefs and the mechanics and purpose of drafting awards and decorations. Cadets must utilize either the OPB, EPB, or a combination of both within their organizational structure. Cadre will determine the extent of which sections of the forms will be completed. By the end of the ICL year, cadets should be familiar and partially proficient with these forms, awards, and citations.",
     "performanceMeasures": [
-      { "text": "Prepare a draft narrative statement highlighting a specific achievement for inclusion in an EPB.", "optional": false },
-      { "text": "Fill out the ratee assessment sections of a blank OPB.", "optional": false },
-      { "text": "Draft a complete (full-page) award nomination package (AF Form 1206) for a peer.", "optional": false },
-      { "text": "Write a narrative citation for an Air Force Achievement Medal based on a scenario.", "optional": false },
-      { "text": "Select the appropriate form of recognition for a given scenario.", "optional": false }
+      {
+        "text": "Prepare a draft narrative statement highlighting a specific achievement for inclusion in an EPB.",
+        "optional": false
+      },
+      {
+        "text": "Fill out the ratee assessment sections of a blank OPB.",
+        "optional": false
+      },
+      {
+        "text": "Draft a complete (full-page) award nomination package (AF Form 1206) for a peer.",
+        "optional": false
+      },
+      {
+        "text": "Write a narrative citation for an Air Force Achievement Medal based on a scenario.",
+        "optional": false
+      },
+      {
+        "text": "Select the appropriate form of recognition for a given scenario.",
+        "optional": false
+      }
     ],
     "references": [
       "AFI 36-2406, Officer and Enlisted Evaluations Systems",
@@ -242,10 +447,19 @@
       "AFROTCI 36-2011, VOL 3 Cadet Operations",
       "AU-1, Air University Style and Author Guide"
     ],
-    "relatedLessons": ["DAF Evaluation Systems (AS300)", "Establishing Expectations (AS300)", "Performance Statements (AS300)"],
+    "relatedLessons": [
+      "DAF Evaluation Systems (AS300)",
+      "Establishing Expectations (AS300)",
+      "Performance Statements (AS300)"
+    ],
     "instructor": "Cadre or SCL/ICL cadet (with cadre advisement)",
     "additionalInfo": "Cadre will determine effective progression and administer a program that meets the needs of the detachment.",
-    "proficiencyByLevel": { "ICL": "P1", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P1",
+      "SCL": ""
+    }
   },
   {
     "number": "3.5",
@@ -256,11 +470,26 @@
     "graded": false,
     "requirements": "The intent is that cadets have a good understanding of DAF in-processing requirements. This includes the ability to accurately complete the numerous required forms, as well as proficiency in navigating the relevant computer systems and databases utilized for personnel management, security, and finance. Furthermore, personnel must possess strong problem-solving skills to effectively identify and resolve common in-processing issues. Effective communication skills are also paramount, enabling clear and concise information delivery as new personnel. Underpinning all these skills is a critical attention to detail, ensuring accuracy and strict compliance with all applicable regulations throughout the in-processing procedure.",
     "performanceMeasures": [
-      { "text": "Role-play initial reporting to a new supervisor.", "optional": false },
-      { "text": "Construct a personalized in-processing checklist.", "optional": false },
-      { "text": "Execute a simulated travel voucher submission.", "optional": false },
-      { "text": "Use the myPay system to verify entitlements.", "optional": true },
-      { "text": "Complete a set of virtual in-processing forms (DD Form 93, SGLV 8286, etc.).", "optional": false }
+      {
+        "text": "Role-play initial reporting to a new supervisor.",
+        "optional": false
+      },
+      {
+        "text": "Construct a personalized in-processing checklist.",
+        "optional": false
+      },
+      {
+        "text": "Execute a simulated travel voucher submission.",
+        "optional": false
+      },
+      {
+        "text": "Use the myPay system to verify entitlements.",
+        "optional": true
+      },
+      {
+        "text": "Complete a set of virtual in-processing forms (DD Form 93, SGLV 8286, etc.).",
+        "optional": false
+      }
     ],
     "references": [
       "DAFI 36-3026, Version 1 & 2",
@@ -278,10 +507,19 @@
       "DAFI 36-3009, Military and Family Readiness Centers",
       "Military OneSource"
     ],
-    "relatedLessons": ["Your First Officer Assignment (AS400)", "Base Agencies (AS400)", "Blended Retirement System (AS400)"],
+    "relatedLessons": [
+      "Your First Officer Assignment (AS400)",
+      "Base Agencies (AS400)",
+      "Blended Retirement System (AS400)"
+    ],
     "instructor": "Cadre or SCL with cadre guidance.",
     "additionalInfo": "Ensure cadets are aware of in-processing tasks and procedures such as identification/verification, personnel records management, security clearance processing, financial/pay enrollment, medical/dental coordination, housing/lodging, base access/security, and dependent in-processing that is DAF central as well as base-specific.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "Kb" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "",
+      "SCL": "Kb"
+    }
   },
   {
     "number": "1.1",
@@ -292,11 +530,26 @@
     "graded": false,
     "requirements": "Cadets should be able to identify all cadet, enlisted, and officer ranks by both insignia and name.",
     "performanceMeasures": [
-      { "text": "Recalls enlisted, warrant-officer, and officer ranks by title and grade.", "optional": false },
-      { "text": "Identifies insignia for each rank across all services.", "optional": false },
-      { "text": "Describes how rank establishes authority and responsibility.", "optional": false },
-      { "text": "Explains the relationship between grade and chain of command.", "optional": false },
-      { "text": "Applies proper rank recognition during all PMT events/activities.", "optional": false }
+      {
+        "text": "Recalls enlisted, warrant-officer, and officer ranks by title and grade.",
+        "optional": false
+      },
+      {
+        "text": "Identifies insignia for each rank across all services.",
+        "optional": false
+      },
+      {
+        "text": "Describes how rank establishes authority and responsibility.",
+        "optional": false
+      },
+      {
+        "text": "Explains the relationship between grade and chain of command.",
+        "optional": false
+      },
+      {
+        "text": "Applies proper rank recognition during all PMT events/activities.",
+        "optional": false
+      }
     ],
     "references": [
       "DAFI 36-2903, Dress and Personal Appearance of United States Air Force and United States Space Force Personnel",
@@ -304,10 +557,17 @@
       "AFH 1, The Airman Handbook",
       "DAFH 33-337, The Tongue and Quill"
     ],
-    "relatedLessons": ["The Enlisted Force (AS300)"],
+    "relatedLessons": [
+      "The Enlisted Force (AS300)"
+    ],
     "instructor": "ICL with cadre guidance or SCL",
     "additionalInfo": "Instructors may want to use the information for evaluation purposes in LLAB and for quizzing cadets during inspections.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Ka",
+      "BCL": "",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "2.1",
@@ -318,17 +578,45 @@
     "graded": false,
     "requirements": "Cadets will recall from memory the current chain of command from the President of the United States to the individual cadet. While it is important that cadets know both, it is more important to understand the concept and application of the chain of command as it pertains to the Dept. of Air Force. Cadets should be able to recite both positions and names.",
     "performanceMeasures": [
-      { "text": "Recalls current positions and names in the chain of command.", "optional": false },
-      { "text": "Identifies where the detachment fits within the DAF hierarchy.", "optional": false },
-      { "text": "Describes how lawful orders move through the chain of command.", "optional": false },
-      { "text": "Use the chain of command to delegate tasks and manage information flow, both up and down.", "optional": false },
-      { "text": "Applies proper reporting procedures during official events.", "optional": false }
+      {
+        "text": "Recalls current positions and names in the chain of command.",
+        "optional": false
+      },
+      {
+        "text": "Identifies where the detachment fits within the DAF hierarchy.",
+        "optional": false
+      },
+      {
+        "text": "Describes how lawful orders move through the chain of command.",
+        "optional": false
+      },
+      {
+        "text": "Use the chain of command to delegate tasks and manage information flow, both up and down.",
+        "optional": false
+      },
+      {
+        "text": "Applies proper reporting procedures during official events.",
+        "optional": false
+      }
     ],
-    "references": ["https://www.aetc.af.mil/", "https://www.spaceforce.mil/", "https://www.airuniversity.af.edu/"],
-    "relatedLessons": ["Civilian Control of the Military (AS400)", "DAF (AS100)", "DOD (AS400)"],
+    "references": [
+      "https://www.aetc.af.mil/",
+      "https://www.spaceforce.mil/",
+      "https://www.airuniversity.af.edu/"
+    ],
+    "relatedLessons": [
+      "Civilian Control of the Military (AS400)",
+      "DAF (AS100)",
+      "DOD (AS400)"
+    ],
     "instructor": "SCL with cadre participation",
     "additionalInfo": "Instructors may want to use this objective for evaluation purposes in LLAB and for quizzing the cadets during inspections. Reference photos in detachment (If available).",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "Kb",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "3.1",
@@ -339,11 +627,26 @@
     "graded": true,
     "requirements": "Cadets must know and give examples of proper DAF customs and courtesies while explaining their importance. Additionally, cadets must demonstrate a proper salute, explain when to salute/receive a salute, and provide characteristics of an applicable superior who should be saluted. Furthermore, cadets must demonstrate the ability of properly reporting in/reporting out while explaining the steps involved. Lastly, cadets must properly apply courtesies during informal and formal ceremonies and explain the most common mistakes executed by Airmen.",
     "performanceMeasures": [
-      { "text": "Execute the full reporting procedure when summoned by a cadre member.", "optional": false },
-      { "text": "Render a proper salute and greeting when approaching an officer outdoors.", "optional": false },
-      { "text": "Apply the correct protocol when the National Anthem is played.", "optional": false },
-      { "text": "Use the rules of a formal military dinner (Dining-In/Out).", "optional": false },
-      { "text": "Demonstrate proper verbal address in day-to-day interactions.", "optional": false }
+      {
+        "text": "Execute the full reporting procedure when summoned by a cadre member.",
+        "optional": false
+      },
+      {
+        "text": "Render a proper salute and greeting when approaching an officer outdoors.",
+        "optional": false
+      },
+      {
+        "text": "Apply the correct protocol when the National Anthem is played.",
+        "optional": false
+      },
+      {
+        "text": "Use the rules of a formal military dinner (Dining-In/Out).",
+        "optional": false
+      },
+      {
+        "text": "Demonstrate proper verbal address in day-to-day interactions.",
+        "optional": false
+      }
     ],
     "references": [
       "AFI 1-1, Air Force Standards",
@@ -352,10 +655,17 @@
       "AFH 1, The Airman Handbook",
       "DAFPAM 34-1203, Drill and Ceremonies Manual"
     ],
-    "relatedLessons": ["N/A"],
+    "relatedLessons": [
+      "N/A"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "None.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "3.2",
@@ -366,17 +676,44 @@
     "graded": true,
     "requirements": "Cadets must know how to properly display the American Flag, the proper order of display for any combination of flags, and how to properly fold the American flag. Additionally, cadets must participate as a formation member and understand the actions/sequence for retreat and reveille. Cadets must demonstrate the ability of executing retreat/reveille and the necessary commands as a commander (e.g., detail, flight, squadron, etc.) IOT attain a higher level of proficiency needed to serve as flag detail commanders. Lastly, cadets must know the proper customs and courtesies to implement during outdoor and indoor ceremonies while providing examples of each type ceremony.",
     "performanceMeasures": [
-      { "text": "Recalls the correct number of folds required when folding the US flag.", "optional": false },
-      { "text": "Lead a three-cadet flag detail through a complete reveille or retreat ceremony.", "optional": false },
-      { "text": "Participate in a two-person team to correctly fold a U.S. flag.", "optional": false },
-      { "text": "Construct a proper indoor flag display with multiple flags.", "optional": false },
-      { "text": "Execute the proper individual actions during a retreat ceremony.", "optional": false }
+      {
+        "text": "Recalls the correct number of folds required when folding the US flag.",
+        "optional": false
+      },
+      {
+        "text": "Lead a three-cadet flag detail through a complete reveille or retreat ceremony.",
+        "optional": false
+      },
+      {
+        "text": "Participate in a two-person team to correctly fold a U.S. flag.",
+        "optional": false
+      },
+      {
+        "text": "Construct a proper indoor flag display with multiple flags.",
+        "optional": false
+      },
+      {
+        "text": "Execute the proper individual actions during a retreat ceremony.",
+        "optional": false
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "DAFPAM 34-1203, Drill and Ceremonies Manual", "AFI 34-1201, Protocol", "AFH 1, The Airman Handbook"],
-    "relatedLessons": ["Full Range Leadership (AS200)"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "DAFPAM 34-1203, Drill and Ceremonies Manual",
+      "AFI 34-1201, Protocol",
+      "AFH 1, The Airman Handbook"
+    ],
+    "relatedLessons": [
+      "Full Range Leadership (AS200)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "Cadets in charge of the flag detail should have a higher level of training in executing duties (e.g., Honor Guard, student organizations).",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "4.1",
@@ -387,17 +724,44 @@
     "graded": false,
     "requirements": "Cadets must know the procedures and applicable protocols during award, change of command, retirement, commissioning, and promotion ceremonies, as well as, Dining-In and Dining-Out events.",
     "performanceMeasures": [
-      { "text": "Write the narrator's script for a mock Change of Command ceremony.", "optional": false },
-      { "text": "Construct a formal invitation for a commissioning ceremony.", "optional": false },
-      { "text": "Execute the proper procedure for proposing a toast at a Dining-In.", "optional": false },
-      { "text": "Build a Sequence of Events (SOE) document for a retirement ceremony.", "optional": false },
-      { "text": "Role-play the presentation of a medal during an awards ceremony.", "optional": false }
+      {
+        "text": "Write the narrator's script for a mock Change of Command ceremony.",
+        "optional": false
+      },
+      {
+        "text": "Construct a formal invitation for a commissioning ceremony.",
+        "optional": false
+      },
+      {
+        "text": "Execute the proper procedure for proposing a toast at a Dining-In.",
+        "optional": false
+      },
+      {
+        "text": "Build a Sequence of Events (SOE) document for a retirement ceremony.",
+        "optional": false
+      },
+      {
+        "text": "Role-play the presentation of a medal during an awards ceremony.",
+        "optional": false
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "DAFPAM 34-1203, Drill and Ceremonies Manual", "AFI 34-1201, Protocol", "AFH 1, The Airman Handbook"],
-    "relatedLessons": ["N/A"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "DAFPAM 34-1203, Drill and Ceremonies Manual",
+      "AFI 34-1201, Protocol",
+      "AFH 1, The Airman Handbook"
+    ],
+    "relatedLessons": [
+      "N/A"
+    ],
     "instructor": "SCL with cadre participation",
     "additionalInfo": "When mission requirements allow, award ceremonies, change of command, other official ceremonies, and Dining-In/Dining-Out should be held in order to demonstrate the application of this knowledge. Recommend cadets experience at least one of each during their AFROTC tenure.",
-    "proficiencyByLevel": { "ICL": "Kb", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Ka",
+      "BCL": "Ka",
+      "ICL": "Kb",
+      "SCL": ""
+    }
   },
   {
     "number": "5.1",
@@ -408,21 +772,43 @@
     "graded": true,
     "requirements": "Cadets must be able to demonstrate the ability of properly displaying a professional image and wearing DAF uniforms executed within AFROTC and DAF grooming, dress, and appearance standards while explaining the most common grooming problems and uniform mistakes of Airmen.",
     "performanceMeasures": [
-      { "text": "Wear the uniform of the day in complete compliance with standards.", "optional": false },
-      { "text": "Pass a formal Open Ranks Inspection.", "optional": false },
-      { "text": "Assemble a complete Service Dress uniform.", "optional": false },
-      { "text": "Prepare and maintain combat boots for a field exercise.", "optional": false },
-      { "text": "Identify uniform errors on a mannequin or peer.", "optional": false }
+      {
+        "text": "Wear the uniform of the day in complete compliance with standards.",
+        "optional": false
+      },
+      {
+        "text": "Pass a formal Open Ranks Inspection.",
+        "optional": false
+      },
+      {
+        "text": "Assemble a complete Service Dress uniform.",
+        "optional": false
+      },
+      {
+        "text": "Prepare and maintain combat boots for a field exercise.",
+        "optional": false
+      },
+      {
+        "text": "Identify uniform errors on a mannequin or peer.",
+        "optional": false
+      }
     ],
     "references": [
       "AFI 1-1, Air Force Standards",
       "DAFI 36-2903, Dress and Personal Appearance of United States Air Force and United States Space Force Personnel",
       "AFROTC Supp 36-2903, Dress and Personal Appearance of United States Air Force and United States Space Force Personnel"
     ],
-    "relatedLessons": ["Professionalism, Standards, and Accountability (AS100)"],
+    "relatedLessons": [
+      "Professionalism, Standards, and Accountability (AS100)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "None.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "6.1",
@@ -433,17 +819,43 @@
     "graded": true,
     "requirements": "Cadets must be able to apply drill fundamentals, display proper command voice, and drill commands. Cadets must recognize basic individual drill commands, voice characteristics of each command, and their corresponding movements. Additionally, Cadets must be able to command a flight in all situations they are expected to encounter. Furthermore, Cadets must be able to perform basic drill positions individually or within a flight while stationary recognizing all drill and call commands that include attention, parade rest, right face, left face, about face, present arms, and order arms. Moreover, when demonstrating proper drill of the flight Cadets must be able to execute Basic Drill of the Flight (halting, cadence principles, line vs inverted line, column vs inverted column, formation, and cover), Intermediate Drill of the Flight (column movements, flanking movements, right/left step, march to the rear, double time, quick time, route step, and transfer of command), and Advanced Drill of the Flight (column of files and change step, optional). Cadets must be able to perform the duties of the guidon bearer, as well as march and command as a detail. While in squadron formation, Cadets must understand the differences between flight and squadron marching. As far as open ranks inspections (ORI) are concerned, Cadets must be able to perform an ORI. With exception, Cadets may command an ORI and must include knowledge of the following: ORI procedures, individuals to leave ranks, open ranks, close ranks, count off, and dress right. Lastly, Cadets must guide a flight across a two-lane road given multiple lane configurations with assistance as necessary IOT meet the required level of proficiency for detachment and field training movements while also demonstrating the ability to train proper road guard procedures to GMC Cadets.",
     "performanceMeasures": [
-      { "text": "Execute a 30-command drill sequence without error.", "optional": false },
-      { "text": "Lead a flight through a standard drill card.", "optional": false },
-      { "text": "Perform the duties of an element leader during an Open Ranks Inspection.", "optional": false },
-      { "text": "Execute the full sequence to post, use, and retrieve road guards.", "optional": false },
-      { "text": "Conduct an Open Ranks Inspection as the flight commander.", "optional": true }
+      {
+        "text": "Execute a 30-command drill sequence without error.",
+        "optional": false
+      },
+      {
+        "text": "Lead a flight through a standard drill card.",
+        "optional": false
+      },
+      {
+        "text": "Perform the duties of an element leader during an Open Ranks Inspection.",
+        "optional": false
+      },
+      {
+        "text": "Execute the full sequence to post, use, and retrieve road guards.",
+        "optional": false
+      },
+      {
+        "text": "Conduct an Open Ranks Inspection as the flight commander.",
+        "optional": true
+      }
     ],
-    "references": ["DAFPAM 34-1203, Drill and Ceremonies", "AFH 1, The Airman Handbook"],
-    "relatedLessons": ["Full Range Leadership (AS200)", "Critical Thinking II (AS300)"],
+    "references": [
+      "DAFPAM 34-1203, Drill and Ceremonies",
+      "AFH 1, The Airman Handbook"
+    ],
+    "relatedLessons": [
+      "Full Range Leadership (AS200)",
+      "Critical Thinking II (AS300)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "Individual drill instruction is intended to be conducted while individuals or flights are stationary rather than while marching. Basic drill of the flight is intended to be conducted marching back and forth along a straight path. Intermediate and advanced drill of the flight should be scaled-up IOT meet the movement needs of detachment activities and field training. Cadets should practice squadron marching fundamentals from the squadron commander position. Additionally, Cadets should be given the opportunity to command an ORI, however the minimum requirement is to participate as a member of the flight. Lastly, road guards are required to ensure the safety of cadets during transit around detachments and during field training. Road guards are required for all student formations greater than eight students. For flights seven or smaller, the Flt/CC will act as a road guard for their flight. Details of two to four cadets do not require road guards.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "1.1",
@@ -454,17 +866,48 @@
     "graded": true,
     "requirements": "Cadets will demonstrate the ability to analyze audience characteristics (needs, knowledge, preferences) and adapt their communication style and messaging to effectively engage diverse groups in various scenarios (e.g., presentations, meetings, written correspondence).",
     "performanceMeasures": [
-      { "text": "Brief a plan of action for a Graded Leadership Position (GLP) and/or during a PMT event/activity.", "optional": false },
-      { "text": "Issue a verbal command that results in a correct drill movement.", "optional": false },
-      { "text": "Use proper radio/telephone procedures to transmit information.", "optional": false },
-      { "text": "Write a professional email to coordinate a task.", "optional": false },
-      { "text": "Applies clear, concise, and properly formatted communication during all PMT events/activities.", "optional": false }
+      {
+        "text": "Brief a plan of action for a Graded Leadership Position (GLP) and/or during a PMT event/activity.",
+        "optional": false
+      },
+      {
+        "text": "Issue a verbal command that results in a correct drill movement.",
+        "optional": false
+      },
+      {
+        "text": "Use proper radio/telephone procedures to transmit information.",
+        "optional": false
+      },
+      {
+        "text": "Write a professional email to coordinate a task.",
+        "optional": false
+      },
+      {
+        "text": "Applies clear, concise, and properly formatted communication during all PMT events/activities.",
+        "optional": false
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "AFMAN 33-326, Preparing Official Communications", "AFH 33-337, The Tongue and Quill", "AFH 1, Airman"],
-    "relatedLessons": ["Writing Overview (AS100)", "Speaking Overview (AS100)", "Team Building (AS200)", "Motivation (AS300)", "Inspiring Action (AS300)"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "AFMAN 33-326, Preparing Official Communications",
+      "AFH 33-337, The Tongue and Quill",
+      "AFH 1, Airman"
+    ],
+    "relatedLessons": [
+      "Writing Overview (AS100)",
+      "Speaking Overview (AS100)",
+      "Team Building (AS200)",
+      "Motivation (AS300)",
+      "Inspiring Action (AS300)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "To ensure cadets can analyze diverse audience characteristics (needs, knowledge, preferences, demographics, values) using techniques like surveys and observation, and adapt their communication style (language, delivery, non-verbal cues) and messaging (content, framing, visuals) to effectively engage diverse groups (considering rank, culture, learning styles) in scenarios like presentations, meetings, and written correspondence, the training will explicitly define these concepts and provide detailed frameworks.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "P1",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "1.2",
@@ -475,17 +918,42 @@
     "graded": false,
     "requirements": "The intent is that cadets are familiar with an indorsement format of the official memorandum and when it is appropriate to utilize the document. It also should highlight the routing procedures and proper formatting to attain the understand level of proficiency. Additionally, cadets should be familiar with the usage of DAF publications and forms along with where to find them. Cadets should be able to identify the series of instructions, proper waiver authorities, and types of forms available to attain the understand level of proficiency.",
     "performanceMeasures": [
-      { "text": "Construct an Official Memorandum to request a resource and/or document an event.", "optional": false },
-      { "text": "Locate the current version of a specific regulation using AF E-Publishing.", "optional": false },
-      { "text": "Revise an improperly formatted memorandum to meet official standards.", "optional": false },
-      { "text": "Use a publication found on AF E-Publishing to justify a decision in a memorandum.", "optional": false },
-      { "text": "Solve an administrative problem by determining if a form is obsolete.", "optional": true }
+      {
+        "text": "Construct an Official Memorandum to request a resource and/or document an event.",
+        "optional": false
+      },
+      {
+        "text": "Locate the current version of a specific regulation using AF E-Publishing.",
+        "optional": false
+      },
+      {
+        "text": "Revise an improperly formatted memorandum to meet official standards.",
+        "optional": false
+      },
+      {
+        "text": "Use a publication found on AF E-Publishing to justify a decision in a memorandum.",
+        "optional": false
+      },
+      {
+        "text": "Solve an administrative problem by determining if a form is obsolete.",
+        "optional": true
+      }
     ],
-    "references": ["DAFH 33-337, The Tongue and Quill", "DAFI 33-360, Publications and Forms Management"],
-    "relatedLessons": ["DAF Writing (AS100)"],
+    "references": [
+      "DAFH 33-337, The Tongue and Quill",
+      "DAFI 33-360, Publications and Forms Management"
+    ],
+    "relatedLessons": [
+      "DAF Writing (AS100)"
+    ],
     "instructor": "Cadre or SCL/ICL cadet (with cadre advisement)",
     "additionalInfo": "Ensure cadet leadership is aware of and coordinating approval of requests at the appropriate level (typically the cadre). An appropriate example is the OFC's approval of the OPLAN or OPORDs. Utilize Air Force e-publishing website along with DAFI 33-360: https://www.e-publishing.af.mil/",
-    "proficiencyByLevel": { "ICL": "Kb", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "Kb",
+      "SCL": ""
+    }
   },
   {
     "number": "2.1",
@@ -496,17 +964,48 @@
     "graded": true,
     "requirements": "Cadets will demonstrate active listening skills by accurately summarizing the perspectives of others during group discussions. They will also articulate their ideas clearly and respectfully, as assessed by peer feedback on their communication style. Finally, they will successfully facilitate a simulated collaborative problem-solving exercise, achieving a mutually agreeable solution within a given timeframe.",
     "performanceMeasures": [
-      { "text": "Paraphrase a team member's suggestion before offering a different idea.", "optional": false },
-      { "text": "Mediate a disagreement between two peers during a planning session.", "optional": false },
-      { "text": "Solicit input from a quiet or reserved team member.", "optional": false },
-      { "text": "Articulate a dissenting opinion to a leader without undermining their authority.", "optional": false },
-      { "text": "Ask targeted, clarifying questions to prevent misunderstanding.", "optional": false }
+      {
+        "text": "Paraphrase a team member's suggestion before offering a different idea.",
+        "optional": false
+      },
+      {
+        "text": "Mediate a disagreement between two peers during a planning session.",
+        "optional": false
+      },
+      {
+        "text": "Solicit input from a quiet or reserved team member.",
+        "optional": false
+      },
+      {
+        "text": "Articulate a dissenting opinion to a leader without undermining their authority.",
+        "optional": false
+      },
+      {
+        "text": "Ask targeted, clarifying questions to prevent misunderstanding.",
+        "optional": false
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "AFMAN 33-326, Preparing Official Communications", "AFH 33-337, The Tongue and Quill", "AFH 1, Airman"],
-    "relatedLessons": ["Writing Overview (AS100)", "Speaking Overview (AS100)", "Team Building (AS200)", "Motivation (AS300)", "Inspiring Action (AS300)"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "AFMAN 33-326, Preparing Official Communications",
+      "AFH 33-337, The Tongue and Quill",
+      "AFH 1, Airman"
+    ],
+    "relatedLessons": [
+      "Writing Overview (AS100)",
+      "Speaking Overview (AS100)",
+      "Team Building (AS200)",
+      "Motivation (AS300)",
+      "Inspiring Action (AS300)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "To ensure cadets demonstrate active listening by accurately summarizing others' perspectives in group discussions (paying attention, providing feedback, deferring judgment, and employing paraphrasing techniques to capture main points), their articulation of ideas must be clear (using precise language and logical structure) and respectful (using appropriate tone and acknowledging diverse perspectives), assessed through peer feedback. They will also successfully facilitate a simulated collaborative problem-solving exercise within a given timeframe, evaluated on establishing clear goals, encouraging participation, and managing conflict, to achieve a mutually agreeable solution that addresses the needs of all parties and requires reflection on lessons learned and improvement goals.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "P1",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "3.1",
@@ -517,13 +1016,33 @@
     "graded": true,
     "requirements": "Cadets will be familiar with purposeful and deliberate communication by analyzing case studies and by participating in performance-based exercises like persuasive briefings, negotiation simulations, and consensus-building facilitation. Additionally, they will also be observed in leadership roles, mentoring junior cadets, and will complete a communication plan to address a real-world ROTC or Air Force challenge.",
     "performanceMeasures": [
-      { "text": "Negotiate a solution to a resource conflict with a peer.", "optional": false },
-      { "text": "Justify an unpopular decision to a team to gain their buy-in.", "optional": false },
-      { "text": "Mediate a professional disagreement between two subordinates.", "optional": false },
-      { "text": "Identifies logical and ethical techniques for persuasion.", "optional": true },
-      { "text": "Explains how communication supports leadership influence.", "optional": true }
+      {
+        "text": "Negotiate a solution to a resource conflict with a peer.",
+        "optional": false
+      },
+      {
+        "text": "Justify an unpopular decision to a team to gain their buy-in.",
+        "optional": false
+      },
+      {
+        "text": "Mediate a professional disagreement between two subordinates.",
+        "optional": false
+      },
+      {
+        "text": "Identifies logical and ethical techniques for persuasion.",
+        "optional": true
+      },
+      {
+        "text": "Explains how communication supports leadership influence.",
+        "optional": true
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "AFMAN 33-326, Preparing Official Communications", "AFH 33-337, The Tongue and Quill", "AFH 1, Airman"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "AFMAN 33-326, Preparing Official Communications",
+      "AFH 33-337, The Tongue and Quill",
+      "AFH 1, Airman"
+    ],
     "relatedLessons": [
       "Writing Overview (AS100)",
       "Speaking Overview (AS100)",
@@ -534,7 +1053,12 @@
     ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "Reflection papers and self-assessments will track progress, ensuring cadets develop the ability to effectively persuade stakeholders, negotiate favorable outcomes, and build consensus, all crucial for future Air Force leadership. Any performance-based exercise associated with this training objective (TBEX, SBE, GLP) should be evaluated on clarity, persuasiveness, and collaborative problem-solving skills.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "3.2",
@@ -545,13 +1069,33 @@
     "graded": true,
     "requirements": "Cadets will demonstrate strategic communication for inspiring teams, aligning them with goals and managing change through performance-based exercises. Additional practical exercises like delivering briefings, creating operational plans, and facilitating team alignment meetings.",
     "performanceMeasures": [
-      { "text": "Define key elements of effective communication.", "optional": true },
-      { "text": "Deliver a short briefing that connects a new, challenging task to the squadron's mission.", "optional": false },
-      { "text": "Demonstrate change management techniques by adapting and communicating a new course of action.", "optional": false },
-      { "text": "Draft a written directive for a flight activity.", "optional": false },
-      { "text": "Explain how different communication styles can impact team dynamics and goal attainment.", "optional": true }
+      {
+        "text": "Define key elements of effective communication.",
+        "optional": true
+      },
+      {
+        "text": "Deliver a short briefing that connects a new, challenging task to the squadron's mission.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrate change management techniques by adapting and communicating a new course of action.",
+        "optional": false
+      },
+      {
+        "text": "Draft a written directive for a flight activity.",
+        "optional": false
+      },
+      {
+        "text": "Explain how different communication styles can impact team dynamics and goal attainment.",
+        "optional": true
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "AFMAN 33-326, Preparing Official Communications", "AFH 33-337, The Tongue and Quill", "AFH 1, Airman"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "AFMAN 33-326, Preparing Official Communications",
+      "AFH 33-337, The Tongue and Quill",
+      "AFH 1, Airman"
+    ],
     "relatedLessons": [
       "Writing Overview (AS100)",
       "Speaking Overview (AS100)",
@@ -563,7 +1107,12 @@
     ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "They will be evaluated on their ability to clearly articulate a mission statement, prudently address concerns, and build consensus. Cadets will also mentor junior cadets on communication skills, lead small group exercises, gain leadership experience through their assigned positions, and document their progress through reflection papers and 360-degree feedback.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "3.3",
@@ -574,17 +1123,48 @@
     "graded": true,
     "requirements": "Cadets will demonstrate the ability to define clear and measurable communication objectives aligned with broader organizational goals through coursework, practical exercises using structured templates and realistic scenarios, peer critiques, and partial communication plan development.",
     "performanceMeasures": [
-      { "text": "Develop a set of clear and measurable communication objectives that directly support a goal.", "optional": false },
-      { "text": "Formulate distinct communication objectives designed to achieve compliance and maintain morale.", "optional": false },
-      { "text": "List the parts of a SMART goal (Specific/Measurable/Achievable/Relevant/Time-Bound).", "optional": true },
-      { "text": "Develop a SMART communication objective to support an organizational goal.", "optional": false },
-      { "text": "Assess the potential impact of different communication goals on organizational performance.", "optional": true }
+      {
+        "text": "Develop a set of clear and measurable communication objectives that directly support a goal.",
+        "optional": false
+      },
+      {
+        "text": "Formulate distinct communication objectives designed to achieve compliance and maintain morale.",
+        "optional": false
+      },
+      {
+        "text": "List the parts of a SMART goal (Specific/Measurable/Achievable/Relevant/Time-Bound).",
+        "optional": true
+      },
+      {
+        "text": "Develop a SMART communication objective to support an organizational goal.",
+        "optional": false
+      },
+      {
+        "text": "Assess the potential impact of different communication goals on organizational performance.",
+        "optional": true
+      }
     ],
-    "references": ["AFI 1-1, Air Force Standards", "AFMAN 33-326, Preparing Official Communications", "AFH 33-337, The Tongue and Quill", "AFH 1, Airman"],
-    "relatedLessons": ["Writing Overview (AS100)", "Speaking Overview (AS100)", "Motivation (AS300)", "Inspiring Action (AS300)", "Team Building (AS200)"],
+    "references": [
+      "AFI 1-1, Air Force Standards",
+      "AFMAN 33-326, Preparing Official Communications",
+      "AFH 33-337, The Tongue and Quill",
+      "AFH 1, Airman"
+    ],
+    "relatedLessons": [
+      "Writing Overview (AS100)",
+      "Speaking Overview (AS100)",
+      "Motivation (AS300)",
+      "Inspiring Action (AS300)",
+      "Team Building (AS200)"
+    ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "To ensure cadets demonstrate the ability to define clear and measurable communication objectives aligned with broader organizational goals, the training will incorporate specific examples of DAF and ROTC Detachment goals with guidance on aligning objectives with those goals.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "3.4",
@@ -595,11 +1175,26 @@
     "graded": true,
     "requirements": "Cadets will demonstrate their ability to appropriately select and utilize communication channels to maximize reach and impact throughout their respective DETs. Cadets will also develop comprehensive communication plans, present their channel selection strategies, and analyze channel performance data.",
     "performanceMeasures": [
-      { "text": "Select and utilize the most appropriate communication channel to disseminate information.", "optional": false },
-      { "text": "Implement a dynamic communication plan.", "optional": false },
-      { "text": "List and describe at least three different communication channels.", "optional": true },
-      { "text": "Explain how audience characteristics influence the selection of communication channels.", "optional": true },
-      { "text": "Compare and contrast the impact of different communication channel strategies.", "optional": true }
+      {
+        "text": "Select and utilize the most appropriate communication channel to disseminate information.",
+        "optional": false
+      },
+      {
+        "text": "Implement a dynamic communication plan.",
+        "optional": false
+      },
+      {
+        "text": "List and describe at least three different communication channels.",
+        "optional": true
+      },
+      {
+        "text": "Explain how audience characteristics influence the selection of communication channels.",
+        "optional": true
+      },
+      {
+        "text": "Compare and contrast the impact of different communication channel strategies.",
+        "optional": true
+      }
     ],
     "references": [
       "AFI 1-1, Air Force Standards",
@@ -621,7 +1216,12 @@
     ],
     "instructor": "Any POC Cadet",
     "additionalInfo": "To ensure cadets demonstrate their ability to appropriately (ethically, securely, accessibly, and with cultural sensitivity) select and utilize communication channels to maximize targeted reach and impact (measured by engagement, conversion, and knowledge gain) throughout their respective ROTC detachments they may develop comprehensive communication plans outlining channel selection strategies, content calendars, and risk mitigation plans, then present and justify their choices. They will also analyze channel performance data, identifying key trends and making data-driven recommendations for optimization, all while adhering to established ethical, security, and branding standards.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "1.1",
@@ -632,11 +1232,26 @@
     "graded": false,
     "requirements": "Review and recite Air Force mission, purpose, and core competencies. Identify and discuss assets across all Air Force domains by identifying some assets in each domain by name, primary mission, and key characteristics.",
     "performanceMeasures": [
-      { "text": "Recall the DAF mission statement, core functions, and primary warfighting domains.", "optional": false },
-      { "text": "Identify the major commands and their key operational roles.", "optional": false },
-      { "text": "Brief how a current world event impacts a DAF core competency.", "optional": false },
-      { "text": "Justify a local ROTC activity by linking it to a DAF core competency.", "optional": false },
-      { "text": "Match specific warfighting assets to the core competencies they primarily support.", "optional": false }
+      {
+        "text": "Recall the DAF mission statement, core functions, and primary warfighting domains.",
+        "optional": false
+      },
+      {
+        "text": "Identify the major commands and their key operational roles.",
+        "optional": false
+      },
+      {
+        "text": "Brief how a current world event impacts a DAF core competency.",
+        "optional": false
+      },
+      {
+        "text": "Justify a local ROTC activity by linking it to a DAF core competency.",
+        "optional": false
+      },
+      {
+        "text": "Match specific warfighting assets to the core competencies they primarily support.",
+        "optional": false
+      }
     ],
     "references": [
       "Air University's LeMay Center for Doctrine Development and Education (https://www.doctrine.af.mil/Core-Doctrine/Vol-1-Basic-Doctrine/)",
@@ -653,7 +1268,12 @@
     ],
     "instructor": "ICL with cadre guidance or SCL",
     "additionalInfo": "The intent is for cadets to gain a base level knowledge of the capabilities the Air Force delivers.",
-    "proficiencyByLevel": { "ICL": "", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Ka",
+      "BCL": "Kb",
+      "ICL": "",
+      "SCL": ""
+    }
   },
   {
     "number": "1.2",
@@ -664,17 +1284,43 @@
     "graded": true,
     "requirements": "This training requires all participating cadets to be in the proper Physical Training Gear (PTG). The execution area must be a designated, safe location, clear of hazards, and equipped with necessary items such as pull-up bars, cones, stopwatches, etc. Instructors must have immediate access to official Air Force Physical Fitness Assessment scoring charts, standardized exercise instructions, and pre-briefed lesson plans for any cadet-led portions of the training. Adequate hydration (water coolers or personal canteens) and access to designated medical support are mandatory for all sessions.",
     "performanceMeasures": [
-      { "text": "Solve a tactical scenario problem where the outcome is dependent on the calculated physical abilities (e.g., speed, endurance) of the team members.", "optional": false },
-      { "text": "Demonstrate proper form and execute all components of the Air Force PFA to standard.", "optional": false },
-      { "text": "Implement a documented personal fitness plan over a 4-week period.", "optional": false },
-      { "text": "Successfully instruct a flight-sized element through a structured physical training session.", "optional": false },
-      { "text": "Modify a pre-planned workout on the spot to account for an unexpected change.", "optional": false }
+      {
+        "text": "Solve a tactical scenario problem where the outcome is dependent on the calculated physical abilities (e.g., speed, endurance) of the team members.",
+        "optional": false
+      },
+      {
+        "text": "Demonstrate proper form and execute all components of the Air Force PFA to standard.",
+        "optional": false
+      },
+      {
+        "text": "Implement a documented personal fitness plan over a 4-week period.",
+        "optional": false
+      },
+      {
+        "text": "Successfully instruct a flight-sized element through a structured physical training session.",
+        "optional": false
+      },
+      {
+        "text": "Modify a pre-planned workout on the spot to account for an unexpected change.",
+        "optional": false
+      }
     ],
-    "references": ["DAFMAN 36-2905, Department of the Air Force Physical Fitness Program", "The Warfighter's Fitness Playbook"],
-    "relatedLessons": ["Full Range Leadership (AS200)", "Followership (AS200)"],
+    "references": [
+      "DAFMAN 36-2905, Department of the Air Force Physical Fitness Program",
+      "The Warfighter's Fitness Playbook"
+    ],
+    "relatedLessons": [
+      "Full Range Leadership (AS200)",
+      "Followership (AS200)"
+    ],
     "instructor": "ICL with cadre guidance or SCL",
     "additionalInfo": "This objective moves beyond conceptual understanding to focus on practical application. It is designed to instill the critical understanding that physical fitness is a foundational component of the human weapon system and a non-negotiable aspect of mission readiness. By requiring cadets to apply their knowledge in tangible ways—solving problems, leading peers, implementing plans, and adapting to new situations—this training directly supports the development of the critical thinking and warrior-minded leadership essential for winning our nation's wars.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "1.3",
@@ -685,11 +1331,26 @@
     "graded": true,
     "requirements": "This training requires a dedicated classroom or briefing room with sufficient table space to accommodate the wargame for all participants. Cadets must be provided with pre-prepared scenario packets at least 24 hours in advance, detailing the operational environment, strategic context, intelligence reports, force laydowns, and clear objectives for all player factions. A specific wargaming system (e.g., board game, matrix game, or digital simulation) will be designated for the event. A \"White Cell,\" composed of cadre or senior cadets, must be established to adjudicate game turns, introduce dynamic \"fog of war\" events, and ensure the scenario progresses according to the training objectives. All participants will be assigned specific roles (e.g., Commander, Ops, Intel) and must have access to relevant reference materials, such as excerpts from key joint and DAF doctrine.",
     "performanceMeasures": [
-      { "text": "Develop a viable course of action (COA) to achieve the stated mission objectives.", "optional": false },
-      { "text": "Construct a clear and concise operations order (OPORD).", "optional": false },
-      { "text": "Execute the developed COA while justifying their decisions.", "optional": false },
-      { "text": "Modify the initial plan in response to adversary actions or White Cell injects.", "optional": false },
-      { "text": "Articulate key lessons learned during a post-game debrief.", "optional": false }
+      {
+        "text": "Develop a viable course of action (COA) to achieve the stated mission objectives.",
+        "optional": false
+      },
+      {
+        "text": "Construct a clear and concise operations order (OPORD).",
+        "optional": false
+      },
+      {
+        "text": "Execute the developed COA while justifying their decisions.",
+        "optional": false
+      },
+      {
+        "text": "Modify the initial plan in response to adversary actions or White Cell injects.",
+        "optional": false
+      },
+      {
+        "text": "Articulate key lessons learned during a post-game debrief.",
+        "optional": false
+      }
     ],
     "references": [
       "AFDP 3-0, Operations",
@@ -714,7 +1375,12 @@
     ],
     "instructor": "SCL with cadre guidance or Cadre",
     "additionalInfo": "This objective is designed to move cadets beyond theoretical knowledge of warfighting and into a dynamic environment where they must apply it. By engaging in a competitive wargame, cadets are forced to make decisions under pressure, manage limited resources, anticipate enemy actions, and adapt to unforeseen circumstances. This hands-on application develops the critical thinking, tactical acumen, and decisiveness required of warrior-minded leaders. It provides a direct, practical link between doctrinal concepts and their role in successfully employing warfighting assets, preparing them to lead in complex operational environments.",
-    "proficiencyByLevel": { "ICL": "P2", "SCL": "P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P2",
+      "SCL": "P3"
+    }
   },
   {
     "number": "2.1",
@@ -725,17 +1391,44 @@
     "graded": false,
     "requirements": "Cadets must be able to differentiate different types of orders (warning, operation, and fragmentary) and describe the purpose of each in the operational context.",
     "performanceMeasures": [
-      { "text": "Recall the definition and purpose of WARNORD, OPORD, and FRAGO.", "optional": false },
-      { "text": "Identify key components and the five paragraphs of operational orders.", "optional": false },
-      { "text": "Describe how operational orders guide mission execution.", "optional": false },
-      { "text": "Write a FRAGO that amends a specific paragraph of a base OPORD.", "optional": false },
-      { "text": "Use an OPORD to brief a team on their specific tasks.", "optional": false }
+      {
+        "text": "Recall the definition and purpose of WARNORD, OPORD, and FRAGO.",
+        "optional": false
+      },
+      {
+        "text": "Identify key components and the five paragraphs of operational orders.",
+        "optional": false
+      },
+      {
+        "text": "Describe how operational orders guide mission execution.",
+        "optional": false
+      },
+      {
+        "text": "Write a FRAGO that amends a specific paragraph of a base OPORD.",
+        "optional": false
+      },
+      {
+        "text": "Use an OPORD to brief a team on their specific tasks.",
+        "optional": false
+      }
     ],
-    "references": ["AFTTP 3-4, Airman's Manual", "AFDP 5-0, Planning", "AFDP 3-0, Operations", "AFDP 1-1, Mission Command"],
-    "relatedLessons": ["Military Planning Fundamentals (AS400)"],
+    "references": [
+      "AFTTP 3-4, Airman's Manual",
+      "AFDP 5-0, Planning",
+      "AFDP 3-0, Operations",
+      "AFDP 1-1, Mission Command"
+    ],
+    "relatedLessons": [
+      "Military Planning Fundamentals (AS400)"
+    ],
     "instructor": "SCL with cadre guidance",
     "additionalInfo": "Cadets are most familiar with the Operation Order (OPORD) which details the daily/weekly AFROTC schedule. Changes to an OPORD are often communicated by word of mouth, text, social media/email, in the operational construct, these changes could be implemented using a fragmentary order (FRAGO). Warning orders are the least familiar to the AFROTC construct; however, real-world application can be demonstrated by looking at current events and understanding that when threats emerge or humanitarian crises arise, warning orders (WARNORDs) signal to specific units of forthcoming taskings.",
-    "proficiencyByLevel": { "ICL": "Kb", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "Kb",
+      "SCL": ""
+    }
   },
   {
     "number": "2.2",
@@ -746,17 +1439,41 @@
     "graded": false,
     "requirements": "GMC cadets should be able to recall and discuss the different procedures for operating in secured or hostile environments based on the following topics: entry control points, badging/identification and entry authority, rules of engagement (ROEs), antiterrorism and force protection conditions (FPCONs), and operational security.",
     "performanceMeasures": [
-      { "text": "Recall the definitions of force protection, operational security, and rules of engagement (ROE).", "optional": false },
-      { "text": "Describe how force protection conditions (FPCON) reduce mission risk.", "optional": false },
-      { "text": "Implement heightened security procedures in response to an increased FPCON level.", "optional": false },
-      { "text": "Use proper communication security (COMSEC) procedures during a radio transmission.", "optional": false },
-      { "text": "Review a set of mock social media posts and identify operations security (OPSEC) violations.", "optional": false }
+      {
+        "text": "Recall the definitions of force protection, operational security, and rules of engagement (ROE).",
+        "optional": false
+      },
+      {
+        "text": "Describe how force protection conditions (FPCON) reduce mission risk.",
+        "optional": false
+      },
+      {
+        "text": "Implement heightened security procedures in response to an increased FPCON level.",
+        "optional": false
+      },
+      {
+        "text": "Use proper communication security (COMSEC) procedures during a radio transmission.",
+        "optional": false
+      },
+      {
+        "text": "Review a set of mock social media posts and identify operations security (OPSEC) violations.",
+        "optional": false
+      }
     ],
-    "references": ["AFTTP 3-4, Airman's Manual Lesson Plan"],
-    "relatedLessons": ["Operations Security (OPSEC) (AS300)"],
+    "references": [
+      "AFTTP 3-4, Airman's Manual Lesson Plan"
+    ],
+    "relatedLessons": [
+      "Operations Security (OPSEC) (AS300)"
+    ],
     "instructor": "SCL with cadre guidance",
     "additionalInfo": "This lesson is not intended to be a PowerPoint briefing. Ideally, the instructor(s) use creative methods to reinforce the knowledge from the Airman's Manual in an expeditionary-like environment as the cadets will experience at Field Training. Ensure that cadets understand protecting the DAF's critical assets to include resources, people, and infrastructure is vital to effective mission accomplishment. Secured perimeters provide standoff protection from threats and only authorized individuals are allowed into areas based on authority granted to them considering several critical factors as described in the Airman's Manual. During elevated threat-levels and FPCONs, additional measures may be adopted. Understanding asset protection and OPSEC considerations limit exposure by Airman to threats. When deployed or operating in hostile environments, ROEs consider additional operational limits or instructions for use of force in hostile environments.",
-    "proficiencyByLevel": { "ICL": "Kb", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "Ka",
+      "BCL": "Kb",
+      "ICL": "Kb",
+      "SCL": ""
+    }
   },
   {
     "number": "2.3",
@@ -767,17 +1484,41 @@
     "graded": true,
     "requirements": "GMC cadets should be able to demonstrate responding to attacks or threats using the following: sign/countersign, the phonetic alphabet, and the SALUTE (size, activity, location, unit, time, and equipment) report. Additionally, cadets should be able to demonstrate responding to unexploded ordinance (UXOs) and improvised explosive devices (IEDs) by identifying IED characteristics, recalling the 5-Cs (confirm, clear, cordon, check, control), and reporting identified UXOs/IEDs. Furthermore, cadets should be able to demonstrate an understanding of basic base defense procedures, including security protocols, reporting suspicious activity, and responding to emergencies. Lastly, cadets should be able to demonstrate responding to insider threat/active shooter by identifying categories of insider threats, defining an active shooter, and understanding the necessary preparations required for an appropriate response.",
     "performanceMeasures": [
-      { "text": "Identify characteristics of common threats such as UXO, IED and sUAS activity.", "optional": false },
-      { "text": "Execute the 5 Cs upon discovering a simulated IED/UXO.", "optional": false },
-      { "text": "Transmit a SALUTE report upon spotting a simulated enemy sUAS.", "optional": false },
-      { "text": "Implement the \"Run, Hide, Fight\" principles during an active shooter drill.", "optional": false },
-      { "text": "Apply challenge-and-pass procedures at an Entry Control Point (ECP).", "optional": false }
+      {
+        "text": "Identify characteristics of common threats such as UXO, IED and sUAS activity.",
+        "optional": false
+      },
+      {
+        "text": "Execute the 5 Cs upon discovering a simulated IED/UXO.",
+        "optional": false
+      },
+      {
+        "text": "Transmit a SALUTE report upon spotting a simulated enemy sUAS.",
+        "optional": false
+      },
+      {
+        "text": "Implement the \"Run, Hide, Fight\" principles during an active shooter drill.",
+        "optional": false
+      },
+      {
+        "text": "Apply challenge-and-pass procedures at an Entry Control Point (ECP).",
+        "optional": false
+      }
     ],
-    "references": ["AFTTP 3-4, Airman's Manual"],
-    "relatedLessons": ["N/A"],
+    "references": [
+      "AFTTP 3-4, Airman's Manual"
+    ],
+    "relatedLessons": [
+      "N/A"
+    ],
     "instructor": "Any POC Cadet with cadre guidance",
     "additionalInfo": "The requirements listed above are infrequent skills that will be required during operational and exercise evaluations on active duty. This lesson is not intended to be a PowerPoint briefing. Ideally, the instructor(s) use creative methods to reinforce the knowledge from the Airman's Manual in an expeditionary-like environment as the cadets will experience at Field Training. Active shooter training may be supplemented by local law enforcement agencies. At a minimum, cadets should walk-through and discuss responding to an active shooter scenario.",
-    "proficiencyByLevel": { "ICL": "P3", "SCL": "" }
+    "proficiencyByLevel": {
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
+    }
   },
   {
     "number": "2.4",
@@ -788,11 +1529,26 @@
     "graded": true,
     "requirements": "The academic year will be treated as an 8-month readiness cycle, mirroring the Air Force Force Generation (AFFORGEN) model (Prepare, Certify). The Cadet Wing will be organized into a notional AEW 2.0 construct to plan and execute this cycle.",
     "performanceMeasures": [
-      { "text": "Explain how the AEW 2.0 construct and AFFORGEN model are doctrinally linked.", "optional": false },
-      { "text": "Apply resource management principles to prepare, deploy, and account for all personnel and equipment.", "optional": false },
-      { "text": "Apply lessons learned from AARs to implement measurable improvements.", "optional": false },
-      { "text": "Apply leadership principles throughout the AFFORGEN cycle to integrate all cadets into a single expeditionary team.", "optional": false },
-      { "text": "Apply expeditionary skills and ACE principles to successfully execute all primary objectives of the capstone certification mission.", "optional": false }
+      {
+        "text": "Explain how the AEW 2.0 construct and AFFORGEN model are doctrinally linked.",
+        "optional": false
+      },
+      {
+        "text": "Apply resource management principles to prepare, deploy, and account for all personnel and equipment.",
+        "optional": false
+      },
+      {
+        "text": "Apply lessons learned from AARs to implement measurable improvements.",
+        "optional": false
+      },
+      {
+        "text": "Apply leadership principles throughout the AFFORGEN cycle to integrate all cadets into a single expeditionary team.",
+        "optional": false
+      },
+      {
+        "text": "Apply expeditionary skills and ACE principles to successfully execute all primary objectives of the capstone certification mission.",
+        "optional": false
+      }
     ],
     "references": [
       "AFTTP 3-4, Airman's Manual",
@@ -827,7 +1583,12 @@
     ],
     "instructor": "DET/CC and cadre, serving as the senior leadership, mentors, and the final certifying authority for the wing's \"readiness.\"",
     "additionalInfo": "This model transforms the academic year into a direct, hands-on simulation of the AFFORGEN model and the AEW 2.0 construct. It provides cadets with unparalleled experience in building, preparing, and deploying a mission-ready team, giving them a practical understanding of the very concepts that will define their careers as expeditionary leaders. Note: source table lists this as \"P1/P2\" for ICL and \"P2/P3\" for SCL -- flagged for verification, treated as free text since it isn't a single proficiency code.",
-    "proficiencyByLevel": { "ICL": "P1/P2", "SCL": "P2/P3" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "P1/P2",
+      "SCL": "P2/P3"
+    }
   },
   {
     "number": "1.1",
@@ -838,13 +1599,34 @@
     "graded": false,
     "requirements": "Cadets should be able to identify and describe core American values and characteristics such as representative government, separation of powers, freedom, equality, justice, free enterprise, religious freedom, and the rule of law. They must be able to recognize various US national interests, including economic prosperity, territorial integrity, global stability, and the protection of citizens abroad. They will need to understand the roles and responsibilities of the different branches of government (Executive, Legislative, Judicial) in national security decision-making, as well as the processes by which national security policy is implemented. Lastly, cadets should be familiar with significant global challenges that impact US national security such as terrorism/extremism, cyber warfare, strategic competition, pandemics, economic instability, nuclear proliferation, and human rights violations.",
     "performanceMeasures": [
-      { "text": "Produce two distinct COAs for a scenario based on the influence of US values, current events, and governmental processes.", "optional": true },
-      { "text": "Construct a one page point-paper arguing for/against a specific national security decision.", "optional": false },
-      { "text": "Analyze a breaking global event and recommend an initial US posture.", "optional": true },
-      { "text": "Identifies major US national interests that influence defense policy.", "optional": true },
-      { "text": "Describes the roles US branches of government in national security processes.", "optional": true }
+      {
+        "text": "Produce two distinct COAs for a scenario based on the influence of US values, current events, and governmental processes.",
+        "optional": true
+      },
+      {
+        "text": "Construct a one page point-paper arguing for/against a specific national security decision.",
+        "optional": false
+      },
+      {
+        "text": "Analyze a breaking global event and recommend an initial US posture.",
+        "optional": true
+      },
+      {
+        "text": "Identifies major US national interests that influence defense policy.",
+        "optional": true
+      },
+      {
+        "text": "Describes the roles US branches of government in national security processes.",
+        "optional": true
+      }
     ],
-    "references": ["AFDP 1, Air Force Basic Doctrine", "US National Security Strategy", "US National Defense Strategy", "US National Military Strategy", "US Constitution"],
+    "references": [
+      "AFDP 1, Air Force Basic Doctrine",
+      "US National Security Strategy",
+      "US National Defense Strategy",
+      "US National Military Strategy",
+      "US Constitution"
+    ],
     "relatedLessons": [
       "What is War (AS100)",
       "Civilian Control of the Military (AS400)",
@@ -857,6 +1639,11 @@
     ],
     "instructor": "Cadre or SCL with cadre participation",
     "additionalInfo": "The requirements listed above are intended to be at the most basic level as DAF Lieutenants will not be expected to exercise these abilities or knowledge on a frequent basis upon entering the operational DAF. Therefore, cadre must ensure the appropriate level of proficiency is acquired based on the related lessons.",
-    "proficiencyByLevel": { "ICL": "Ka", "SCL": "Kb" }
+    "proficiencyByLevel": {
+      "BC": "",
+      "BCL": "",
+      "ICL": "Ka",
+      "SCL": "Kb"
+    }
   }
 ]

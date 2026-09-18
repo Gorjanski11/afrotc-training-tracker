@@ -1,16 +1,24 @@
-// This app tracks POC cadets only (ICL/SCL) -- GMC levels (BC/BCL) are present in
-// the source AFROTCI 36-2011 Vol 1 document's proficiency tables but are
-// intentionally never ingested/displayed, per the SAE's request.
-export const DEV_LEVELS = ["ICL", "SCL"] as const;
+// BC/BCL = General Military Course (GMC) levels; ICL/SCL = Professional Officer
+// Course (POC) levels. Both cohorts share the same catalog/PMT calendar/roster --
+// the "POC TO's" and "GMC TO's" screens just filter by which of these applies.
+export const DEV_LEVELS = ["BC", "BCL", "ICL", "SCL"] as const;
 export type DevLevel = (typeof DEV_LEVELS)[number];
 
+export const GMC_DEV_LEVELS = ["BC", "BCL"] as const satisfies readonly DevLevel[];
+export const POC_DEV_LEVELS = ["ICL", "SCL"] as const satisfies readonly DevLevel[];
+
 export const DEV_LEVEL_LABELS: Record<DevLevel, string> = {
+  BC: "Basic Cadet (BC)",
+  BCL: "Basic Cadet Leader (BCL)",
   ICL: "Intermediate Cadet Leader (ICL)",
   SCL: "Senior Cadet Leader (SCL)",
 };
 
-export const AS_CLASSES = ["AS300", "AS400"] as const;
+export const AS_CLASSES = ["AS100", "AS200", "AS250", "AS300", "AS400", "AS500"] as const;
 export type AsClass = (typeof AS_CLASSES)[number];
+
+export const FLIGHTS = ["M", "N", "O", "P"] as const;
+export type Flight = (typeof FLIGHTS)[number];
 
 export const CADET_STATUSES = ["Active", "Inactive", "Commissioned"] as const;
 export type CadetStatus = (typeof CADET_STATUSES)[number];

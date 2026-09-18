@@ -128,7 +128,7 @@ export function CalendarScreen({ events, catalog, createEvent, updateEvent, dele
                     !isSameMonth(day, anchor) && "bg-muted/40 text-muted-foreground",
                     isSameDay(day, new Date()) && "ring-1 ring-inset ring-primary"
                   )}
-                  onClick={() => setFormState({ defaultDate: `${day.toISOString().slice(0, 10)}T08:00` })}
+                  onClick={() => setFormState({ defaultDate: `${day.toISOString().slice(0, 10)}T10:30` })}
                 >
                   <div className="mb-1 text-xs">{day.getDate()}</div>
                   <div className="flex flex-col gap-0.5">

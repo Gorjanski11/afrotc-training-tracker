@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { GraduationCap, Users, ClipboardCheck, FileText } from "lucide-react";
+import { GraduationCap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HomeCard {
@@ -32,20 +32,6 @@ export function HomeScreen({ onEnterPoc, onEnterGmc }: Props) {
       title: "GMC TO's",
       description: "Training Objective tracking for General Military Course cadets (BC/BCL).",
       onClick: onEnterGmc,
-    },
-    {
-      key: "accountability",
-      icon: <ClipboardCheck className="h-7 w-7" />,
-      title: "Accountability",
-      description: "PT/LLAB/FM attendance tracking. Coming soon -- a separate site, not yet live.",
-      disabled: true,
-    },
-    {
-      key: "memorandums",
-      icon: <FileText className="h-7 w-7" />,
-      title: "Memorandums",
-      description: "Absence and deviation memo submissions. Coming soon -- a separate site, not yet live.",
-      disabled: true,
     },
   ];
 

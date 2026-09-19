@@ -66,7 +66,6 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
           {cadet.name}
         </h2>
         <Badge variant="outline">{cadet.devLevel ?? "No dev level set"}</Badge>
-        <Badge variant="outline">{cadet.asClass ?? "No AS class set"}</Badge>
         <div className="flex min-w-56 items-center gap-2">
           <Progress value={progress.percent} className="w-40" />
           <span className="text-sm">

@@ -20,6 +20,10 @@ export type AsClass = (typeof AS_CLASSES)[number];
 export const FLIGHTS = ["M", "N", "O", "P"] as const;
 export type Flight = (typeof FLIGHTS)[number];
 
+// Mirrors the Accountability site's GROUPS -- same shared `cadets` collection, same field.
+export const GROUPS = ["CWL", "TRG", "OG", "MSG", "WSG"] as const;
+export type Group = (typeof GROUPS)[number];
+
 export const CADET_STATUSES = ["Active", "Inactive", "Commissioned"] as const;
 export type CadetStatus = (typeof CADET_STATUSES)[number];
 

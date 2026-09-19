@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RosterSearchSelect } from "./RosterSearchSelect";
-import { PROFICIENCY_CODES, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { getLookForCriteria } from "../domain/proficiencyCriteria";
+import { compareByLastName } from "../domain/nameUtils";
 import { cn } from "@/lib/utils";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, TrainingObjective } from "../domain/types";
@@ -61,6 +62,8 @@ export function CompletionEntryDialog({
   const [multiplePartial, setMultiplePartial] = useState(false);
   const [selectedCadetIds, setSelectedCadetIds] = useState<Set<string>>(() => new Set([cadet.id]));
   const [cadetSearch, setCadetSearch] = useState("");
+  const [levelFilter, setLevelFilter] = useState<DevLevel | "All">("All");
+  const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -75,7 +78,20 @@ export function CompletionEntryDialog({
     });
   };
 
-  const searchedCadets = cadets.filter((c) => c.name.toLowerCase().includes(cadetSearch.trim().toLowerCase()));
+  // Scoped to whichever cadets were actually passed in (already the cohort's roster), so these
+  // filters only ever offer the levels/flights that are actually relevant here.
+  const availableLevels = useMemo(() => DEV_LEVELS.filter((l) => cadets.some((c) => c.devLevel === l)), [cadets]);
+  const availableFlights = useMemo(() => FLIGHTS.filter((f) => cadets.some((c) => c.flight === f)), [cadets]);
+
+  const searchedCadets = useMemo(
+    () =>
+      [...cadets]
+        .filter((c) => c.name.toLowerCase().includes(cadetSearch.trim().toLowerCase()))
+        .filter((c) => levelFilter === "All" || c.devLevel === levelFilter)
+        .filter((c) => flightFilter === "All" || c.flight === flightFilter)
+        .sort((a, b) => compareByLastName(a.name, b.name)),
+    [cadets, cadetSearch, levelFilter, flightFilter]
+  );
 
   const handleSave = async () => {
     setSaving(true);
@@ -186,6 +202,38 @@ export function CompletionEntryDialog({
                     onChange={(e) => setCadetSearch(e.target.value)}
                     className="h-8"
                   />
+                  <div className="flex gap-2">
+                    {availableLevels.length > 0 && (
+                      <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as DevLevel | "All")}>
+                        <SelectTrigger className="h-8 w-28 text-xs">
+                          <SelectValue placeholder="Level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="All">All levels</SelectItem>
+                          {availableLevels.map((l) => (
+                            <SelectItem key={l} value={l}>
+                              {l}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    {availableFlights.length > 0 && (
+                      <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
+                        <SelectTrigger className="h-8 w-28 text-xs">
+                          <SelectValue placeholder="Flight" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="All">All flights</SelectItem>
+                          {availableFlights.map((f) => (
+                            <SelectItem key={f} value={f}>
+                              {f} Flight
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
                   <div className="grid max-h-48 gap-1 overflow-y-auto rounded-md border border-input p-2">
                     {searchedCadets.map((c) => (
                       <label key={c.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent">

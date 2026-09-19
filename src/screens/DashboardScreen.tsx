@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, LayoutDashboard, Search, Users, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEV_LEVELS, type DevLevel } from "../domain/constants";
+import { FLIGHTS, GROUPS, type DevLevel, type Flight, type Group } from "../domain/constants";
 import { computeCadetProgress, shouldFlagCadet } from "../domain/progress";
 import { computeCohortSummary } from "../domain/analytics";
 import { compareByLastName } from "../domain/nameUtils";
@@ -51,6 +51,8 @@ function HeroStat({ icon, label, value, tone, index }: HeroStatProps) {
 type SortKey = "name" | "devLevel" | "percent";
 
 interface Props {
+  cohort: "poc" | "gmc";
+  levels: readonly DevLevel[];
   cadets: Cadet[];
   catalog: TrainingObjective[];
   completions: Completion[];
@@ -58,14 +60,27 @@ interface Props {
   onSelectCadet: (cadetId: string) => void;
 }
 
-export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
+export function DashboardScreen({ cohort, levels, cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
+  const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
+  const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
 
   // Inactive cadets are dropped from the Dashboard entirely -- they're not being actively tracked.
   const visibleCadets = useMemo(() => cadets.filter((c) => c.status !== "Inactive"), [cadets]);
+
+  // Filtered by every control above -- both the table rows and the hero stat panels read from this,
+  // so the summary numbers always match whatever the filters currently show.
+  const filteredCadets = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return visibleCadets
+      .filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter)
+      .filter((c) => cohort !== "poc" || groupFilter === "All" || c.group === groupFilter)
+      .filter((c) => cohort !== "gmc" || flightFilter === "All" || c.flight === flightFilter)
+      .filter((c) => query === "" || c.name.toLowerCase().includes(query));
+  }, [visibleCadets, devLevelFilter, groupFilter, flightFilter, cohort, search]);
 
   const rows = useMemo(() => {
     const completionsByCadet = new Map<string, Completion[]>();
@@ -75,11 +90,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
       completionsByCadet.set(c.cadetId, list);
     }
 
-    const query = search.trim().toLowerCase();
-
-    return visibleCadets
-      .filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter)
-      .filter((c) => query === "" || c.name.toLowerCase().includes(query))
+    return filteredCadets
       .map((cadet) => {
         const progress = computeCadetProgress(cadet.devLevel, catalog, completionsByCadet.get(cadet.id) ?? [], pmtEvents);
         return { cadet, progress };
@@ -91,7 +102,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
         else cmp = a.progress.percent - b.progress.percent;
         return sortAsc ? cmp : -cmp;
       });
-  }, [visibleCadets, catalog, completions, pmtEvents, devLevelFilter, search, sortKey, sortAsc]);
+  }, [filteredCadets, catalog, completions, pmtEvents, sortKey, sortAsc]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -102,8 +113,8 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
   };
 
   const summary = useMemo(
-    () => computeCohortSummary(visibleCadets, catalog, completions, pmtEvents),
-    [visibleCadets, catalog, completions, pmtEvents]
+    () => computeCohortSummary(filteredCadets, catalog, completions, pmtEvents),
+    [filteredCadets, catalog, completions, pmtEvents]
   );
 
   return (
@@ -114,7 +125,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
       </h2>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(visibleCadets.length)} index={0} />
+        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(filteredCadets.length)} index={0} />
         <HeroStat icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall completion" value={`${summary.overallPercent}%`} index={1} />
         <HeroStat
           icon={<AlertTriangle className="h-4.5 w-4.5" />}
@@ -143,13 +154,43 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All levels</SelectItem>
-            {DEV_LEVELS.map((lvl) => (
+            {levels.map((lvl) => (
               <SelectItem key={lvl} value={lvl}>
                 {lvl}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {cohort === "poc" && (
+          <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as Group | "All")}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {cohort === "gmc" && (
+          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <span className="text-sm text-muted-foreground">
           Flagging cadets with at least one Training Objective that's run out of PMTs (all its sessions have passed with nothing logged).
         </span>
@@ -164,7 +205,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
             <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("devLevel")}>
               Dev Level {sortKey === "devLevel" ? (sortAsc ? "▲" : "▼") : ""}
             </TableHead>
-            <TableHead>AS Class</TableHead>
+            <TableHead>{cohort === "poc" ? "Group" : "Flight"}</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("percent")}>
               Completion {sortKey === "percent" ? (sortAsc ? "▲" : "▼") : ""}
@@ -188,7 +229,7 @@ export function DashboardScreen({ cadets, catalog, completions, pmtEvents, onSel
                   </span>
                 </TableCell>
                 <TableCell>{cadet.devLevel ?? "—"}</TableCell>
-                <TableCell>{cadet.asClass ?? "—"}</TableCell>
+                <TableCell>{(cohort === "poc" ? cadet.group : cadet.flight) ?? "—"}</TableCell>
                 <TableCell>
                   <Badge variant={cadet.status === "Active" ? "success" : "secondary"}>{cadet.status ?? "—"}</Badge>
                 </TableCell>

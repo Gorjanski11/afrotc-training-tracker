@@ -13,9 +13,10 @@ import type { CadetInput } from "../hooks/useCadets";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 import type { DevLevel } from "../domain/constants";
 
-type SortKey = "name" | "asClass" | "devLevel" | "status" | "percent";
+type SortKey = "name" | "asClass" | "devLevel" | "status" | "percent" | "flight";
 
 interface Props {
+  cohort: "poc" | "gmc";
   cadets: Cadet[];
   catalog: TrainingObjective[];
   completions: Completion[];
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export function RosterScreen({
+  cohort,
   cadets,
   catalog,
   completions,
@@ -68,6 +70,7 @@ export function RosterScreen({
         let cmp = 0;
         if (sortKey === "name") cmp = compareByLastName(a.cadet.name, b.cadet.name);
         else if (sortKey === "asClass") cmp = (a.cadet.asClass ?? "").localeCompare(b.cadet.asClass ?? "");
+        else if (sortKey === "flight") cmp = (a.cadet.flight ?? "").localeCompare(b.cadet.flight ?? "");
         else if (sortKey === "devLevel") cmp = (a.cadet.devLevel ?? "").localeCompare(b.cadet.devLevel ?? "");
         else if (sortKey === "status") cmp = (a.cadet.status ?? "").localeCompare(b.cadet.status ?? "");
         else cmp = a.progress.percent - b.progress.percent;
@@ -139,9 +142,11 @@ export function RosterScreen({
             <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("name")}>
               Name {sortKey === "name" ? (sortAsc ? "▲" : "▼") : ""}
             </TableHead>
-            <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("asClass")}>
-              AS Class {sortKey === "asClass" ? (sortAsc ? "▲" : "▼") : ""}
-            </TableHead>
+            {cohort === "gmc" && (
+              <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("flight")}>
+                Flight {sortKey === "flight" ? (sortAsc ? "▲" : "▼") : ""}
+              </TableHead>
+            )}
             <TableHead className="cursor-pointer select-none" onClick={() => toggleSort("devLevel")}>
               Dev Level {sortKey === "devLevel" ? (sortAsc ? "▲" : "▼") : ""}
             </TableHead>
@@ -163,7 +168,7 @@ export function RosterScreen({
                   {cadet.name}
                 </span>
               </TableCell>
-              <TableCell>{cadet.asClass ?? "—"}</TableCell>
+              {cohort === "gmc" && <TableCell>{cadet.flight ?? "—"}</TableCell>}
               <TableCell>{cadet.devLevel ?? "—"}</TableCell>
               <TableCell>
                 <Badge variant={cadet.status === "Active" ? "success" : cadet.status === "Commissioned" ? "default" : "secondary"}>
@@ -193,7 +198,7 @@ export function RosterScreen({
           ))}
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7}>{cadets.length === 0 ? 'No cadets yet. Click "Add Cadet" to get started.' : "No cadets match this search."}</TableCell>
+              <TableCell colSpan={cohort === "gmc" ? 7 : 6}>{cadets.length === 0 ? 'No cadets yet. Click "Add Cadet" to get started.' : "No cadets match this search."}</TableCell>
             </TableRow>
           )}
         </TableBody>

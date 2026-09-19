@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AS_CLASSES, CADET_STATUSES, DEV_LEVELS, FLIGHTS, GMC_DEV_LEVELS, type AsClass, type CadetStatus, type DevLevel, type Flight } from "../domain/constants";
+import { AS_CLASSES, CADET_STATUSES, DEV_LEVELS, FLIGHTS, GMC_DEV_LEVELS, GROUPS, type AsClass, type CadetStatus, type DevLevel, type Flight, type Group } from "../domain/constants";
 import type { CadetInput } from "../hooks/useCadets";
 import type { Cadet } from "../domain/types";
 
@@ -26,6 +26,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
   const [notes, setNotes] = useState(existingCadet?.notes ?? "");
   const [email, setEmail] = useState(existingCadet?.email ?? "");
   const [flight, setFlight] = useState<Flight | undefined>(existingCadet?.flight);
+  const [group, setGroup] = useState<Group | undefined>(existingCadet?.group);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -37,7 +38,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
     setSaving(true);
     setError(undefined);
     try {
-      await onSave({ name: name.trim(), asClass, devLevel, status, notes, email: email.trim(), flight: isGmc ? flight : undefined });
+      await onSave({ name: name.trim(), asClass, devLevel, status, notes, email: email.trim(), flight: isGmc ? flight : undefined, group });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");
@@ -124,6 +125,22 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
               </Select>
             </div>
           )}
+
+          <div className="grid gap-1.5">
+            <Label>Group</Label>
+            <Select value={group ?? ""} onValueChange={(v) => setGroup(v as Group)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select group" />
+              </SelectTrigger>
+              <SelectContent>
+                {GROUPS.map((g) => (
+                  <SelectItem key={g} value={g}>
+                    {g}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="grid gap-1.5">
             <Label>Email</Label>

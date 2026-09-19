@@ -186,6 +186,8 @@ function App() {
             <TabsContent value="dashboard">
               <AnimatedPanel>
                 <DashboardScreen
+                  cohort={topLevel}
+                  levels={COHORT_DEV_LEVELS[topLevel]}
                   cadets={cohortCadets}
                   catalog={catalogState.catalog}
                   completions={completionsState.completions}
@@ -213,6 +215,7 @@ function App() {
             <TabsContent value="analytics">
               <AnimatedPanel>
                 <AnalyticsScreen
+                  levels={COHORT_DEV_LEVELS[topLevel]}
                   cadets={cohortCadets}
                   catalog={catalogState.catalog}
                   completions={completionsState.completions}
@@ -240,6 +243,7 @@ function App() {
             <TabsContent value="roster">
               <AnimatedPanel>
                 <RosterScreen
+                  cohort={topLevel}
                   cadets={cohortCadets}
                   catalog={catalogState.catalog}
                   completions={completionsState.completions}

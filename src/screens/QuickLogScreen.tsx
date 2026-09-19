@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue } from "../domain/progress";
 import { compareByLastName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
@@ -62,13 +62,6 @@ function todayIso(): string {
 function firstRequiredCode(cell: string): ProficiencyCode | undefined {
   const first = cell.split("/")[0]?.trim();
   return (PROFICIENCY_CODES as readonly string[]).includes(first) ? (first as ProficiencyCode) : undefined;
-}
-
-/** Default "Not Pass" selection: the nearest code below the required one (closest to "almost made it"), or the lowest code if the requirement is already the lowest (Ka). */
-function defaultNotPassCode(required: ProficiencyCode, options: readonly ProficiencyCode[]): ProficiencyCode {
-  const below = options.filter((p) => PROFICIENCY_RANK[p] < PROFICIENCY_RANK[required]);
-  if (below.length === 0) return options[0];
-  return below.reduce((best, p) => (PROFICIENCY_RANK[p] > PROFICIENCY_RANK[best] ? p : best));
 }
 
 function formatOccurrenceLabel(event: PmtEvent | undefined): string {
@@ -224,9 +217,14 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
       .filter((o) => query === "" || o.number.toLowerCase().includes(query) || o.title.toLowerCase().includes(query))
       .sort((a, b) => a.ploOrder - b.ploOrder || compareObjectiveNumbers(a.number, b.number));
 
+    const now = Date.now();
     const result: QuickLogColumn[] = [];
     for (const objective of qualifying) {
-      const occurrences = occurrencesByObjective.get(objective.id) ?? [];
+      let occurrences = occurrencesByObjective.get(objective.id) ?? [];
+      // In the overdue-only scope, drop any occurrence that hasn't happened yet -- an objective can
+      // be overdue from a past PMT while also having a future one scheduled, and that future date
+      // has nothing to grade yet, so it shouldn't take up a column here.
+      if (columnScope === "overdue") occurrences = occurrences.filter((e) => new Date(e.eventDate).getTime() <= now);
       if (occurrences.length > 1) {
         for (const occurrence of occurrences) {
           result.push({ key: `${objective.id}:${occurrence.id}`, objective, occurrence, isMultiOccurrence: true });
@@ -459,8 +457,10 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   const value = getCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
                   const isDirty = key in pending;
                   const requiredCode = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]) ?? "P1";
-                  const notPassOptions = PROFICIENCY_CODES.filter((p) => p !== requiredCode);
                   const isPass = value === requiredCode;
+                  // "Not Pass" is no longer quick-markable from this grid (removed by request) -- a cell
+                  // with an existing non-pass completion still shows it, read-only, for visibility. To
+                  // change it, log it from Cadet Detail instead, which has the full proficiency picker.
                   const isNotPass = value !== NONE && !isPass;
                   return (
                     <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
@@ -479,23 +479,6 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                           >
                             Pass
                           </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={isNotPass ? "destructive" : "outline"}
-                            className={cn("h-6 px-2 text-[11px]", isDirty && "ring-2 ring-primary")}
-                            onClick={() =>
-                              setCellValue(
-                                cadet.id,
-                                objective.id,
-                                pmtEventId,
-                                isMultiOccurrence,
-                                isNotPass ? NONE : defaultNotPassCode(requiredCode, notPassOptions)
-                              )
-                            }
-                          >
-                            Not Pass
-                          </Button>
                           {isMultiOccurrence && occurrence && (
                             <Button
                               type="button"
@@ -510,18 +493,9 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                           )}
                         </div>
                         {isNotPass && (
-                          <Select value={value} onValueChange={(v) => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, v)}>
-                            <SelectTrigger className="h-6 w-full px-1.5 text-[11px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {notPassOptions.map((p) => (
-                                <SelectItem key={p} value={p}>
-                                  {p}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <span className="text-[11px] text-destructive" title="Logged as not passing -- edit from Cadet Detail to change.">
+                            {value}
+                          </span>
                         )}
                       </div>
                     </TableCell>

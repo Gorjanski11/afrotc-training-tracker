@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEV_LEVELS, PLO_SECTIONS, type DevLevel } from "../domain/constants";
+import { PLO_SECTIONS, type DevLevel } from "../domain/constants";
 import {
   computeCohortSummary,
   computeCompletionByCadet,
@@ -20,6 +20,7 @@ import {
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface Props {
+  levels: readonly DevLevel[];
   cadets: Cadet[];
   catalog: TrainingObjective[];
   completions: Completion[];
@@ -52,7 +53,7 @@ function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; 
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
 
-export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
+export function AnalyticsScreen({ levels, cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [ploFilter, setPloFilter] = useState<string>("All");
   const [cadetTableView, setCadetTableView] = useState(false);
@@ -96,7 +97,7 @@ export function AnalyticsScreen({ cadets, catalog, completions, pmtEvents, onSel
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="All">All levels</SelectItem>
-            {DEV_LEVELS.map((lvl) => (
+            {levels.map((lvl) => (
               <SelectItem key={lvl} value={lvl}>
                 {lvl}
               </SelectItem>

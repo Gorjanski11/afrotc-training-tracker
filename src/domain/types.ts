@@ -1,4 +1,4 @@
-import type { AsClass, CadetStatus, DevLevel, Flight, PmtEventType, ProficiencyCode } from "./constants";
+import type { AsClass, CadetStatus, DevLevel, Flight, Group, PmtEventType, ProficiencyCode } from "./constants";
 
 export interface Cadet {
   id: string;
@@ -11,6 +11,8 @@ export interface Cadet {
   email: string | undefined;
   /** GMC only -- POC cadets never have a Flight. */
   flight: Flight | undefined;
+  /** Same field the Accountability site owns on this shared roster -- always set for POC, GMC only if they hold a staff position within a group. */
+  group: Group | undefined;
 }
 
 /**

@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getObjectiveStatus, isOverdue, completionForOccurrence } from "../domain/progress";
+import { getObjectiveStatus, isOverdue, completionForOccurrence, meetsRequirement } from "../domain/progress";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
@@ -141,20 +141,23 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   // session doesn't paint a checkmark onto a different session's column.
                   const isMultiOccurrence = info.occurrences.length > 1;
                   const columnCompletion = isMultiOccurrence ? completionForOccurrence(objective.id, event.id, cadetCompletions) : info.bestCompletion;
-                  const done = columnCompletion && isOnOrAfterDay(columnCompletion.dateCompleted ?? "", event.eventDate);
+                  const hasEntry = columnCompletion && isOnOrAfterDay(columnCompletion.dateCompleted ?? "", event.eventDate);
+                  // A Partial entry shows up (so cadre can see something was logged) but never counts
+                  // as satisfying this occurrence -- matches getObjectiveStatus/meetsRequirement.
+                  const satisfied = isMultiOccurrence ? meetsRequirement(columnCompletion, requiredCode) : hasEntry;
                   const isPast = new Date(event.eventDate).getTime() <= Date.now();
                   // Non-graded objectives are loggable but never read as overdue/missed, regardless of schedule.
                   const optional = !objective.graded;
-                  const columnMissed = isMultiOccurrence ? isPast && !done : info.status === "missed";
+                  const columnMissed = isMultiOccurrence ? isPast && !satisfied : info.status === "missed";
                   return (
                     <TableCell key={event.id} className="text-center">
                       <button
                         className={cn(
                           "w-full rounded px-1.5 py-0.5 text-xs",
-                          done
-                            ? columnCompletion?.partial
-                              ? "bg-warning/15 text-warning-foreground"
-                              : "bg-success/15 text-success"
+                          hasEntry
+                            ? satisfied
+                              ? "bg-success/15 text-success"
+                              : "bg-warning/15 text-warning-foreground"
                             : optional || !isPast
                               ? "text-muted-foreground"
                               : columnMissed
@@ -163,8 +166,8 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         )}
                         onClick={() => onOpenObjective(objective)}
                       >
-                        {done
-                          ? `✓ ${columnCompletion?.proficiencyAchieved}${columnCompletion?.partial ? " (Partial)" : ""}`
+                        {hasEntry
+                          ? `✓ ${columnCompletion?.proficiencyAchieved}${!satisfied ? " (Partial)" : ""}`
                           : optional
                             ? "Optional"
                             : !isPast

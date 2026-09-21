@@ -9,17 +9,21 @@ export interface CadetProgress {
 }
 
 /**
- * Per-objective status relative to the PMT schedule and "today":
+ * Per-objective status relative to the PMT schedule and "today". For an objective covered by
+ * several PMTs (material split across sessions), each occurrence is graded independently -- a
+ * qualifying completion at one occurrence never substitutes for another, since they typically
+ * cover different topics.
  * - not-scheduled: no PMT has ever covered this objective. Excluded from the
  *   required count entirely -- it isn't due until a PMT actually covers it.
- * - upcoming: a PMT covers it, but every occurrence is still in the future.
- *   Also excluded from the required count -- not due yet.
- * - due: at least one occurrence has passed and at least one is still upcoming.
- *   Counted as required; not yet a "last chance gone" situation.
- * - missed: every occurrence has passed with no qualifying completion logged --
- *   there's no PMT left that covers this objective. This is the only status
- *   that should ever read as a hard flag.
- * - completed: a logged completion meets or exceeds the required proficiency.
+ * - upcoming: a PMT covers it, and every occurrence that isn't yet satisfied is still in the
+ *   future. Also excluded from the required count -- not due yet.
+ * - due: reserved for a future grading-window/grace-period use; getObjectiveStatus never returns
+ *   it today -- a past, unsatisfied occurrence reads as "missed" immediately (see below).
+ * - missed: at least one occurrence's date has passed without a qualifying completion logged
+ *   for that specific occurrence -- permanently lost, since a later PMT won't re-teach it. This
+ *   is the only status that should ever read as a hard flag.
+ * - completed: every occurrence has a completion that meets or exceeds the required proficiency
+ *   (for a single-occurrence objective, any qualifying completion for it).
  */
 export type ObjectiveDueStatus = "not-scheduled" | "upcoming" | "due" | "missed" | "completed";
 
@@ -29,13 +33,22 @@ export interface ObjectiveStatusInfo {
   bestCompletion?: Completion;
 }
 
-/** Best (highest-proficiency) logged completion for a given Training Objective, if any. */
+/** Best (highest-proficiency) logged completion for a given Training Objective, if any -- across every occurrence, informational only (see getObjectiveStatus for what actually decides completion). */
 export function bestCompletionForObjective(objectiveId: string, cadetCompletions: Completion[]): Completion | undefined {
   const relevant = cadetCompletions.filter((c) => c.objectiveId === objectiveId);
   if (relevant.length === 0) return undefined;
   return relevant.reduce((best, c) =>
     PROFICIENCY_RANK[c.proficiencyAchieved] > PROFICIENCY_RANK[best.proficiencyAchieved] ? c : best
   );
+}
+
+/** The completion (if any) logged for a given Training Objective at one specific PMT occurrence. */
+export function completionForOccurrence(objectiveId: string, pmtEventId: string, cadetCompletions: Completion[]): Completion | undefined {
+  return cadetCompletions.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
+}
+
+function meetsRequirement(completion: Completion | undefined, required: string): boolean {
+  return !!completion && required !== "" && PROFICIENCY_RANK[completion.proficiencyAchieved as ProficiencyCode] >= PROFICIENCY_RANK[required as ProficiencyCode];
 }
 
 export function getObjectiveStatus(
@@ -49,27 +62,40 @@ export function getObjectiveStatus(
   const occurrences = pmtEvents
     .filter((e) => e.objectiveIds.includes(objective.id))
     .sort((a, b) => a.eventDate.localeCompare(b.eventDate));
-
   const bestCompletion = bestCompletionForObjective(objective.id, cadetCompletions);
-  const achievedEnough =
-    !!bestCompletion &&
-    required !== "" &&
-    PROFICIENCY_RANK[bestCompletion.proficiencyAchieved as ProficiencyCode] >= PROFICIENCY_RANK[required as ProficiencyCode];
+  const now = today.getTime();
 
-  if (achievedEnough) {
-    return { status: "completed", occurrences, bestCompletion };
-  }
   if (occurrences.length === 0) {
+    // No PMT has ever covered it, but a manually-backdated completion still counts.
+    if (meetsRequirement(bestCompletion, required)) return { status: "completed", occurrences, bestCompletion };
     return { status: "not-scheduled", occurrences, bestCompletion };
   }
 
-  const now = today.getTime();
-  const past = occurrences.filter((e) => new Date(e.eventDate).getTime() <= now);
-  const future = occurrences.filter((e) => new Date(e.eventDate).getTime() > now);
+  if (occurrences.length === 1) {
+    // Single occurrence: any qualifying completion for this objective satisfies it -- doesn't
+    // have to be scoped to that one pmtEventId, so completions logged before pmtEventId existed
+    // still count.
+    if (meetsRequirement(bestCompletion, required)) return { status: "completed", occurrences, bestCompletion };
+    const past = new Date(occurrences[0].eventDate).getTime() <= now;
+    return { status: past ? "missed" : "upcoming", occurrences, bestCompletion };
+  }
 
-  if (past.length === 0) return { status: "upcoming", occurrences, bestCompletion };
-  if (future.length > 0) return { status: "due", occurrences, bestCompletion };
-  return { status: "missed", occurrences, bestCompletion };
+  // Multi-occurrence: each PMT covers different material for the same objective, so every
+  // occurrence must be independently satisfied -- a qualifying completion at one PMT never
+  // substitutes for another, and a past occurrence with nothing logged against it specifically
+  // is permanently missed (no future PMT will re-teach what that session covered).
+  let anyMissed = false;
+  let allSatisfied = true;
+  for (const occurrence of occurrences) {
+    const satisfied = meetsRequirement(completionForOccurrence(objective.id, occurrence.id, cadetCompletions), required);
+    if (!satisfied) {
+      allSatisfied = false;
+      if (new Date(occurrence.eventDate).getTime() <= now) anyMissed = true;
+    }
+  }
+  if (allSatisfied) return { status: "completed", occurrences, bestCompletion };
+  if (anyMissed) return { status: "missed", occurrences, bestCompletion };
+  return { status: "upcoming", occurrences, bestCompletion };
 }
 
 /**

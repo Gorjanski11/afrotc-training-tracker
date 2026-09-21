@@ -17,9 +17,8 @@ import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/t
 /**
  * One grid column. Objectives covered by only one PMT get a single column (occurrence is that
  * PMT, or undefined if never scheduled). Objectives whose material is split across several PMTs
- * get one column PER occurrence, each independently gradeable -- there's no cumulative tracking;
- * a Pass logged at any one occurrence is what makes the whole objective read as completed
- * (bestCompletionForObjective already picks the best of however many completions an objective has).
+ * get one column PER occurrence, each independently gradeable -- every occurrence must be
+ * satisfied on its own for the whole objective to read as completed (see getObjectiveStatus).
  */
 interface QuickLogColumn {
   key: string;

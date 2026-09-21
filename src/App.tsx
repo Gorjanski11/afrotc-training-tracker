@@ -1,14 +1,13 @@
 import { useMemo, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Moon, Sun, ShieldHalf, LayoutDashboard, UserRound, BarChart3, BookOpen, CalendarDays, Users, ListChecks, ArrowLeft } from "lucide-react";
+import { ShieldHalf, LayoutDashboard, UserRound, BarChart3, BookOpen, CalendarDays, Users, ListChecks, ArrowLeft } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useTrainingObjectives, type TrainingObjectiveSeed } from "./hooks/useTrainingObjectives";
 import { useCompletions } from "./hooks/useCompletions";
 import { usePmtEvents } from "./hooks/usePmtEvents";
-import { useTheme } from "./hooks/useTheme";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "./domain/constants";
 import { HomeScreen } from "./screens/HomeScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
@@ -47,7 +46,6 @@ function App() {
   const catalogState = useTrainingObjectives();
   const completionsState = useCompletions();
   const pmtEventsState = usePmtEvents();
-  const { theme, toggleTheme } = useTheme();
 
   const [topLevel, setTopLevel] = useState<TopLevel>("home");
   const [screen, setScreen] = useState<Screen>("dashboard");
@@ -112,20 +110,6 @@ function App() {
             </span>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle dark mode" className="overflow-hidden">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={theme}
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              className="flex"
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </motion.span>
-          </AnimatePresence>
-        </Button>
       </header>
 
       {dataLoading ? (

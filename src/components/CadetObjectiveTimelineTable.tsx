@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getObjectiveStatus, isOverdue } from "../domain/progress";
+import { getObjectiveStatus, isOverdue, completionForOccurrence } from "../domain/progress";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
@@ -136,10 +136,16 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                       </TableCell>
                     );
                   }
-                  const done = info.bestCompletion && isOnOrAfterDay(info.bestCompletion.dateCompleted ?? "", event.eventDate);
+                  // Multi-occurrence objectives are graded independently per PMT -- match this
+                  // column's own completion rather than any occurrence's, so a pass logged at one
+                  // session doesn't paint a checkmark onto a different session's column.
+                  const isMultiOccurrence = info.occurrences.length > 1;
+                  const columnCompletion = isMultiOccurrence ? completionForOccurrence(objective.id, event.id, cadetCompletions) : info.bestCompletion;
+                  const done = columnCompletion && isOnOrAfterDay(columnCompletion.dateCompleted ?? "", event.eventDate);
                   const isPast = new Date(event.eventDate).getTime() <= Date.now();
                   // Non-graded objectives are loggable but never read as overdue/missed, regardless of schedule.
                   const optional = !objective.graded;
+                  const columnMissed = isMultiOccurrence ? isPast && !done : info.status === "missed";
                   return (
                     <TableCell key={event.id} className="text-center">
                       <button
@@ -149,19 +155,19 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                             ? "bg-success/15 text-success"
                             : optional || !isPast
                               ? "text-muted-foreground"
-                              : info.status === "missed"
+                              : columnMissed
                                 ? "bg-destructive/15 text-destructive"
                                 : "bg-warning/15 text-warning-foreground"
                         )}
                         onClick={() => onOpenObjective(objective)}
                       >
                         {done
-                          ? `✓ ${info.bestCompletion?.proficiencyAchieved}`
+                          ? `✓ ${columnCompletion?.proficiencyAchieved}`
                           : optional
                             ? "Optional"
                             : !isPast
                               ? "Upcoming"
-                              : info.status === "missed"
+                              : columnMissed
                                 ? "Missed"
                                 : "Due"}
                       </button>

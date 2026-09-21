@@ -294,6 +294,9 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           evaluator: QUICK_LOG_EVALUATOR,
           notes: existing?.notes ?? "",
           pmtEventId,
+          // The plain Pass toggle never produces a Partial entry -- even when overwriting a cell that
+          // was previously logged as Partial, this clears that flag back to a definitive pass.
+          partial: false,
         };
         if (existing) {
           await updateCompletion(existing.id, input);
@@ -456,11 +459,18 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                   const value = getCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
                   const isDirty = key in pending;
                   const requiredCode = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]) ?? "P1";
-                  const isPass = value === requiredCode;
+                  // A completion logged via the Partial flow stays "Partial" for display even when the
+                  // code entered meets/exceeds the required proficiency -- it's the evaluator vouching
+                  // only for this occurrence's own material, not a definitive session pass. An unsaved
+                  // pending edit (from the plain Pass toggle) always overrides that, since Quick Log's
+                  // one-click toggle never produces a Partial entry.
+                  const existingCompletion = getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
+                  const isPartial = !isDirty && value !== NONE && !!existingCompletion?.partial;
+                  const isPass = value === requiredCode && !isPartial;
                   // "Not Pass" is no longer quick-markable from this grid (removed by request) -- a cell
                   // with an existing non-pass completion still shows it, read-only, for visibility. To
                   // change it, log it from Cadet Detail instead, which has the full proficiency picker.
-                  const isNotPass = value !== NONE && !isPass;
+                  const isNotPass = value !== NONE && !isPass && !isPartial;
                   return (
                     <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
                       <div className="flex flex-col items-center gap-1">
@@ -483,7 +493,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="h-6 px-2 text-[11px]"
+                              className={cn("h-6 px-2 text-[11px]", isPartial && "border-warning bg-warning text-warning-foreground hover:bg-warning/90")}
                               title="Material for this Training Objective is split across several PMTs -- log partial progress at this specific session, optionally for several cadets at once."
                               onClick={() => setPartialTarget({ cadet, objective, occurrence, requiredCode })}
                             >
@@ -491,6 +501,14 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
                             </Button>
                           )}
                         </div>
+                        {isPartial && (
+                          <span
+                            className="text-[11px] text-warning-foreground"
+                            title="Logged as Partial -- only vouches for this occurrence's own material, even though the code entered meets the requirement."
+                          >
+                            Partial ({value})
+                          </span>
+                        )}
                         {isNotPass && (
                           <span className="text-[11px] text-destructive" title="Logged as not passing -- edit from Cadet Detail to change.">
                             {value}

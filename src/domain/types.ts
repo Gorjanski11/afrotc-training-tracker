@@ -70,6 +70,14 @@ export interface Completion {
    * getObjectiveStatus), since a qualifying completion at one occurrence doesn't cover another.
    */
   pmtEventId: string | undefined;
+  /**
+   * Set when this was logged via Quick Log's "Partial" flow, regardless of which proficiency code
+   * was entered -- it records that the evaluator is only vouching for the material actually covered
+   * at this one occurrence, not a definitive session pass. Purely a display/record-keeping flag:
+   * it still counts toward satisfying this occurrence (see getObjectiveStatus) whenever the code
+   * entered meets the required proficiency, same as a plain Pass.
+   */
+  partial: boolean;
 }
 
 export interface PmtEvent {

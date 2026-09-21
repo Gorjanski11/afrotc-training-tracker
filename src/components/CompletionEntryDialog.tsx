@@ -110,6 +110,10 @@ export function CompletionEntryDialog({
           evaluator,
           notes,
           pmtEventId,
+          // Opened via Quick Log's "Partial" flow -- true regardless of which proficiency code gets
+          // entered, since it's the evaluator vouching only for this occurrence's own material, not
+          // a definitive session pass. The plain Pass toggle and Cadet Detail's log dialog never set this.
+          partial: !!allowMultiplePartial,
         };
         if (existing) await updateCompletion(existing.id, input);
         else await createCompletion(input);

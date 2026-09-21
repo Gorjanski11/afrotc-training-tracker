@@ -152,7 +152,9 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         className={cn(
                           "w-full rounded px-1.5 py-0.5 text-xs",
                           done
-                            ? "bg-success/15 text-success"
+                            ? columnCompletion?.partial
+                              ? "bg-warning/15 text-warning-foreground"
+                              : "bg-success/15 text-success"
                             : optional || !isPast
                               ? "text-muted-foreground"
                               : columnMissed
@@ -162,7 +164,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         onClick={() => onOpenObjective(objective)}
                       >
                         {done
-                          ? `✓ ${columnCompletion?.proficiencyAchieved}`
+                          ? `✓ ${columnCompletion?.proficiencyAchieved}${columnCompletion?.partial ? " (Partial)" : ""}`
                           : optional
                             ? "Optional"
                             : !isPast

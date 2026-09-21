@@ -15,6 +15,7 @@ export interface CompletionInput {
   evaluator: string;
   notes: string;
   pmtEventId: string | undefined;
+  partial: boolean;
 }
 
 const COLLECTION = "completions";
@@ -31,6 +32,7 @@ function mapCompletion(id: string, data: Record<string, unknown>): Completion {
     evaluator: (data.evaluator as string) ?? "",
     notes: (data.notes as string) ?? "",
     pmtEventId: (data.pmtEventId as string | null | undefined) ?? undefined,
+    partial: (data.partial as boolean | undefined) ?? false,
   };
 }
 

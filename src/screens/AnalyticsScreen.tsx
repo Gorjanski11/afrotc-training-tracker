@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, BarChart2 } from "lucide-react";
+import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, BarChart2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, type DevLevel } from "../domain/constants";
 import {
@@ -17,6 +17,7 @@ import {
   type CadetCompletionRow,
   type PloCompletionRow,
 } from "../domain/analytics";
+import { exportTrainingData } from "../lib/exportTrainingData";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface Props {
@@ -57,6 +58,7 @@ export function AnalyticsScreen({ levels, cadets, catalog, completions, pmtEvent
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [ploFilter, setPloFilter] = useState<string>("All");
   const [cadetTableView, setCadetTableView] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const filteredCadets = useMemo(
     () => cadets.filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter),
@@ -83,12 +85,27 @@ export function AnalyticsScreen({ levels, cadets, catalog, completions, pmtEvent
 
   const cadetChartHeight = Math.max(200, byCadet.length * 28);
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportTrainingData(cadets, catalog, completions, pmtEvents);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <BarChart2 className="h-5 w-5 text-primary" />
-        Analytics
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">
+          <BarChart2 className="h-5 w-5 text-primary" />
+          Analytics
+        </h2>
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
+          <Download className="h-4 w-4" />
+          {exporting ? "Exporting..." : "Export to Excel"}
+        </Button>
+      </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>

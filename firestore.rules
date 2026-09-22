@@ -1,13 +1,31 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Fully open: anyone with the site's URL can read and write every
-    // collection, no login of any kind. This is an intentional, explicit
-    // choice for a small-detachment tool with an unlisted URL -- not an
-    // oversight. There is no protection against accidental or malicious
-    // edits/deletes by anyone who has the link.
+    // Reads stay open everywhere -- every site in this ecosystem (including the cadet-facing Memo
+    // Submissions site) reads from this same database with no login, and none of that is changing.
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if true;
     }
+
+    // Owned exclusively by Accountability/Memorandums, the two sites that just got logins -- no
+    // other site (including the TO Tracker, which has no login of its own) ever writes these, so
+    // requiring a signed-in account here is a real, uncompromised security boundary.
+    match /emailTemplates/{id} { allow write: if request.auth != null; }
+    match /extraEvents/{id} { allow write: if request.auth != null; }
+    match /extraEventAttendance/{id} { allow write: if request.auth != null; }
+
+    // Everything else stays open (unchanged): cadets/pmtEvents/trainingObjectives/completions are
+    // all still written by the TO Tracker, which has no login of its own -- requiring auth here
+    // would break it, not just Accountability/Memorandums. attendance/absenceMemos/deviationMemos
+    // are shared with Memo Submissions, deliberately open/cadet-facing. Closing either gap for real
+    // needs either giving the TO Tracker its own login too, or precise per-transition rules /
+    // routing cadet writes through a Cloud Function -- neither of which was asked for here.
+    match /cadets/{id} { allow write: if true; }
+    match /pmtEvents/{id} { allow write: if true; }
+    match /trainingObjectives/{id} { allow write: if true; }
+    match /completions/{id} { allow write: if true; }
+    match /attendance/{id} { allow write: if true; }
+    match /absenceMemos/{id} { allow write: if true; }
+    match /deviationMemos/{id} { allow write: if true; }
   }
 }

@@ -2,57 +2,47 @@ import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
-import type { PmtEventType } from "../domain/constants";
-import type { PmtEvent } from "../domain/types";
+import type { ExtraEventType } from "../domain/constants";
+import type { ExtraEvent } from "../domain/types";
 
-export interface PmtEventInput {
+const COLLECTION = "extraEvents";
+
+export interface ExtraEventInput {
   title: string;
   eventDate: string;
-  eventType: PmtEventType;
+  eventType: ExtraEventType;
   location: string;
   pocic: string;
-  pocic2: string;
-  pocic3: string;
-  pocsup: string;
-  trainingWeek: number | undefined;
-  objectiveIds: string[];
   notes: string;
+  repositionsPmtEventId: string | undefined;
 }
 
-const COLLECTION = "pmtEvents";
-
-function mapPmtEvent(id: string, data: Record<string, unknown>): PmtEvent {
+function mapEvent(id: string, data: Record<string, unknown>): ExtraEvent {
   return {
     id,
     title: (data.title as string) ?? "",
     eventDate: (data.eventDate as string) ?? "",
-    eventType: ((data.eventType as PmtEventType) ?? "LLAB") as PmtEventType,
+    eventType: ((data.eventType as ExtraEventType) ?? "Bonding") as ExtraEventType,
     location: (data.location as string) ?? "",
     pocic: (data.pocic as string) ?? "",
-    pocic2: (data.pocic2 as string) ?? "",
-    pocic3: (data.pocic3 as string) ?? "",
-    pocsup: (data.pocsup as string) ?? "",
-    trainingWeek: (data.trainingWeek as number | null | undefined) ?? undefined,
-    objectiveIds: (data.objectiveIds as string[]) ?? [],
     notes: (data.notes as string) ?? "",
+    repositionsPmtEventId: (data.repositionsPmtEventId as string | null | undefined) ?? undefined,
   };
 }
 
-export function usePmtEvents() {
-  const [events, setEvents] = useState<PmtEvent[]>([]);
+export function useExtraEvents() {
+  const [extraEvents, setExtraEvents] = useState<ExtraEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
-  // `silent` skips the loading flip -- this hook is now shared across every tab in the hub, so a
-  // loud refetch after a write in one tab would unmount whatever screen is mid-write in another.
   const refetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const snap = await getDocs(collection(db, COLLECTION));
-      setEvents(snap.docs.map((d) => mapPmtEvent(d.id, d.data())));
+      setExtraEvents(snap.docs.map((d) => mapEvent(d.id, d.data())));
       setError(undefined);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load PMT events.");
+      setError(e instanceof Error ? e.message : "Failed to load extra events.");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -62,25 +52,24 @@ export function usePmtEvents() {
     refetch();
   }, [refetch]);
 
-  const createEvent = useCallback(
-    async (input: PmtEventInput) => {
+  const createExtraEvent = useCallback(
+    async (input: ExtraEventInput) => {
       const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id: ref.id, ...input } satisfies PmtEvent;
+      return { id: ref.id, ...input } satisfies ExtraEvent;
     },
     [refetch]
   );
 
-  const updateEvent = useCallback(
-    async (id: string, input: PmtEventInput) => {
+  const updateExtraEvent = useCallback(
+    async (id: string, input: ExtraEventInput) => {
       await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id, ...input } satisfies PmtEvent;
     },
     [refetch]
   );
 
-  const deleteEvent = useCallback(
+  const deleteExtraEvent = useCallback(
     async (id: string) => {
       await deleteDoc(doc(db, COLLECTION, id));
       await refetch(true);
@@ -88,5 +77,5 @@ export function usePmtEvents() {
     [refetch]
   );
 
-  return { events, loading, error, refetch, createEvent, updateEvent, deleteEvent };
+  return { extraEvents, loading, error, refetch, createExtraEvent, updateExtraEvent, deleteExtraEvent };
 }

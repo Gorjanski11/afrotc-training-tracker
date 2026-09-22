@@ -1,4 +1,19 @@
-import type { AsClass, CadetStatus, DevLevel, Flight, Group, PmtEventType, ProficiencyCode } from "./constants";
+import type {
+  AbsenceAsClass,
+  AbsenceMemoStatus,
+  AbsenceReason,
+  AsClass,
+  AttendanceStatus,
+  CadetStatus,
+  DeviationMemoStatus,
+  DevLevel,
+  ExtraEventType,
+  Flight,
+  Group,
+  Instructor,
+  PmtEventType,
+  ProficiencyCode,
+} from "./constants";
 
 export interface Cadet {
   id: string;
@@ -13,6 +28,12 @@ export interface Cadet {
   flight: Flight | undefined;
   /** Same field the Accountability site owns on this shared roster -- always set for POC, GMC only if they hold a staff position within a group. */
   group: Group | undefined;
+  /** Manual override -- when true this person is Cadre regardless of AS Level/devLevel. Also used by the hub's access rule (domain/access.ts). */
+  isCadre: boolean;
+  /** Free text -- role within `group`, or one of the 5 Cadre-only positions. */
+  position: string | undefined;
+  /** Manual-entry date (ISO) -- needed for "recently deactivated" flagging since Active/Inactive alone can't show recency. */
+  statusChangedDate: string | undefined;
 }
 
 /**
@@ -103,4 +124,114 @@ export interface ProgramLearningOutcomeSection {
   plo: string;
   ploOrder: number;
   subAreas: { subArea: string; objectives: TrainingObjective[] }[];
+}
+
+// ---------------------------------------------------------------------------
+// Ported from afrotc-accountability-tracker/src/domain/types.ts and
+// afrotc-memorandums-tracker/src/domain/types.ts as part of consolidating all
+// 4 sites into this one hub -- shapes are unchanged from their source repo.
+// ---------------------------------------------------------------------------
+
+/** Accountability (Section 4.1) -- one record per cadet per PMT. */
+export interface Attendance {
+  id: string;
+  cadetId: string;
+  pmtEventId: string;
+  status: AttendanceStatus;
+  /** Required when status is "A". */
+  absenceReason: AbsenceReason | undefined;
+  /** ISO datetime the entry was actually recorded, so "outside the normal window" can be flagged. */
+  recordedAt: string;
+  notes: string;
+}
+
+/** Accountability's own collection -- events that never affect accountability (Section 3.2). */
+export interface ExtraEvent {
+  id: string;
+  title: string;
+  eventDate: string;
+  eventType: ExtraEventType;
+  location: string;
+  pocic: string;
+  notes: string;
+  /** Set only when eventType is "Reposition" -- the original PMT this event stands in for. */
+  repositionsPmtEventId: string | undefined;
+}
+
+/** Extra Event attendance (Section 4.3) -- a simple attendee list, never a percentage input. */
+export interface ExtraEventAttendance {
+  id: string;
+  extraEventId: string;
+  attendeeCadetIds: string[];
+}
+
+/**
+ * A cadet's writeup covering one or more missed PMTs, with an uploaded PDF (Firebase Storage) as
+ * the actual memorandum document. Accountability auto-creates the initial "Assigned" record the
+ * instant a cadet is marked Absent; the cadet then submits (Memo Submission tab) which flips the
+ * covered Attendance record(s) A -> PE. On Accepted/Rejected, Memo Review writes a side-effect
+ * update into `attendance`: each covered PMT's Attendance record flips PE -> AE (Accepted) or
+ * PE -> A (Rejected, final). Returned has no Attendance side-effect (stays PE) -- sent back to the
+ * cadet to fix and resubmit.
+ */
+export interface AbsenceMemo {
+  id: string;
+  cadetId: string;
+  cadetName: string;
+  /** Every PMT this single memo covers -- empty when this memo is only for an AS-Class absence below. */
+  pmtEventIds: string[];
+  /** Attendance doc ids parallel to `pmtEventIds` -- "" placeholder for a PMT pre-submitted before it happened, until Accountability links the real id in. */
+  attendanceIds: string[];
+  /** ISO datetime Accountability auto-created this as "Assigned" -- undefined for a memo the cadet created fresh. */
+  assignedAt: string | undefined;
+  /** AS-Class-absence fields -- a memo can cover a missed PMT, a missed AS-Class session, or both. All four are set together or not at all. */
+  asClass: AbsenceAsClass | undefined;
+  classDate: string | undefined;
+  classTitle: string | undefined;
+  instructor: Instructor | undefined;
+  reason: AbsenceReason;
+  /** Whether medical documentation was sent to the detachment separately from this memo. */
+  medicalDocSent: boolean;
+  pdfUrl: string | undefined;
+  pdfFileName: string | undefined;
+  status: AbsenceMemoStatus;
+  submittedAt: string;
+  reviewedAt: string | undefined;
+  /** Free text -- no auth-based identity binding, reviewer is hardcoded per screen instead. */
+  reviewedBy: string | undefined;
+  reviewNotes: string;
+  /** Required when status is "Returned" -- what the cadet needs to fix before resubmitting. */
+  returnReason: string | undefined;
+  /** Set once the Accepted/Rejected Attendance side-effect has actually been written, so it's never silently reapplied. */
+  attendanceUpdatedAt: string | undefined;
+}
+
+/** Assigned by a reviewer for a standards deviation, submitted by the cadet (with a PDF), then resolved as Accepted or Returned -- never Rejected outright. */
+export interface DeviationMemo {
+  id: string;
+  cadetId: string;
+  cadetName: string;
+  /** Free text -- whoever assigns it just types their own name. */
+  assignedBy: string;
+  /** What the deviation was (e.g. uniform, grooming, punctuality) -- free text, no fixed catalog. */
+  reason: string;
+  dateAssigned: string;
+  dueDate: string | undefined;
+  status: DeviationMemoStatus;
+  pdfUrl: string | undefined;
+  pdfFileName: string | undefined;
+  submittedAt: string | undefined;
+  reviewedAt: string | undefined;
+  reviewedBy: string | undefined;
+  reviewNotes: string;
+}
+
+/** Minimal mirror of the shared `absenceMemos` collection -- just enough for Accountability's auto-assignment hook to know whether a cadet+PMT absence already has an in-flight memo covering it. */
+export interface AbsenceMemoRef {
+  id: string;
+  cadetId: string;
+  pmtEventIds: string[];
+  /** Parallel to `pmtEventIds` -- "" placeholder until the real Attendance doc id is linked in. */
+  attendanceIds: string[];
+  status: AbsenceMemoStatus;
 }

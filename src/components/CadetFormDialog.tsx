@@ -38,7 +38,20 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
     setSaving(true);
     setError(undefined);
     try {
-      await onSave({ name: name.trim(), asClass, devLevel, status, notes, email: email.trim(), flight: isGmc ? flight : undefined, group });
+      await onSave({
+        name: name.trim(),
+        asClass,
+        devLevel,
+        status,
+        notes,
+        email: email.trim(),
+        flight: isGmc ? flight : undefined,
+        group,
+        // Owned by the Accountability Roster screen, not this dialog -- preserve whatever's already there.
+        isCadre: existingCadet?.isCadre ?? false,
+        position: existingCadet?.position,
+        statusChangedDate: existingCadet?.statusChangedDate,
+      });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");

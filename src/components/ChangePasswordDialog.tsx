@@ -87,6 +87,9 @@ export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
                 autoComplete="current-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-1.5">
@@ -98,6 +101,9 @@ export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             <div className="space-y-1.5">
@@ -109,6 +115,9 @@ export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 autoComplete="new-password"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}

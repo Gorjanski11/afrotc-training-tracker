@@ -2,7 +2,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, LayoutDashboard, ClipboardList, Search, Mail } from "lucide-react";
+import { FileText, LayoutDashboard, ClipboardList, Mail } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
@@ -13,10 +13,9 @@ import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
 import { DeviationMemosScreen } from "../screens/memoReview/DeviationMemosScreen";
-import { HistoryScreen } from "../screens/memoReview/HistoryScreen";
 import { AutomaticMemorandumsScreen } from "../screens/memoReview/AutomaticMemorandumsScreen";
 
-type Screen = "dashboard" | "absence" | "deviation" | "history" | "automatic";
+type Screen = "dashboard" | "absence" | "deviation" | "automatic";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -29,10 +28,11 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 interface Props {
   /** Absence Memos tab/queue only shows for full-access users -- everyone else with Memo Review access sees Deviation Memos only. */
   showAbsence: boolean;
+  userEmail: string | null | undefined;
 }
 
 /** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation, History, Automatic Memorandums. */
-export function MemoReviewApp({ showAbsence }: Props) {
+export function MemoReviewApp({ showAbsence, userEmail }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const absenceState = useAbsenceMemos();
@@ -78,10 +78,6 @@ export function MemoReviewApp({ showAbsence }: Props) {
             <TabsTrigger value="deviation">
               <ClipboardList className="h-3.5 w-3.5" />
               Deviation Memos
-            </TabsTrigger>
-            <TabsTrigger value="history">
-              <Search className="h-3.5 w-3.5" />
-              History
             </TabsTrigger>
             <TabsTrigger value="automatic">
               <Mail className="h-3.5 w-3.5" />
@@ -137,16 +133,7 @@ export function MemoReviewApp({ showAbsence }: Props) {
                     memos={deviationState.memos}
                     createMemo={deviationState.createMemo}
                     updateMemo={deviationState.updateMemo}
-                  />
-                </AnimatedPanel>
-              </TabsContent>
-              <TabsContent value="history">
-                <AnimatedPanel>
-                  <HistoryScreen
-                    roster={cadetsState.cadets}
-                    events={eventsState.events}
-                    absenceMemos={absenceState.memos}
-                    deviationMemos={deviationState.memos}
+                    userEmail={userEmail}
                   />
                 </AnimatedPanel>
               </TabsContent>

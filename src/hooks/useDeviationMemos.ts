@@ -3,7 +3,7 @@ import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from "fi
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { DeviationMemoStatus } from "../domain/constants";
-import type { DeviationMemo } from "../domain/types";
+import type { DeviationMemo, PersonRef } from "../domain/types";
 
 const COLLECTION = "deviationMemos";
 
@@ -11,6 +11,8 @@ export interface DeviationMemoInput {
   cadetId: string;
   cadetName: string;
   assignedBy: string;
+  assignedByEmail: string | undefined;
+  cc: PersonRef[];
   reason: string;
   dateAssigned: string;
   dueDate: string | undefined;
@@ -29,6 +31,8 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     cadetId: (data.cadetId as string) ?? "",
     cadetName: (data.cadetName as string) ?? "",
     assignedBy: (data.assignedBy as string) ?? "",
+    assignedByEmail: (data.assignedByEmail as string | null | undefined) ?? undefined,
+    cc: (data.cc as PersonRef[] | null | undefined) ?? [],
     reason: (data.reason as string) ?? "",
     dateAssigned: (data.dateAssigned as string) ?? "",
     dueDate: (data.dueDate as string | null | undefined) ?? undefined,

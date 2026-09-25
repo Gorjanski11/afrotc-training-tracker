@@ -8,8 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Send, CheckCircle2, Plus, Upload, CalendarClock } from "lucide-react";
 import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
-import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTORS } from "../../domain/constants";
-import type { AbsenceAsClass, AbsenceReason, Instructor } from "../../domain/constants";
+import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, AS_CLASSES, INSTRUCTORS, absenceMemoDeadline } from "../../domain/constants";
+import type { AbsenceAsClass, AbsenceReason, AsClass, Instructor } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent, Cadet } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -52,8 +52,11 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   // Reporting an absence for a PMT that hasn't happened yet -- no Attendance record exists for it
   // yet, so there's nothing to auto-assign from. A separate flow from the checklist above, which
   // only ever lists absences Accountability has already recorded.
+  const NO_TW = "__no_tw__";
+  const [futureTw, setFutureTw] = useState<string>(NONE);
   const [futureSelectedIds, setFutureSelectedIds] = useState<Set<string>>(new Set());
   const [futureReason, setFutureReason] = useState<AbsenceReason | typeof NONE>(NONE);
+  const [futureAsClass, setFutureAsClass] = useState<AsClass | typeof NONE>(cadet.asClass ?? NONE);
   const [futureMedicalDocSent, setFutureMedicalDocSent] = useState(false);
   const [futureFile, setFutureFile] = useState<File | undefined>();
   const [futureSubmitting, setFutureSubmitting] = useState(false);
@@ -87,6 +90,26 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     [events, myCoveredPmtIds]
   );
 
+  // TW-first cascading select (Section 3): pick a Training Week before any individual PMTs show up,
+  // so a semester-long list of upcoming PMTs doesn't have to be scrolled through flat.
+  const futureTwOptions = useMemo(() => {
+    const weeks = new Set<number>();
+    let hasNoTw = false;
+    for (const e of upcomingEvents) {
+      if (e.trainingWeek === undefined) hasNoTw = true;
+      else weeks.add(e.trainingWeek);
+    }
+    const options = [...weeks].sort((a, b) => a - b).map((tw) => ({ value: String(tw), label: `TW ${tw}` }));
+    if (hasNoTw) options.push({ value: NO_TW, label: "No TW" });
+    return options;
+  }, [upcomingEvents]);
+
+  const futureEventsForTw = useMemo(() => {
+    if (futureTw === NONE) return [];
+    if (futureTw === NO_TW) return upcomingEvents.filter((e) => e.trainingWeek === undefined);
+    return upcomingEvents.filter((e) => String(e.trainingWeek) === futureTw);
+  }, [upcomingEvents, futureTw]);
+
   const toggleFutureSelected = (id: string) => {
     setFutureSelectedIds((prev) => {
       const next = new Set(prev);
@@ -97,8 +120,10 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   };
 
   const resetFutureForm = () => {
+    setFutureTw(NONE);
     setFutureSelectedIds(new Set());
     setFutureReason(NONE);
+    setFutureAsClass(cadet.asClass ?? NONE);
     setFutureMedicalDocSent(false);
     setFutureFile(undefined);
   };
@@ -141,6 +166,14 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
       // memo (no covered PMT) defaults to Academics, since that's what it always is.
       const reason = covering[0]?.reason ?? "Academics";
 
+      // Section 2a: any covered PMT already past its own 72-hour deadline makes this whole
+      // submission late -- auto-rejected on arrival rather than entering the normal Pending queue.
+      const now = new Date();
+      const late = covering.some((m) => {
+        const event = events.find((e) => e.id === m.pmtEventIds[0]);
+        return event ? now > absenceMemoDeadline(event.eventDate, event.eventType) : false;
+      });
+
       const uploaded = await uploadMemoPdf(file, "absenceMemos", person.id);
 
       await createMemo({
@@ -155,21 +188,25 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         instructor: hasClassInfo ? (instructor as Instructor) : undefined,
         reason,
         medicalDocSent,
+        asClassAtSubmission: undefined,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
-        status: "Pending",
-        submittedAt: new Date().toISOString(),
-        reviewedAt: undefined,
-        reviewedBy: undefined,
-        reviewNotes: "",
+        status: late ? "Rejected" : "Pending",
+        submittedAt: now.toISOString(),
+        reviewedAt: late ? now.toISOString() : undefined,
+        reviewedBy: late ? "C/Maj Cortes Garay" : undefined,
+        reviewNotes: late ? "Automatically rejected -- submitted after the deadline." : "",
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
+        lateSubmission: late,
       });
 
       // The auto-assigned records this submission covers are now folded into the memo above --
       // remove them so they don't keep sitting there needing action.
       for (const m of covering) await deleteMemo(m.id);
-      if (attendanceIds.length > 0) await flipAttendanceToPendingExcuse(attendanceIds);
+      // A late (auto-rejected) submission never entered Pending, so the covered Attendance records
+      // stay exactly as they were (Absent) -- no PE flip needed.
+      if (!late && attendanceIds.length > 0) await flipAttendanceToPendingExcuse(attendanceIds);
 
       resetForm();
       setJustSubmitted(true);
@@ -205,6 +242,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         instructor: undefined,
         reason: futureReason as AbsenceReason,
         medicalDocSent: futureMedicalDocSent,
+        asClassAtSubmission: futureAsClass === NONE ? undefined : futureAsClass,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
         status: "Pending",
@@ -214,6 +252,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         reviewNotes: "",
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
+        lateSubmission: false,
       });
 
       resetFutureForm();
@@ -231,12 +270,21 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     setResubmitError(undefined);
     try {
       const uploaded = await uploadMemoPdf(resubmitFile, "absenceMemos", memo.cadetId);
+      // Section 2a: a resubmit past the 48-hour Returned window is late too -- auto-rejected on
+      // arrival instead of going back into the Pending queue.
+      const now = new Date();
+      const deadline = memo.reviewedAt ? new Date(new Date(memo.reviewedAt).getTime() + 48 * 3_600_000) : undefined;
+      const late = deadline !== undefined && now > deadline;
       await updateMemo(memo.id, {
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
-        status: "Pending",
-        submittedAt: new Date().toISOString(),
+        status: late ? "Rejected" : "Pending",
+        submittedAt: now.toISOString(),
         returnReason: undefined,
+        lateSubmission: late,
+        ...(late
+          ? { reviewedAt: now.toISOString(), reviewedBy: "C/Maj Cortes Garay", reviewNotes: "Automatically rejected -- resubmitted after the 48-hour deadline." }
+          : {}),
       });
       setResubmittingId(undefined);
       setResubmitFile(undefined);
@@ -446,21 +494,67 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               )}
 
               <div className="space-y-1.5">
-                <Label>Upcoming PMTs</Label>
+                <Label>Training Week</Label>
                 {upcomingEvents.length === 0 ? (
                   <p className="rounded-md border border-input p-3 text-sm text-muted-foreground">
                     No upcoming PMTs on the calendar right now (or you've already reported everything scheduled).
                   </p>
                 ) : (
-                  <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border border-input p-2">
-                    {upcomingEvents.map((e) => (
-                      <label key={e.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
-                        <input type="checkbox" checked={futureSelectedIds.has(e.id)} onChange={() => toggleFutureSelected(e.id)} />
-                        {eventLabel(events, e.id)}
-                      </label>
-                    ))}
-                  </div>
+                  <Select
+                    value={futureTw}
+                    onValueChange={(v) => {
+                      setFutureTw(v);
+                      setFutureSelectedIds(new Set());
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a Training Week" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>Select</SelectItem>
+                      {futureTwOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
+              </div>
+
+              {futureTw !== NONE && (
+                <div className="space-y-1.5">
+                  <Label>PMTs in this Training Week</Label>
+                  {futureEventsForTw.length === 0 ? (
+                    <p className="rounded-md border border-input p-3 text-sm text-muted-foreground">No upcoming PMTs in this Training Week.</p>
+                  ) : (
+                    <div className="max-h-40 space-y-1.5 overflow-y-auto rounded-md border border-input p-2">
+                      {futureEventsForTw.map((e) => (
+                        <label key={e.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
+                          <input type="checkbox" checked={futureSelectedIds.has(e.id)} onChange={() => toggleFutureSelected(e.id)} />
+                          {eventLabel(events, e.id)}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <Label>Your AS Class</Label>
+                <Select value={futureAsClass} onValueChange={(v) => setFutureAsClass(v as AsClass | typeof NONE)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Select</SelectItem>
+                    {AS_CLASSES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">

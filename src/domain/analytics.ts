@@ -116,13 +116,8 @@ export function computeCompletionByPlo(cadets: Cadet[], catalog: TrainingObjecti
     .sort((a, b) => a.ploOrder - b.ploOrder);
 }
 
-export function computeMostOverdueObjectives(
-  cadets: Cadet[],
-  catalog: TrainingObjective[],
-  completions: Completion[],
-  pmtEvents: PmtEvent[],
-  limit = 8
-): MissedObjectiveRow[] {
+/** Every objective with at least one active cadet currently overdue on it, ranked by overdue count -- "Overdue objectives" (Section 6b), no longer capped to a top-N. */
+export function computeOverdueObjectives(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): MissedObjectiveRow[] {
   const byCadet = completionsByCadetId(completions);
   const counts = new Map<string, number>();
 
@@ -142,5 +137,5 @@ export function computeMostOverdueObjectives(
     rows.push({ objectiveId: objective.id, number: objective.number, title: objective.title, plo: objective.plo, overdueCount });
   }
 
-  return rows.sort((a, b) => b.overdueCount - a.overdueCount).slice(0, limit);
+  return rows.sort((a, b) => b.overdueCount - a.overdueCount);
 }

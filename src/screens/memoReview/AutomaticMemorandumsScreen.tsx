@@ -41,20 +41,6 @@ const TEMPLATE_DEFS: TemplateDef[] = [
       "<strong>This is an automated message, DO NOT reply to this email.</strong>",
   },
   {
-    id: "absence-deadline-reminder",
-    label: "Absence Memo -- 12 hours left",
-    trigger: "Sent once, automatically, when an unsubmitted Absence Memo is within 12 hours of its 72-hour deadline.",
-    placeholders: ["greeting", "cadetName", "pmtSessionLabel", "deadline", "submitLink", "commanderTitle"],
-    defaultSubject: "Reminder: Absence Memorandum due in 12 hours",
-    defaultBody:
-      "{{greeting}}, {{cadetName}},<br><br>" +
-      "This is a reminder that you only have 12 hours until your absence memorandum deadline for {{pmtSessionLabel}}.<br><br>" +
-      "Your deadline is on {{deadline}}<br><br>" +
-      "Submit here: {{submitLink}}<br><br>" +
-      "For any questions and concerns contact your {{commanderTitle}}.<br><br>" +
-      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
-  },
-  {
     id: "absence-returned",
     label: "Absence Memo returned",
     trigger: "Sent when cadre returns an Absence Memo for fixes.",

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldHalf, LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send } from "lucide-react";
+import { ShieldHalf, LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2 } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { resolveTabAccess } from "./domain/access";
@@ -14,8 +14,9 @@ import { TrainingObjectivesApp } from "./apps/TrainingObjectivesApp";
 import { AccountabilityApp } from "./apps/AccountabilityApp";
 import { MemoReviewApp } from "./apps/MemoReviewApp";
 import { MemoSubmissionApp } from "./apps/MemoSubmissionApp";
+import { AnalyticsApp } from "./apps/AnalyticsApp";
 
-type HubTab = "trainingObjectives" | "accountability" | "memoReview" | "memoSubmission";
+type HubTab = "trainingObjectives" | "accountability" | "memoReview" | "analytics" | "memoSubmission";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -39,10 +40,12 @@ function App() {
   const cadetsState = useCadets();
 
   const tabAccess = resolveTabAccess(user?.email, cadetsState.cadets);
+  const hasAnalyticsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none" || tabAccess.memoReview;
   const visibleTabs: HubTab[] = [
     ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
     ...(tabAccess.accountability ? (["accountability"] as const) : []),
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
+    ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
     "memoSubmission",
   ];
   const [tab, setTab] = useState<HubTab>(visibleTabs[0]);
@@ -103,6 +106,12 @@ function App() {
                 Memo Review
               </TabsTrigger>
             )}
+            {hasAnalyticsAccess && (
+              <TabsTrigger value="analytics">
+                <BarChart2 className="h-3.5 w-3.5" />
+                Analytics
+              </TabsTrigger>
+            )}
             <TabsTrigger value="memoSubmission">
               <Send className="h-3.5 w-3.5" />
               Memo Submission
@@ -115,21 +124,35 @@ function App() {
             {activeTab === "trainingObjectives" && tabAccess.trainingObjectives !== "none" && (
               <TabsContent value="trainingObjectives" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <TrainingObjectivesApp key="trainingObjectives" cohortAccess={tabAccess.trainingObjectives} />
+                  <TrainingObjectivesApp key="trainingObjectives" cohortAccess={tabAccess.trainingObjectives} unitScope={tabAccess.unitScope} />
                 </AnimatedPanel>
               </TabsContent>
             )}
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <AccountabilityApp key="accountability" />
+                  <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} />
                 </AnimatedPanel>
               </TabsContent>
             )}
             {activeTab === "memoReview" && tabAccess.memoReview && (
               <TabsContent value="memoReview" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <MemoReviewApp key="memoReview" showAbsence={tabAccess.memoReviewAbsence} />
+                  <MemoReviewApp key="memoReview" showAbsence={tabAccess.memoReviewAbsence} userEmail={user.email} />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {activeTab === "analytics" && hasAnalyticsAccess && (
+              <TabsContent value="analytics" className="h-full" forceMount>
+                <AnimatedPanel>
+                  <AnalyticsApp
+                    key="analytics"
+                    accountabilityAccess={tabAccess.accountability}
+                    trainingObjectivesAccess={tabAccess.trainingObjectives}
+                    memoReviewAccess={tabAccess.memoReview}
+                    memoReviewAbsenceAccess={tabAccess.memoReviewAbsence}
+                    unitScope={tabAccess.unitScope}
+                  />
                 </AnimatedPanel>
               </TabsContent>
             )}

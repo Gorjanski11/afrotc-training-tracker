@@ -1,8 +1,8 @@
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, LayoutDashboard, Users, CalendarDays, BarChart2 } from "lucide-react";
+import { ClipboardCheck, LayoutDashboard, Users, CalendarDays } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useExtraEvents } from "../hooks/useExtraEvents";
@@ -10,13 +10,13 @@ import { useAttendance } from "../hooks/useAttendance";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useAutoFailCompletions } from "../hooks/useAutoFailCompletions";
 import { useAbsenceMemoAssignments } from "../hooks/useAbsenceMemoAssignments";
+import { applyUnitScope, type UnitScope } from "../domain/access";
 import { DashboardScreen } from "../screens/accountability/DashboardScreen";
 import { RosterScreen } from "../screens/accountability/RosterScreen";
 import { EventsScreen } from "../screens/accountability/EventsScreen";
 import { AttendanceScreen } from "../screens/accountability/AttendanceScreen";
-import { AnalyticsScreen } from "../screens/accountability/AnalyticsScreen";
 
-type Screen = "dashboard" | "roster" | "events" | "attendance" | "analytics";
+type Screen = "dashboard" | "roster" | "events" | "attendance";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -26,8 +26,13 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
   );
 }
 
+interface Props {
+  /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5). */
+  unitScope: UnitScope;
+}
+
 /** PT/LLAB/FM accountability -- Dashboard, Roster, Events, Accountability entry, Analytics. */
-export function AccountabilityApp() {
+export function AccountabilityApp({ unitScope }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const extraEventsState = useExtraEvents();
@@ -36,7 +41,16 @@ export function AccountabilityApp() {
   const { applyAbsenceNotPass } = useAutoFailCompletions();
   const absenceMemoAssignmentsState = useAbsenceMemoAssignments();
 
+  const scopedCadets = useMemo(() => applyUnitScope(unitScope, cadetsState.cadets), [unitScope, cadetsState.cadets]);
+
   const [screen, setScreen] = useState<Screen>("dashboard");
+  // Dashboard's "Accountability" card jumps straight to a specific PMT in the Accountability
+  // (attendance-taking) screen -- this is that target, threaded down as AttendanceScreen's initial selection.
+  const [targetPmtEventId, setTargetPmtEventId] = useState<string | undefined>();
+  const navigateToPmt = (pmtEventId: string) => {
+    setTargetPmtEventId(pmtEventId);
+    setScreen("attendance");
+  };
 
   const dataLoading =
     cadetsState.loading ||
@@ -74,10 +88,6 @@ export function AccountabilityApp() {
               <ClipboardCheck className="h-3.5 w-3.5" />
               Accountability
             </TabsTrigger>
-            <TabsTrigger value="analytics">
-              <BarChart2 className="h-3.5 w-3.5" />
-              Analytics
-            </TabsTrigger>
           </TabsList>
         </nav>
 
@@ -101,16 +111,21 @@ export function AccountabilityApp() {
               <TabsContent value="dashboard">
                 <AnimatedPanel>
                   <DashboardScreen
-                    roster={cadetsState.cadets}
+                    roster={scopedCadets}
                     events={eventsState.events}
-                    extraEvents={extraEventsState.extraEvents}
                     attendance={attendanceState.attendance}
+                    onNavigateToPmt={navigateToPmt}
                   />
                 </AnimatedPanel>
               </TabsContent>
               <TabsContent value="roster">
                 <AnimatedPanel>
-                  <RosterScreen roster={cadetsState.cadets} updatePerson={cadetsState.updateCadetFields} />
+                  <RosterScreen
+                    roster={scopedCadets}
+                    events={eventsState.events}
+                    attendance={attendanceState.attendance}
+                    updatePerson={cadetsState.updateCadetFields}
+                  />
                 </AnimatedPanel>
               </TabsContent>
               <TabsContent value="events">
@@ -130,7 +145,7 @@ export function AccountabilityApp() {
               <TabsContent value="attendance">
                 <AnimatedPanel>
                   <AttendanceScreen
-                    roster={cadetsState.cadets}
+                    roster={scopedCadets}
                     events={eventsState.events}
                     attendance={attendanceState.attendance}
                     createAttendance={attendanceState.createAttendance}
@@ -140,12 +155,8 @@ export function AccountabilityApp() {
                     assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}
                     retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
                     linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
+                    initialPmtEventId={targetPmtEventId}
                   />
-                </AnimatedPanel>
-              </TabsContent>
-              <TabsContent value="analytics">
-                <AnimatedPanel>
-                  <AnalyticsScreen roster={cadetsState.cadets} events={eventsState.events} attendance={attendanceState.attendance} />
                 </AnimatedPanel>
               </TabsContent>
             </>

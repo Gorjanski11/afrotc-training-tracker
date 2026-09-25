@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, ExternalLink } from "lucide-react";
-import type { AbsenceMemoStatus } from "../../domain/constants";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { FileText, ExternalLink, Pencil } from "lucide-react";
+import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -41,6 +42,11 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   const [returnReason, setReturnReason] = useState("");
   const [deciding, setDeciding] = useState(false);
 
+  const [overrideId, setOverrideId] = useState<string | undefined>();
+  const [overrideStatus, setOverrideStatus] = useState<AbsenceMemoStatus>("Pending");
+  const [overrideNotes, setOverrideNotes] = useState("");
+  const [overriding, setOverriding] = useState(false);
+
   const pendingMemos = useMemo(() => memos.filter((m) => m.status === "Pending").sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)), [memos]);
   const decidedMemos = useMemo(() => memos.filter((m) => m.status !== "Pending" && m.status !== "Assigned").sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)), [memos]);
 
@@ -50,26 +56,49 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
     setReturnReason("");
   };
 
+  // Section 2b: cadre can override any memo's status at any time -- shared by the quick-action
+  // buttons and the standalone override dialog below, both applying the same PE->AE/A Attendance
+  // side-effect whenever the resulting status is Accepted or Rejected.
+  const applyDecision = async (memo: AbsenceMemo, status: AbsenceMemoStatus, notes: string, returnReasonText: string | undefined) => {
+    const now = new Date().toISOString();
+    let attendanceUpdatedAt: string | undefined;
+    if ((status === "Accepted" || status === "Rejected") && memo.pmtEventIds.length > 0) {
+      await applyMemoDecision(memo.cadetId, memo.pmtEventIds, status === "Accepted" ? "AE" : "A");
+      attendanceUpdatedAt = now;
+    }
+    await updateMemo(memo.id, {
+      status,
+      reviewedAt: now,
+      reviewedBy: OFC_REVIEWER,
+      reviewNotes: notes,
+      returnReason: status === "Returned" ? returnReasonText : undefined,
+      attendanceUpdatedAt,
+    });
+  };
+
   const decide = async (memo: AbsenceMemo, decision: "Accepted" | "Rejected" | "Returned") => {
     setDeciding(true);
     try {
-      const now = new Date().toISOString();
-      let attendanceUpdatedAt: string | undefined;
-      if ((decision === "Accepted" || decision === "Rejected") && memo.pmtEventIds.length > 0) {
-        await applyMemoDecision(memo.cadetId, memo.pmtEventIds, decision === "Accepted" ? "AE" : "A");
-        attendanceUpdatedAt = now;
-      }
-      await updateMemo(memo.id, {
-        status: decision,
-        reviewedAt: now,
-        reviewedBy: OFC_REVIEWER,
-        reviewNotes,
-        returnReason: decision === "Returned" ? returnReason : undefined,
-        attendanceUpdatedAt,
-      });
+      await applyDecision(memo, decision, reviewNotes, returnReason);
       setReviewingId(undefined);
     } finally {
       setDeciding(false);
+    }
+  };
+
+  const openOverride = (memo: AbsenceMemo) => {
+    setOverrideId(memo.id);
+    setOverrideStatus(memo.status);
+    setOverrideNotes("");
+  };
+
+  const applyOverride = async (memo: AbsenceMemo) => {
+    setOverriding(true);
+    try {
+      await applyDecision(memo, overrideStatus, overrideNotes || memo.reviewNotes, memo.returnReason);
+      setOverrideId(undefined);
+    } finally {
+      setOverriding(false);
     }
   };
 
@@ -79,6 +108,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   };
 
   const reviewing = memos.find((m) => m.id === reviewingId);
+  const overriding_ = memos.find((m) => m.id === overrideId);
 
   return (
     <div>
@@ -121,9 +151,12 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                     "—"
                   )}
                 </TableCell>
-                <TableCell>
+                <TableCell className="flex items-center gap-1.5">
                   <Button size="sm" onClick={() => openReview(m)}>
                     Review
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -151,23 +184,34 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                   <TableHead>Reviewed</TableHead>
                   <TableHead>By</TableHead>
                   <TableHead>Notes</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {decidedMemos.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>{m.cadetName}</TableCell>
-                    <TableCell>
+                    <TableCell className="flex items-center gap-1.5">
                       <StatusBadge status={m.status} />
+                      {m.lateSubmission && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          Late
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
+                    <TableCell>
+                      <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {decidedMemos.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Nothing decided yet.
                     </TableCell>
                   </TableRow>
@@ -231,6 +275,44 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                 </Button>
                 <Button disabled={deciding} onClick={() => decide(reviewing, "Accepted")}>
                   Accept
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!overriding_} onOpenChange={(o) => !o && setOverrideId(undefined)}>
+        <DialogContent className="max-w-md">
+          {overriding_ && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Override status — {overriding_.cadetName}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Status</Label>
+                  <Select value={overrideStatus} onValueChange={(v) => setOverrideStatus(v as AbsenceMemoStatus)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ABSENCE_MEMO_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Notes</Label>
+                  <Textarea value={overrideNotes} onChange={(e) => setOverrideNotes(e.target.value)} placeholder="Optional -- why this was changed" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button disabled={overriding} onClick={() => applyOverride(overriding_)}>
+                  {overriding ? "Saving..." : "Save"}
                 </Button>
               </DialogFooter>
             </>

@@ -7,11 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ClipboardList, ExternalLink, UserPlus } from "lucide-react";
+import { ClipboardList, ExternalLink, UserPlus, Pencil } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
-import type { DeviationMemoStatus } from "../../domain/constants";
-import type { DeviationMemo, Cadet } from "../../domain/types";
+import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
+import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
+import { DEVIATION_MEMO_STATUSES, type DeviationMemoStatus } from "../../domain/constants";
+import { cadetsInAssignScope, getAuthorizedDeviationAssigners, getCcEligiblePeople, resolveDeviationAssignRule } from "../../domain/access";
+import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
 interface Props {
@@ -19,24 +23,46 @@ interface Props {
   memos: DeviationMemo[];
   createMemo: (input: DeviationMemoInput) => Promise<DeviationMemo>;
   updateMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
+  userEmail: string | null | undefined;
 }
 
 type Tab = "assign" | "review";
 
 function StatusBadge({ status }: { status: DeviationMemoStatus }) {
-  const variant = status === "Accepted" ? "success" : status === "Returned" ? "warning" : status === "Submitted" ? "secondary" : "outline";
+  const variant =
+    status === "Accepted"
+      ? "success"
+      : status === "Returned"
+        ? "warning"
+        : status === "Submitted"
+          ? "secondary"
+          : status === "Late"
+            ? "destructive"
+            : status === "Not Submitted"
+              ? "destructive"
+              : "outline";
   return <Badge variant={variant}>{status}</Badge>;
 }
 
 function isOverdue(memo: DeviationMemo): boolean {
-  return memo.status === "Assigned" && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
+  return (memo.status === "Assigned" || memo.status === "Late") && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
 }
 
-export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: Props) {
-  const [tab, setTab] = useState<Tab>("assign");
+export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, userEmail: userEmailRaw }: Props) {
+  const userEmail = userEmailRaw ?? "";
+  const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
+  const [tab, setTab] = useState<Tab>(rule.canAssign ? "assign" : "review");
+  const effectiveTab: Tab = rule.canAssign ? tab : "review";
+
+  const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
+  const authorizedAssigners = useMemo(() => getAuthorizedDeviationAssigners(roster), [roster]);
+  const ccEligible = useMemo(() => getCcEligiblePeople(roster), [roster]);
 
   const [cadetId, setCadetId] = useState("");
-  const [assignedBy, setAssignedBy] = useState("");
+  const me = roster.find((p) => p.email?.trim().toLowerCase() === userEmail.trim().toLowerCase());
+  const [assignedByEmail, setAssignedByEmail] = useState(me?.email ?? "");
+  const [assignedByName, setAssignedByName] = useState(me?.name ?? "");
+  const [cc, setCc] = useState<PersonRef[]>([]);
   const [reason, setReason] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [assigning, setAssigning] = useState(false);
@@ -47,28 +73,49 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
   const [reviewNotes, setReviewNotes] = useState("");
   const [deciding, setDeciding] = useState(false);
 
+  const [overrideId, setOverrideId] = useState<string | undefined>();
+  const [overrideStatus, setOverrideStatus] = useState<DeviationMemoStatus>("Assigned");
+  const [overrideNotes, setOverrideNotes] = useState("");
+  const [overriding, setOverriding] = useState(false);
+
+  // Section 7: a reviewOwnOnly viewer only ever sees memos they personally assigned (full review)
+  // or were CC'd on (view only) -- everyone else (Cadre/Cortes Garay) sees everything.
+  const visibleMemos = useMemo(() => {
+    if (!rule.reviewOwnOnly) return memos;
+    const email = userEmail.trim().toLowerCase();
+    return memos.filter((m) => m.assignedByEmail?.trim().toLowerCase() === email || m.cc.some((c) => c.email.trim().toLowerCase() === email));
+  }, [memos, rule.reviewOwnOnly, userEmail]);
+
+  const canReview = (m: DeviationMemo) => !rule.reviewOwnOnly || m.assignedByEmail?.trim().toLowerCase() === userEmail.trim().toLowerCase();
+
   const assigned = useMemo(
-    () => memos.filter((m) => m.status === "Assigned").sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
-    [memos]
+    () => visibleMemos.filter((m) => m.status === "Assigned" || m.status === "Late").sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
+    [visibleMemos]
   );
-  const submitted = useMemo(() => memos.filter((m) => m.status === "Submitted").sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "")), [
-    memos,
-  ]);
+  const submitted = useMemo(
+    () => visibleMemos.filter((m) => m.status === "Submitted").sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "")),
+    [visibleMemos]
+  );
   const decided = useMemo(
-    () => memos.filter((m) => m.status === "Accepted" || m.status === "Returned").sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? "")),
-    [memos]
+    () =>
+      visibleMemos
+        .filter((m) => m.status === "Accepted" || m.status === "Returned" || m.status === "Not Submitted")
+        .sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? "")),
+    [visibleMemos]
   );
 
   const handleAssign = async () => {
     const person = roster.find((p) => p.id === cadetId);
-    if (!person || !reason.trim() || !assignedBy.trim()) return;
+    if (!person || !reason.trim() || !assignedByEmail) return;
     setAssigning(true);
     setAssignError(undefined);
     try {
       await createMemo({
         cadetId: person.id,
         cadetName: person.name,
-        assignedBy: assignedBy.trim(),
+        assignedBy: assignedByName,
+        assignedByEmail,
+        cc,
         reason: reason.trim(),
         dateAssigned: new Date().toISOString(),
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
@@ -83,6 +130,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
       setCadetId("");
       setReason("");
       setDueDate("");
+      setCc([]);
     } catch (e) {
       setAssignError(e instanceof Error ? e.message : "Failed to assign.");
     } finally {
@@ -111,7 +159,31 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
     }
   };
 
+  // Section 2b: cadre can override any memo's status at any time, not just from the Pending/Assigned
+  // quick-action flow -- no status here is truly final.
+  const openOverride = (memo: DeviationMemo) => {
+    setOverrideId(memo.id);
+    setOverrideStatus(memo.status);
+    setOverrideNotes("");
+  };
+
+  const applyOverride = async (memo: DeviationMemo) => {
+    setOverriding(true);
+    try {
+      await updateMemo(memo.id, {
+        status: overrideStatus,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: me?.name ?? userEmail,
+        reviewNotes: overrideNotes || memo.reviewNotes,
+      });
+      setOverrideId(undefined);
+    } finally {
+      setOverriding(false);
+    }
+  };
+
   const reviewing = memos.find((m) => m.id === reviewingId);
+  const overriding_ = memos.find((m) => m.id === overrideId);
 
   return (
     <div>
@@ -120,9 +192,9 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
           <ClipboardList className="h-5 w-5 text-primary" />
           Deviation Memos
         </h2>
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
+        <Tabs value={effectiveTab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList>
-            <TabsTrigger value="assign">Assign</TabsTrigger>
+            {rule.canAssign && <TabsTrigger value="assign">Assign</TabsTrigger>}
             <TabsTrigger value="review">
               Submissions & Review
               {submitted.length > 0 && (
@@ -135,7 +207,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
         </Tabs>
       </div>
 
-      {tab === "assign" ? (
+      {effectiveTab === "assign" && rule.canAssign ? (
         <div className="space-y-6">
           <Card className="max-w-xl">
             <CardHeader>
@@ -145,7 +217,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
                 <Label>Cadet</Label>
-                <CadetCombobox cadets={roster} value={cadetId} onChange={setCadetId} className="w-full" />
+                <CadetCombobox cadets={assignTargets} value={cadetId} onChange={setCadetId} className="w-full" />
               </div>
               <div className="space-y-1.5">
                 <Label>Reason</Label>
@@ -154,15 +226,27 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Assigned by</Label>
-                  <Input value={assignedBy} onChange={(e) => setAssignedBy(e.target.value)} placeholder="Your name" />
+                  <PersonCombobox
+                    people={authorizedAssigners}
+                    value={assignedByEmail}
+                    onChange={(email, name) => {
+                      setAssignedByEmail(email);
+                      setAssignedByName(name);
+                    }}
+                    className="w-full"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label>Due date</Label>
                   <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label>CC (can view, not review -- POC or Cadre only)</Label>
+                <PersonMultiCombobox people={ccEligible} value={cc} onChange={setCc} />
+              </div>
               {assignError && <p className="text-sm text-destructive">{assignError}</p>}
-              <Button onClick={handleAssign} disabled={assigning || !cadetId || !reason.trim() || !assignedBy.trim()}>
+              <Button onClick={handleAssign} disabled={assigning || !cadetId || !reason.trim() || !assignedByEmail}>
                 <UserPlus className="h-3.5 w-3.5" />
                 {assigning ? "Assigning..." : "Assign"}
               </Button>
@@ -172,7 +256,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
           <Card>
             <CardHeader>
               <CardTitle>Awaiting cadet submission</CardTitle>
-              <CardDescription>Read-only here -- the cadet submits their PDF on the separate GMC/POC submission site.</CardDescription>
+              <CardDescription>Read-only here -- the cadet submits their PDF from the Memo Submission tab.</CardDescription>
             </CardHeader>
             <CardContent className="pt-2">
               <Table aria-label="Assigned deviation memos">
@@ -182,6 +266,8 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                     <TableHead>Reason</TableHead>
                     <TableHead>Assigned by</TableHead>
                     <TableHead>Due</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -194,11 +280,21 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                         {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
                         {isOverdue(m) && " (overdue)"}
                       </TableCell>
+                      <TableCell>
+                        <StatusBadge status={m.status} />
+                      </TableCell>
+                      <TableCell>
+                        {canReview(m) && (
+                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {assigned.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         Nothing outstanding.
                       </TableCell>
                     </TableRow>
@@ -237,9 +333,13 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button size="sm" onClick={() => openReview(m)}>
-                      Review
-                    </Button>
+                    {canReview(m) ? (
+                      <Button size="sm" onClick={() => openReview(m)}>
+                        Review
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">View only (CC'd)</span>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -266,6 +366,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                     <TableHead>Reviewed</TableHead>
                     <TableHead>By</TableHead>
                     <TableHead>Notes</TableHead>
+                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -278,11 +379,18 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                       <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
                       <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                       <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
+                      <TableCell>
+                        {canReview(m) && (
+                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                   {decided.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         Nothing decided yet.
                       </TableCell>
                     </TableRow>
@@ -328,6 +436,44 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo }: 
                 </Button>
                 <Button disabled={deciding} onClick={() => decide(reviewing, "Accepted")}>
                   Accept
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!overriding_} onOpenChange={(o) => !o && setOverrideId(undefined)}>
+        <DialogContent className="max-w-md">
+          {overriding_ && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Override status — {overriding_.cadetName}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Status</Label>
+                  <Select value={overrideStatus} onValueChange={(v) => setOverrideStatus(v as DeviationMemoStatus)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEVIATION_MEMO_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Notes</Label>
+                  <Textarea value={overrideNotes} onChange={(e) => setOverrideNotes(e.target.value)} placeholder="Optional -- why this was changed" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button disabled={overriding} onClick={() => applyOverride(overriding_)}>
+                  {overriding ? "Saving..." : "Save"}
                 </Button>
               </DialogFooter>
             </>

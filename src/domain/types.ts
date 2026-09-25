@@ -192,6 +192,8 @@ export interface AbsenceMemo {
   reason: AbsenceReason;
   /** Whether medical documentation was sent to the detachment separately from this memo. */
   medicalDocSent: boolean;
+  /** Cadet's own roster AS Class at the time of submission -- only collected on the future-PMT submission flow. */
+  asClassAtSubmission: AsClass | undefined;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
   status: AbsenceMemoStatus;
@@ -204,6 +206,14 @@ export interface AbsenceMemo {
   returnReason: string | undefined;
   /** Set once the Accepted/Rejected Attendance side-effect has actually been written, so it's never silently reapplied. */
   attendanceUpdatedAt: string | undefined;
+  /** True when this memo was auto-rejected for being late (first submission, a resubmit, or a missed-deadline escalation) -- kept even if cadre later overrides the status, so history/analytics can still show it was originally late. */
+  lateSubmission: boolean;
+}
+
+/** One person referenced by email+display name -- used for the deviation memo assigner/CC fields (Section 7 of the plan), where identity needs to be matched reliably rather than just displayed. */
+export interface PersonRef {
+  email: string;
+  name: string;
 }
 
 /** Assigned by a reviewer for a standards deviation, submitted by the cadet (with a PDF), then resolved as Accepted or Returned -- never Rejected outright. */
@@ -211,8 +221,12 @@ export interface DeviationMemo {
   id: string;
   cadetId: string;
   cadetName: string;
-  /** Free text -- whoever assigns it just types their own name. */
+  /** Display name of whoever assigned it -- populated from the `PersonCombobox` selection, not free-typed. */
   assignedBy: string;
+  /** Email of whoever assigned it -- used for assign/review access scoping (domain/access.ts). Undefined on memos created before Section 7 shipped. */
+  assignedByEmail: string | undefined;
+  /** People CC'd on this memo -- can view it but, per policy, cannot review it (only the assigner can). */
+  cc: PersonRef[];
   /** What the deviation was (e.g. uniform, grooming, punctuality) -- free text, no fixed catalog. */
   reason: string;
   dateAssigned: string;

@@ -1,5 +1,5 @@
-import { ATTENDANCE_WEIGHT, STANDING_THRESHOLDS, bucketForEventType, standingForPercent, type AttendanceStatus, type Standing } from "./constants";
-import type { Attendance, ExtraEvent, PmtEvent } from "./types";
+import { ATTENDANCE_WEIGHT, SEMESTER_PMT_TOTALS, STANDING_THRESHOLDS, bucketForEventType, standingForPercent, type AttendanceStatus, type Standing } from "./constants";
+import type { Attendance, PmtEvent } from "./types";
 
 export interface BucketTally {
   weightedSum: number;
@@ -22,9 +22,22 @@ function emptyTally(): BucketTally {
   return { weightedSum: 0, countedEvents: 0, percent: undefined, standing: undefined, statusCounts: { P: 0, L: 0, A: 0, AE: 0, PE: 0 } };
 }
 
-function finalize(t: BucketTally, hasThreshold: boolean): BucketTally {
-  const percent = t.countedEvents === 0 ? undefined : t.weightedSum / t.countedEvents;
-  return { ...t, percent, standing: hasThreshold ? standingForPercent(percent) : undefined };
+/**
+ * Percent (0-1 scale, matching `standingForPercent`'s thresholds) against a fixed semester total
+ * (Section 1): unrecorded/future PMTs are assumed fine until proven otherwise, so only recorded
+ * *shortfalls* -- sum of (1 - weight) over every recorded event -- count against the fixed total.
+ * `shortfall = countedEvents - weightedSum` since every weight is at most 1. Undefined `fixedTotal`
+ * (the "other" bucket, permanently unused now that D&C folds into LLAB_FM) keeps the old dynamic
+ * average with no standing threshold.
+ */
+function finalize(t: BucketTally, fixedTotal: number | undefined): BucketTally {
+  if (fixedTotal === undefined) {
+    const percent = t.countedEvents === 0 ? undefined : t.weightedSum / t.countedEvents;
+    return { ...t, percent, standing: undefined };
+  }
+  const shortfall = t.countedEvents - t.weightedSum;
+  const percent = Math.max(0, (fixedTotal - shortfall) / fixedTotal);
+  return { ...t, percent, standing: standingForPercent(percent) };
 }
 
 /** One cadet's attendance summary across every bucket. Pass the full attendance/pmtEvents lists -- filters to `cadetId` internally. */
@@ -52,38 +65,43 @@ export function computeCadetAttendanceSummary(
     tally.countedEvents += 1;
   }
 
-  return { pt: finalize(pt, true), llabFm: finalize(llabFm, true), other: finalize(other, false) };
+  return { pt: finalize(pt, SEMESTER_PMT_TOTALS.PT), llabFm: finalize(llabFm, SEMESTER_PMT_TOTALS.LLAB_FM), other: finalize(other, undefined) };
 }
 
 /**
- * How many more unexcused Absences (weight 0) this bucket could take on top of what's already
- * recorded before the percent would drop below the "Good" standing threshold. Undefined once
- * there's no data yet to base it on; 0 means the cadet is already at or below the line, so even one
- * more unexcused absence keeps/pushes them out of Good.
+ * How many more unexcused Absences (weight 0, i.e. +1 shortfall each) this bucket could take on top
+ * of what's already recorded before the percent would drop below the "Good" standing threshold
+ * (85%). 0 means the cadet is already at or below the line, so even one more unexcused absence
+ * keeps/pushes them out of Good.
  */
-export function absencesRemainingForGoodStanding(tally: BucketTally): number | undefined {
-  if (tally.countedEvents === 0) return undefined;
-  const maxAdditionalAbsences = tally.weightedSum / STANDING_THRESHOLDS.good - tally.countedEvents;
-  return Math.max(0, Math.floor(maxAdditionalAbsences));
+export function absencesRemainingForGoodStanding(tally: BucketTally, fixedTotal: number): number {
+  const currentShortfall = tally.countedEvents - tally.weightedSum;
+  const allowableShortfall = fixedTotal * (1 - STANDING_THRESHOLDS.good);
+  return Math.max(0, Math.floor(allowableShortfall - currentShortfall));
 }
 
 /**
- * "Combined average across every event type" (Section 6) -- computed fresh from the underlying
- * weights across every bucket at once, not a simple average of the three already-computed
- * per-bucket percentages (which would misweight cadets with very different event counts per bucket).
+ * "Combined average across every event type" (Section 6) -- computed fresh against the combined
+ * fixed total of the PT and LLAB_FM buckets (Section 1), same shortfall-based math as `finalize`,
+ * not a simple average of the two already-computed per-bucket percentages (which would misweight
+ * cadets with very different shortfalls per bucket).
  */
-export function computeCombinedPercent(cadetId: string, attendance: Attendance[], pmtEventsById: Map<string, PmtEvent>): number | undefined {
+export function computeCombinedPercent(cadetId: string, attendance: Attendance[], pmtEventsById: Map<string, PmtEvent>): number {
   let weightedSum = 0;
   let countedEvents = 0;
   for (const record of attendance) {
     if (record.cadetId !== cadetId) continue;
-    if (!pmtEventsById.has(record.pmtEventId)) continue;
+    const event = pmtEventsById.get(record.pmtEventId);
+    if (!event) continue;
+    if (bucketForEventType(event.eventType) === "OTHER") continue;
     const weight = ATTENDANCE_WEIGHT[record.status];
     if (weight === undefined) continue;
     weightedSum += weight;
     countedEvents += 1;
   }
-  return countedEvents === 0 ? undefined : weightedSum / countedEvents;
+  const fixedTotal = SEMESTER_PMT_TOTALS.PT + SEMESTER_PMT_TOTALS.LLAB_FM;
+  const shortfall = countedEvents - weightedSum;
+  return Math.max(0, (fixedTotal - shortfall) / fixedTotal);
 }
 
 /** Post-Accountability window: opens at the event's own time, closes 2000 the same calendar day. */
@@ -137,9 +155,4 @@ export function findTrainingWeekConflicts(events: PmtEvent[]): TrainingWeekConfl
     }
   }
   return conflicts.sort((a, b) => a.calendarWeekOf.localeCompare(b.calendarWeekOf));
-}
-
-/** Section 7: an Extra Event marked as a reposition whose original PMT no longer exists. */
-export function findStaleRepositions(extraEvents: ExtraEvent[], pmtEventsById: Map<string, PmtEvent>): ExtraEvent[] {
-  return extraEvents.filter((e) => e.repositionsPmtEventId !== undefined && !pmtEventsById.has(e.repositionsPmtEventId));
 }

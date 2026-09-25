@@ -3,13 +3,13 @@ import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutDashboard, UserRound, BarChart3, BookOpen, CalendarDays, Users, ListChecks, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, UserRound, BookOpen, CalendarDays, Users, ListChecks, ArrowLeft } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives, type TrainingObjectiveSeed } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "../domain/constants";
-import type { TrainingObjectivesAccess } from "../domain/access";
+import { applyUnitScope, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { HomeScreen } from "../screens/HomeScreen";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { CadetDetailScreen } from "../screens/CadetDetailScreen";
@@ -17,11 +17,10 @@ import { ReferenceLibraryScreen } from "../screens/ReferenceLibraryScreen";
 import { RosterScreen } from "../screens/RosterScreen";
 import { CalendarScreen } from "../screens/CalendarScreen";
 import { QuickLogScreen } from "../screens/QuickLogScreen";
-import { AnalyticsScreen } from "../screens/AnalyticsScreen";
 import trainingObjectivesSeed from "../data/trainingObjectivesSeed.json";
 
 type TopLevel = "home" | "poc" | "gmc";
-type Screen = "dashboard" | "cadet" | "reference" | "calendar" | "roster" | "quicklog" | "analytics";
+type Screen = "dashboard" | "cadet" | "reference" | "calendar" | "roster" | "quicklog";
 
 const COHORT_DEV_LEVELS: Record<"poc" | "gmc", readonly DevLevel[]> = {
   poc: POC_DEV_LEVELS,
@@ -41,10 +40,12 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 interface Props {
   /** "poc"/"gmc" skips the Home cohort-picker entirely and locks to that one cohort; "full" behaves as before (Home picker, either cohort). Never rendered at all when "none" -- the hub simply doesn't show this tab. */
   cohortAccess: TrainingObjectivesAccess;
+  /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5). */
+  unitScope: UnitScope;
 }
 
 /** POC/GMC "TO's" tracking -- Dashboard, Cadet Detail, Reference Library, Calendar, Roster, Quick Log, Analytics. */
-export function TrainingObjectivesApp({ cohortAccess }: Props) {
+export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
   const cadetsState = useCadets();
   const catalogState = useTrainingObjectives();
   const completionsState = useCompletions();
@@ -78,8 +79,9 @@ export function TrainingObjectivesApp({ cohortAccess }: Props) {
   const cohortCadets = useMemo(() => {
     if (topLevel === "home") return [];
     const levels = COHORT_DEV_LEVELS[topLevel];
-    return cadetsState.cadets.filter((c) => c.devLevel && (levels as readonly string[]).includes(c.devLevel));
-  }, [topLevel, cadetsState.cadets]);
+    const inCohort = cadetsState.cadets.filter((c) => c.devLevel && (levels as readonly string[]).includes(c.devLevel));
+    return applyUnitScope(unitScope, inCohort);
+  }, [topLevel, cadetsState.cadets, unitScope]);
 
   const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading;
   const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error;
@@ -141,10 +143,6 @@ export function TrainingObjectivesApp({ cohortAccess }: Props) {
                 <UserRound className="h-3.5 w-3.5" />
                 Cadet Detail
               </TabsTrigger>
-              <TabsTrigger value="analytics">
-                <BarChart3 className="h-3.5 w-3.5" />
-                Analytics
-              </TabsTrigger>
               <TabsTrigger value="reference">
                 <BookOpen className="h-3.5 w-3.5" />
                 Reference Library
@@ -192,18 +190,6 @@ export function TrainingObjectivesApp({ cohortAccess }: Props) {
                     onSelectCadet={goToCadet}
                   />
                 )}
-              </AnimatedPanel>
-            </TabsContent>
-            <TabsContent value="analytics">
-              <AnimatedPanel>
-                <AnalyticsScreen
-                  levels={COHORT_DEV_LEVELS[topLevel]}
-                  cadets={cohortCadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  onSelectCadet={goToCadet}
-                />
               </AnimatedPanel>
             </TabsContent>
             <TabsContent value="reference">

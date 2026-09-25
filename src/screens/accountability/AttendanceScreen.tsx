@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,8 @@ interface Props {
   assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, attendanceId: string) => Promise<void>;
   retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string) => Promise<void>;
   linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string) => Promise<boolean>;
+  /** Set by the Dashboard's "Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
+  initialPmtEventId?: string;
 }
 
 const NONE = "__none__";
@@ -40,6 +42,7 @@ export function AttendanceScreen({
   assignAbsenceMemo,
   retractAbsenceMemoAssignment,
   linkPreSubmittedAttendance,
+  initialPmtEventId,
 }: Props) {
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
@@ -63,6 +66,16 @@ export function AttendanceScreen({
   const [saveError, setSaveError] = useState<string | undefined>();
   const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
+
+  // Dashboard's "Accountability" card jumping here with a specific PMT -- select its Training Week
+  // (so it actually appears in the filtered dropdown) and the PMT itself.
+  useEffect(() => {
+    if (!initialPmtEventId) return;
+    const target = events.find((e) => e.id === initialPmtEventId);
+    if (!target) return;
+    setTwFilter(target.trainingWeek);
+    setSelectedEventId(target.id);
+  }, [initialPmtEventId, events]);
 
   const handleTwChange = (v: string) => {
     const tw = v === "All" ? undefined : Number(v);

@@ -109,12 +109,12 @@ export const ATTENDANCE_WEIGHT: Record<AttendanceStatus, number | undefined> = {
 export const ABSENCE_REASONS = ["Academics", "Medical", "Personal", "Work/Job", "Other"] as const;
 export type AbsenceReason = (typeof ABSENCE_REASONS)[number];
 
-/** Percentage bucket for threshold purposes: PT stands alone, LLAB+FM are combined. D&C ("Other") has no threshold. */
+/** Percentage bucket for threshold purposes: PT stands alone, LLAB+FM+D&C are combined (D&C is a type of LLAB session). "OTHER" is unused today -- kept for any future PMT type that shouldn't count toward either threshold. */
 export type AttendanceBucket = "PT" | "LLAB_FM" | "OTHER";
 
 export function bucketForEventType(eventType: PmtEventType): AttendanceBucket {
   if (eventType === "PT") return "PT";
-  if (eventType === "LLAB" || eventType === "FM") return "LLAB_FM";
+  if (eventType === "LLAB" || eventType === "FM" || eventType === "D&C") return "LLAB_FM";
   return "OTHER";
 }
 
@@ -129,6 +129,9 @@ export function standingForPercent(percent: number | undefined): Standing | unde
   return "Hard Limit";
 }
 
+/** Fixed semester totals for the attendance % denominator (Section 1 of the plan) -- update these each semester. D&C occurrences count toward LLAB_FM since D&C is a type of LLAB session. */
+export const SEMESTER_PMT_TOTALS: Record<"PT" | "LLAB_FM", number> = { PT: 27, LLAB_FM: 28 };
+
 // AS Class options for an academic-class absence (as opposed to a PMT absence) -- deliberately a
 // narrower list than the full roster AS_CLASSES above (no AS250/AS500/AS600 -- those don't have
 // their own AS-class instruction block).
@@ -141,9 +144,11 @@ export type Instructor = (typeof INSTRUCTORS)[number];
 /**
  * Absence Memo lifecycle. "Assigned" -- auto-created the instant a cadet is marked Absent, before
  * the cadet has done anything. "Pending" -- the cadet has submitted, which also flips the covered
- * Attendance record(s) from A to PE. Accepted -> flips PE to AE. Rejected -> final, flips PE back
- * to A, no resubmit expected. Returned -> sent back to the cadet to fix and resubmit within 48
- * hours, no Attendance side-effect (stays PE).
+ * Attendance record(s) from A to PE. Accepted -> flips PE to AE. Rejected -> flips PE back to A;
+ * also the automatic outcome of a late submission or a missed deadline (see `lateSubmission` on
+ * AbsenceMemo). Returned -> sent back to the cadet to fix and resubmit within 48 hours, no
+ * Attendance side-effect (stays PE). No status here is truly final -- cadre can manually override
+ * any memo to any status at any time (Section 2b of the plan).
  */
 export const ABSENCE_MEMO_STATUSES = ["Assigned", "Pending", "Accepted", "Rejected", "Returned"] as const;
 export type AbsenceMemoStatus = (typeof ABSENCE_MEMO_STATUSES)[number];
@@ -164,8 +169,14 @@ export function absenceMemoDeadline(eventDate: string, eventType: PmtEventType):
   return new Date(end.getTime() + 72 * 3_600_000);
 }
 
-/** Deviation Memo lifecycle -- assign, cadet submits, reviewer accepts or returns. No Rejected state (a deviation memo is always eventually resolved, not denied outright). */
-export const DEVIATION_MEMO_STATUSES = ["Assigned", "Submitted", "Accepted", "Returned"] as const;
+/**
+ * Deviation Memo lifecycle -- assign, cadet submits, reviewer accepts or returns. "Late" is set
+ * automatically once `dueDate` passes with no submission (still submittable). "Not Submitted" is
+ * set automatically 24h after that with still no submission -- terminal, hidden from the cadet's
+ * own submit screen, but still visible in review/history/analytics. No status here is final --
+ * cadre can manually override any memo to any status at any time (Section 2b of the plan).
+ */
+export const DEVIATION_MEMO_STATUSES = ["Assigned", "Submitted", "Late", "Accepted", "Returned", "Not Submitted"] as const;
 export type DeviationMemoStatus = (typeof DEVIATION_MEMO_STATUSES)[number];
 
 export const MEMO_STATUS_LABELS: Record<string, string> = {
@@ -175,4 +186,6 @@ export const MEMO_STATUS_LABELS: Record<string, string> = {
   Returned: "Returned",
   Assigned: "Assigned",
   Submitted: "Submitted",
+  Late: "Late",
+  "Not Submitted": "Not Submitted",
 };

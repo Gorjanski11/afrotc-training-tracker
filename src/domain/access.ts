@@ -89,6 +89,7 @@ const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
   "jorge.cortes4@upr.edu": ALL_ACCESS,
   "francisco.saltiel@upr.edu": ALL_ACCESS, // Saltiel Lima, Francisco (CWL)
   "jossie.mo@upr.edu": ALL_ACCESS, // Mo Velez, Jossie (CWL)
+  "michael.deaton@upr.edu": ALL_ACCESS, // Capt Deaton (Cadre, OFC)
 
   "john.santiago12@upr.edu": pocGroupAccess("TRG"), // Santiago Ruiz, John (TRG Group Commander)
   "lorean.delgado@upr.edu": pocGroupAccess("OG"), // Delgado Ortiz, Lorean (OG Group Commander)

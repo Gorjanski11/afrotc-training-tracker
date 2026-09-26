@@ -148,7 +148,13 @@ function ClickableDot({
   if (cx === undefined || cy === undefined) return null;
   const eventId = payload?.[eventKey] as string | undefined;
   return (
-    <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ cursor: eventId ? "pointer" : "default" }} onClick={() => onDotClick(eventId)} />
+    <g style={{ cursor: eventId ? "pointer" : "default" }} onClick={() => onDotClick(eventId)}>
+      {/* Real click target -- much bigger than the visible dot (3px is too small to reliably
+          click), and pointer-events explicitly forced on in case an ancestor recharts layer set
+          pointer-events: none for its own decorative/clip-path purposes. */}
+      <circle cx={cx} cy={cy} r={10} fill="transparent" style={{ pointerEvents: "all" }} />
+      <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ pointerEvents: "none" }} />
+    </g>
   );
 }
 

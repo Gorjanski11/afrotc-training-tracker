@@ -47,8 +47,8 @@ function App() {
   const visibleTabs: HubTab[] = [
     ...(tabAccess.accountability ? (["accountability"] as const) : []),
     ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
-    "memoSubmission",
     ...(tabAccess.gmcDashboard ? (["gmcDashboard"] as const) : []),
+    "memoSubmission",
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
     ...(hasSettingsAccess ? (["settings"] as const) : []),
@@ -105,16 +105,16 @@ function App() {
                 TO's
               </TabsTrigger>
             )}
-            <TabsTrigger value="memoSubmission">
-              <Send className="h-3.5 w-3.5" />
-              Memo Submission
-            </TabsTrigger>
             {tabAccess.gmcDashboard && (
               <TabsTrigger value="gmcDashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 My Dashboard
               </TabsTrigger>
             )}
+            <TabsTrigger value="memoSubmission">
+              <Send className="h-3.5 w-3.5" />
+              Memo Submission
+            </TabsTrigger>
             {tabAccess.memoReview && (
               <TabsTrigger value="memoReview">
                 <FileText className="h-3.5 w-3.5" />
@@ -152,17 +152,17 @@ function App() {
                 </AnimatedPanel>
               </TabsContent>
             )}
-            {activeTab === "memoSubmission" && (
-              <TabsContent value="memoSubmission" className="h-full" forceMount>
-                <AnimatedPanel>
-                  <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
-                </AnimatedPanel>
-              </TabsContent>
-            )}
             {activeTab === "gmcDashboard" && tabAccess.gmcDashboard && (
               <TabsContent value="gmcDashboard" className="h-full" forceMount>
                 <AnimatedPanel>
                   <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {activeTab === "memoSubmission" && (
+              <TabsContent value="memoSubmission" className="h-full" forceMount>
+                <AnimatedPanel>
+                  <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
                 </AnimatedPanel>
               </TabsContent>
             )}

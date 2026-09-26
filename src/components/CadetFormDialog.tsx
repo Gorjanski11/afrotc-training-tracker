@@ -20,6 +20,7 @@ interface Props {
 
 export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedDevLevels = DEV_LEVELS }: Props) {
   const [name, setName] = useState(existingCadet?.name ?? "");
+  const [rank, setRank] = useState(existingCadet?.rank ?? "");
   const [asClass, setAsClass] = useState<AsClass | undefined>(existingCadet?.asClass);
   const [devLevel, setDevLevel] = useState<DevLevel | undefined>(existingCadet?.devLevel);
   const [status, setStatus] = useState<CadetStatus>(existingCadet?.status ?? "Active");
@@ -28,6 +29,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
   const [flight, setFlight] = useState<Flight | undefined>(existingCadet?.flight);
   const [group, setGroup] = useState<Group | undefined>(existingCadet?.group);
   const [isCadre, setIsCadre] = useState(existingCadet?.isCadre ?? false);
+  const [isCwl, setIsCwl] = useState(existingCadet?.isCwl ?? false);
   const [position, setPosition] = useState(existingCadet?.position ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -43,6 +45,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
       const statusChanged = status !== existingCadet?.status;
       await onSave({
         name: name.trim(),
+        rank: rank.trim() === "" ? undefined : rank.trim(),
         asClass,
         devLevel,
         status,
@@ -51,6 +54,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
         flight: isGmc ? flight : undefined,
         group,
         isCadre,
+        isCwl,
         position: position.trim() === "" ? undefined : position.trim(),
         statusChangedDate: statusChanged ? new Date().toISOString().slice(0, 10) : existingCadet?.statusChangedDate,
       });
@@ -74,6 +78,13 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
             <Label>Name (Last, First) *</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Doe, John" />
           </div>
+
+          {!isCadre && (
+            <div className="grid gap-1.5">
+              <Label>Rank</Label>
+              <Input value={rank} onChange={(e) => setRank(e.target.value)} placeholder="e.g. 2d Lt, SSgt -- displays as C/{rank} {name}" />
+            </div>
+          )}
 
           <div className="grid gap-1.5">
             <Label>AS Class *</Label>
@@ -171,6 +182,13 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
             <input type="checkbox" checked={isCadre} onChange={(e) => setIsCadre(e.target.checked)} />
             Cadre (manual override -- Class becomes "Cadre" regardless of AS Level)
           </label>
+
+          {!isCadre && (
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={isCwl} onChange={(e) => setIsCwl(e.target.checked)} />
+              CWL (badge only -- doesn't change Group or AS Class; AS700 gets this automatically)
+            </label>
+          )}
 
           <div className="grid gap-1.5">
             <Label>Notes</Label>

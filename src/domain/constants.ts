@@ -14,7 +14,7 @@ export const DEV_LEVEL_LABELS: Record<DevLevel, string> = {
   SCL: "Senior Cadet Leader (SCL)",
 };
 
-export const AS_CLASSES = ["AS100", "AS200", "AS250", "AS300", "AS400", "AS500", "AS600"] as const;
+export const AS_CLASSES = ["AS100", "AS200", "AS250", "AS300", "AS400", "AS500", "AS700"] as const;
 export type AsClass = (typeof AS_CLASSES)[number];
 /** Alias for the name Accountability's/Memorandums' ported code uses for this same field. */
 export type AsLevel = AsClass;
@@ -74,6 +74,16 @@ export function deriveClass(asLevel: AsClass | undefined, isCadre: boolean): Ros
   if (isCadre) return "Cadre";
   if (asLevel && GMC_AS_LEVELS.includes(asLevel)) return "GMC";
   return "POC";
+}
+
+/**
+ * CWL is a badge, not a roster class or Group -- confirmed with cadre it must not change anyone's
+ * Group field or AS Class (several CWL members are Group Commanders whose own Accountability/TO
+ * views are scoped by that Group field, and reassigning it would break that scoping). AS700 implies
+ * CWL automatically; anyone else is CWL only via the manual `isCwl` override on their roster record.
+ */
+export function isCwlMember(asClass: AsClass | undefined, isCwl: boolean): boolean {
+  return isCwl || asClass === "AS700";
 }
 
 export const EXTRA_EVENT_TYPES = ["Extra PT", "Extra D&C", "Reposition", "Bonding"] as const;
@@ -141,6 +151,14 @@ export type AbsenceAsClass = (typeof ABSENCE_AS_CLASSES)[number];
 export const INSTRUCTORS = ["Lt Col Laboy", "Capt Jackson", "Capt Deaton", "TSgt Reynoso"] as const;
 export type Instructor = (typeof INSTRUCTORS)[number];
 
+/** Which cadre instructs which AS-Class, confirmed with cadre -- auto-fills the Instructor field on an AS-Class absence instead of asking the cadet to pick. */
+export const INSTRUCTOR_BY_AS_CLASS: Record<AbsenceAsClass, Instructor> = {
+  AS100: "Capt Jackson",
+  AS200: "Lt Col Laboy",
+  AS300: "TSgt Reynoso",
+  AS400: "Capt Deaton",
+};
+
 /**
  * Absence Memo lifecycle. "Assigned" -- auto-created the instant a cadet is marked Absent, before
  * the cadet has done anything. "Pending" -- the cadet has submitted, which also flips the covered
@@ -167,6 +185,12 @@ export function absenceMemoDeadline(eventDate: string, eventType: PmtEventType):
   const { hours, minutes } = PMT_END_TIME[eventType];
   end.setHours(hours, minutes, 0, 0);
   return new Date(end.getTime() + 72 * 3_600_000);
+}
+
+/** 23:59:59 local time on a plain "YYYY-MM-DD" date-input value -- e.g. a Deviation Memo due date of "3 September" means the cadet has until 2359 that day, not midnight at the start of it. */
+export function endOfDay(dateInputValue: string): Date {
+  const [year, month, day] = dateInputValue.split("-").map(Number);
+  return new Date(year, month - 1, day, 23, 59, 59, 999);
 }
 
 /**

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Save, TriangleAlert, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
@@ -19,7 +20,7 @@ interface Props {
   updateAttendance: (id: string, input: AttendanceInput) => Promise<void>;
   catalog: TrainingObjective[];
   applyAbsenceNotPass: (cadet: Cadet, pmtEvent: PmtEvent, catalogById: Map<string, TrainingObjective>) => Promise<void>;
-  assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, attendanceId: string) => Promise<void>;
+  assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => Promise<void>;
   retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string) => Promise<void>;
   linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string) => Promise<boolean>;
   /** Set by the Dashboard's "Missed Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
@@ -67,7 +68,9 @@ export function AttendanceScreen({
   );
 
   const [selectedEventId, setSelectedEventId] = useState<string | undefined>(weekEvents[0]?.id);
-  const [pending, setPending] = useState<Record<string, { status: AttendanceStatus; absenceReason: AbsenceReason | undefined }>>({});
+  const [pending, setPending] = useState<
+    Record<string, { status: AttendanceStatus; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
+  >({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
   const [groupFilter, setGroupFilter] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
@@ -123,14 +126,21 @@ export function AttendanceScreen({
     return map;
   }, [attendance, selectedEventId]);
 
-  const getValue = (cadetId: string): { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined } => {
+  const getValue = (
+    cadetId: string
+  ): { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined } => {
     if (cadetId in pending) return pending[cadetId];
     const existing = existingByCadet.get(cadetId);
-    return existing ? { status: existing.status, absenceReason: existing.absenceReason } : { status: NONE, absenceReason: undefined };
+    return existing
+      ? { status: existing.status, absenceReason: existing.absenceReason, absenceReasonOther: existing.absenceReasonOther }
+      : { status: NONE, absenceReason: undefined, absenceReasonOther: undefined };
   };
 
-  const setValue = (cadetId: string, status: AttendanceStatus, absenceReason: AbsenceReason | undefined) => {
-    setPending((prev) => ({ ...prev, [cadetId]: { status, absenceReason } }));
+  const setValue = (cadetId: string, status: AttendanceStatus, absenceReason: AbsenceReason | undefined, absenceReasonOther?: string) => {
+    setPending((prev) => ({
+      ...prev,
+      [cadetId]: { status, absenceReason, absenceReasonOther: absenceReason === "Other" ? (absenceReasonOther ?? prev[cadetId]?.absenceReasonOther) : undefined },
+    }));
   };
 
   /**
@@ -147,7 +157,7 @@ export function AttendanceScreen({
         return next;
       });
     } else {
-      setValue(cadetId, status, status === "A" ? (current.absenceReason ?? ABSENCE_REASONS[0]) : undefined);
+      setValue(cadetId, status, status === "A" ? (current.absenceReason ?? ABSENCE_REASONS[0]) : undefined, current.absenceReasonOther);
     }
   };
 
@@ -166,6 +176,7 @@ export function AttendanceScreen({
           pmtEventId: selectedEventId,
           status: value.status,
           absenceReason: value.status === "A" ? value.absenceReason : undefined,
+          absenceReasonOther: value.status === "A" ? value.absenceReasonOther : undefined,
           recordedAt: nowIso(),
           notes: existing?.notes ?? "",
         };
@@ -194,7 +205,7 @@ export function AttendanceScreen({
             } else {
               // An Absence Memo is assigned to the cadet the instant they're marked Absent -- the
               // cadet then picks it up from the Memo Submissions site.
-              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, attendanceId);
+              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId);
             }
           }
         } else {
@@ -336,21 +347,31 @@ export function AttendanceScreen({
                   </TableCell>
                   <TableCell>
                     {value.status === "A" && (
-                      <Select
-                        value={value.absenceReason ?? ABSENCE_REASONS[0]}
-                        onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason)}
-                      >
-                        <SelectTrigger className="h-7 w-40 text-[11px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ABSENCE_REASONS.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              {r}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex items-center gap-1.5">
+                        <Select
+                          value={value.absenceReason ?? ABSENCE_REASONS[0]}
+                          onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason, value.absenceReasonOther)}
+                        >
+                          <SelectTrigger className="h-7 w-40 text-[11px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ABSENCE_REASONS.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {value.absenceReason === "Other" && (
+                          <Input
+                            value={value.absenceReasonOther ?? ""}
+                            onChange={(e) => setValue(cadet.id, "A", "Other", e.target.value)}
+                            placeholder="Describe the reason"
+                            className="h-7 w-48 text-[11px]"
+                          />
+                        )}
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

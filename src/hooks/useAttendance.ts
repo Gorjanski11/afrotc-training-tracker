@@ -12,6 +12,7 @@ export interface AttendanceInput {
   pmtEventId: string;
   status: AttendanceStatus;
   absenceReason: AbsenceReason | undefined;
+  absenceReasonOther: string | undefined;
   recordedAt: string;
   notes: string;
 }
@@ -23,6 +24,7 @@ function mapAttendance(id: string, data: Record<string, unknown>): Attendance {
     pmtEventId: (data.pmtEventId as string) ?? "",
     status: ((data.status as AttendanceStatus) ?? "P") as AttendanceStatus,
     absenceReason: (data.absenceReason as AbsenceReason | null | undefined) ?? undefined,
+    absenceReasonOther: (data.absenceReasonOther as string | null | undefined) ?? undefined,
     recordedAt: (data.recordedAt as string) ?? "",
     notes: (data.notes as string) ?? "",
   };

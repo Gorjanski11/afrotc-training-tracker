@@ -9,8 +9,9 @@ import { FileText, Send, CheckCircle2, Plus, Upload, CalendarClock } from "lucid
 import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
-import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTORS, absenceMemoDeadline } from "../../domain/constants";
-import type { AbsenceAsClass, AbsenceReason, Instructor } from "../../domain/constants";
+import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTOR_BY_AS_CLASS, absenceMemoDeadline } from "../../domain/constants";
+import { formatCadetName } from "../../domain/nameUtils";
+import type { AbsenceAsClass, AbsenceReason } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent, Cadet } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -44,6 +45,7 @@ const REQUIREMENTS_LIST = (
       chart (e.g., Maintenance Group Commander), or flight membership, if the cadet does not currently hold a Cadet Wing Position (e.g., Alpha
       Flight Member).
     </li>
+    <li>Medical documentation, if any, will be attached to the memorandum document -- but it may also be sent separately if preferred.</li>
     <li className="font-medium text-foreground">Should the aforementioned submission requirements not be met, the absence will not be excused.</li>
   </ul>
 );
@@ -60,8 +62,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const [addAsClass, setAddAsClass] = useState(false);
   const [asClass, setAsClass] = useState<AbsenceAsClass | typeof NONE>(NONE);
   const [classDate, setClassDate] = useState("");
-  const [classTitle, setClassTitle] = useState("");
-  const [instructor, setInstructor] = useState<Instructor | typeof NONE>(NONE);
   const [medicalDocSent, setMedicalDocSent] = useState(false);
   const [file, setFile] = useState<File | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -81,13 +81,12 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const [futureTw, setFutureTw] = useState<string>(NONE);
   const [futureSelectedIds, setFutureSelectedIds] = useState<Set<string>>(new Set());
   const [futureReason, setFutureReason] = useState<AbsenceReason | typeof NONE>(NONE);
+  const [futureReasonOther, setFutureReasonOther] = useState("");
   // Section 3: the same "Add an AS-Class absence" mini-form as the current/immediate flow below,
   // just also offered here -- for reporting a future AS-Class session you already know you'll miss.
   const [futureAddAsClass, setFutureAddAsClass] = useState(false);
   const [futureAsClass, setFutureAsClass] = useState<AbsenceAsClass | typeof NONE>(NONE);
   const [futureClassDate, setFutureClassDate] = useState("");
-  const [futureClassTitle, setFutureClassTitle] = useState("");
-  const [futureInstructor, setFutureInstructor] = useState<Instructor | typeof NONE>(NONE);
   const [futureMedicalDocSent, setFutureMedicalDocSent] = useState(false);
   const [futureFile, setFutureFile] = useState<File | undefined>();
   const [futureSubmitting, setFutureSubmitting] = useState(false);
@@ -155,19 +154,19 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     setFutureTw(NONE);
     setFutureSelectedIds(new Set());
     setFutureReason(NONE);
+    setFutureReasonOther("");
     setFutureAddAsClass(false);
     setFutureAsClass(NONE);
     setFutureClassDate("");
-    setFutureClassTitle("");
-    setFutureInstructor(NONE);
     setFutureMedicalDocSent(false);
     setFutureFile(undefined);
   };
 
-  const hasFutureClassInfo = futureAddAsClass && futureAsClass !== NONE && futureClassDate.trim() && futureClassTitle.trim() && futureInstructor !== NONE;
-  const canSubmitFuture = futureSelectedIds.size > 0 && futureReason !== NONE && !!futureFile;
+  const hasFutureClassInfo = futureAddAsClass && futureAsClass !== NONE && futureClassDate.trim();
+  const canSubmitFuture =
+    futureSelectedIds.size > 0 && futureReason !== NONE && (futureReason !== "Other" || futureReasonOther.trim()) && !!futureFile;
 
-  const hasClassInfo = addAsClass && asClass !== NONE && classDate.trim() && classTitle.trim() && instructor !== NONE;
+  const hasClassInfo = addAsClass && asClass !== NONE && classDate.trim();
   const canSubmit = (selectedIds.size > 0 || hasClassInfo) && !!file;
 
   const toggleSelected = (id: string) => {
@@ -184,8 +183,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     setAddAsClass(false);
     setAsClass(NONE);
     setClassDate("");
-    setClassTitle("");
-    setInstructor(NONE);
     setMedicalDocSent(false);
     setFile(undefined);
   };
@@ -202,6 +199,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
       // Auto-filled from whichever covered PMT absence was recorded first -- an AS-Class-only
       // memo (no covered PMT) defaults to Academics, since that's what it always is.
       const reason = covering[0]?.reason ?? "Academics";
+      const reasonOther = covering[0]?.reasonOther;
 
       // Section 2a: any covered PMT already past its own 72-hour deadline makes this whole
       // submission late -- auto-rejected on arrival rather than entering the normal Pending queue.
@@ -215,15 +213,15 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
 
       await createMemo({
         cadetId: person.id,
-        cadetName: person.name,
+        cadetName: formatCadetName(person),
         pmtEventIds,
         attendanceIds,
         assignedAt: undefined,
         asClass: hasClassInfo ? (asClass as AbsenceAsClass) : undefined,
         classDate: hasClassInfo ? new Date(classDate).toISOString() : undefined,
-        classTitle: hasClassInfo ? classTitle.trim() : undefined,
-        instructor: hasClassInfo ? (instructor as Instructor) : undefined,
+        instructor: hasClassInfo ? INSTRUCTOR_BY_AS_CLASS[asClass as AbsenceAsClass] : undefined,
         reason,
+        reasonOther,
         medicalDocSent,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
@@ -264,7 +262,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
 
       await createMemo({
         cadetId: person.id,
-        cadetName: person.name,
+        cadetName: formatCadetName(person),
         pmtEventIds,
         // No Attendance record exists for a PMT that hasn't happened yet -- one "" placeholder per
         // covered PMT, parallel to pmtEventIds. Accountability fills the real id in (and promotes
@@ -274,9 +272,9 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         assignedAt: undefined,
         asClass: hasFutureClassInfo ? (futureAsClass as AbsenceAsClass) : undefined,
         classDate: hasFutureClassInfo ? new Date(futureClassDate).toISOString() : undefined,
-        classTitle: hasFutureClassInfo ? futureClassTitle.trim() : undefined,
-        instructor: hasFutureClassInfo ? (futureInstructor as Instructor) : undefined,
+        instructor: hasFutureClassInfo ? INSTRUCTOR_BY_AS_CLASS[futureAsClass as AbsenceAsClass] : undefined,
         reason: futureReason as AbsenceReason,
+        reasonOther: futureReason === "Other" ? futureReasonOther.trim() : undefined,
         medicalDocSent: futureMedicalDocSent,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
@@ -454,26 +452,9 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                       <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Material covered that day</Label>
-                    <Input value={classTitle} onChange={(e) => setClassTitle(e.target.value)} placeholder="e.g. Chapter 4: Leadership Theory" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Instructor</Label>
-                    <Select value={instructor} onValueChange={(v) => setInstructor(v as Instructor | typeof NONE)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Select</SelectItem>
-                        {INSTRUCTORS.map((i) => (
-                          <SelectItem key={i} value={i}>
-                            {i}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {asClass !== NONE && (
+                    <p className="text-sm text-muted-foreground">Instructor: {INSTRUCTOR_BY_AS_CLASS[asClass as AbsenceAsClass]}</p>
+                  )}
                 </div>
               )}
 
@@ -610,26 +591,9 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                       <Input type="date" value={futureClassDate} onChange={(e) => setFutureClassDate(e.target.value)} />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label>Material covered that day</Label>
-                    <Input value={futureClassTitle} onChange={(e) => setFutureClassTitle(e.target.value)} placeholder="e.g. Chapter 4: Leadership Theory" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Instructor</Label>
-                    <Select value={futureInstructor} onValueChange={(v) => setFutureInstructor(v as Instructor | typeof NONE)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NONE}>Select</SelectItem>
-                        {INSTRUCTORS.map((i) => (
-                          <SelectItem key={i} value={i}>
-                            {i}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  {futureAsClass !== NONE && (
+                    <p className="text-sm text-muted-foreground">Instructor: {INSTRUCTOR_BY_AS_CLASS[futureAsClass as AbsenceAsClass]}</p>
+                  )}
                 </div>
               )}
 
@@ -648,6 +612,14 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     ))}
                   </SelectContent>
                 </Select>
+                {futureReason === "Other" && (
+                  <Input
+                    value={futureReasonOther}
+                    onChange={(e) => setFutureReasonOther(e.target.value)}
+                    placeholder="Describe the reason"
+                    className="mt-1.5"
+                  />
+                )}
               </div>
 
               <label className="flex items-center gap-2 text-sm">

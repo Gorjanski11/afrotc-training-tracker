@@ -258,12 +258,12 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                   {reviewing.asClass && (
                     <div>
                       <strong>AS Class:</strong> {reviewing.asClass} — {reviewing.classDate ? new Date(reviewing.classDate).toLocaleDateString() : "no date"}
-                      {reviewing.classTitle && <> — "{reviewing.classTitle}"</>}
                       {reviewing.instructor && <> — {reviewing.instructor}</>}
                     </div>
                   )}
                   <div>
                     <strong>Reason:</strong> {reviewing.reason}
+                    {reviewing.reason === "Other" && reviewing.reasonOther && <>: {reviewing.reasonOther}</>}
                     {reviewing.medicalDocSent && " (medical documentation sent separately)"}
                   </div>
                   {reviewing.pdfUrl && (

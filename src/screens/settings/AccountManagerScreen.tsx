@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { UserCog } from "lucide-react";
 import { resolveTabAccess } from "../../domain/access";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { Cadet } from "../../domain/types";
 import type { CadetInput } from "../../hooks/useCadets";
 
@@ -59,6 +59,7 @@ export function AccountManagerScreen({ roster, updateCadetFields }: Props) {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Rank</TableHead>
                   <TableHead>Cadre</TableHead>
                   <TableHead>Position</TableHead>
                   <TableHead>Resolved access</TableHead>
@@ -67,8 +68,23 @@ export function AccountManagerScreen({ roster, updateCadetFields }: Props) {
               <TableBody>
                 {rows.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="whitespace-nowrap">{p.name}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatCadetName(p)}</TableCell>
                     <TableCell className="whitespace-nowrap">{p.email ?? "—"}</TableCell>
+                    <TableCell>
+                      {p.isCadre ? (
+                        <span className="text-muted-foreground">—</span>
+                      ) : (
+                        <Input
+                          defaultValue={p.rank ?? ""}
+                          placeholder="e.g. 2d Lt"
+                          className="h-8 w-28"
+                          onBlur={(e) => {
+                            const value = e.target.value.trim();
+                            if (value !== (p.rank ?? "")) updateCadetFields(p.id, { rank: value === "" ? undefined : value });
+                          }}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell>
                       <input
                         type="checkbox"
@@ -94,7 +110,7 @@ export function AccountManagerScreen({ roster, updateCadetFields }: Props) {
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       No one matches this search.
                     </TableCell>
                   </TableRow>

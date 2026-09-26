@@ -17,7 +17,10 @@ import type {
 
 export interface Cadet {
   id: string;
+  /** Plain "Last, First" -- no rank. Display it as "C/{rank} {name}" via `formatCadetName` (domain/nameUtils.ts), never read raw except there. */
   name: string;
+  /** Cadet rank abbreviation (e.g. "2d Lt", "SSgt") -- unset until entered via the Roster editor. Never set for Cadre, who use their real rank in `name` directly instead. */
+  rank: string | undefined;
   asClass: AsClass | undefined;
   devLevel: DevLevel | undefined;
   status: CadetStatus | undefined;
@@ -30,6 +33,8 @@ export interface Cadet {
   group: Group | undefined;
   /** Manual override -- when true this person is Cadre regardless of AS Level/devLevel. Also used by the hub's access rule (domain/access.ts). */
   isCadre: boolean;
+  /** CWL is a badge, not a Group or AS Class (see `isCwlMember` in domain/constants.ts) -- manual override for someone who's CWL despite not being AS700. */
+  isCwl: boolean;
   /** Free text -- role within `group`, or one of the 5 Cadre-only positions. */
   position: string | undefined;
   /** Manual-entry date (ISO) -- needed for "recently deactivated" flagging since Active/Inactive alone can't show recency. */
@@ -140,6 +145,8 @@ export interface Attendance {
   status: AttendanceStatus;
   /** Required when status is "A". */
   absenceReason: AbsenceReason | undefined;
+  /** Free text -- required when absenceReason is "Other". */
+  absenceReasonOther: string | undefined;
   /** ISO datetime the entry was actually recorded, so "outside the normal window" can be flagged. */
   recordedAt: string;
   notes: string;
@@ -184,12 +191,13 @@ export interface AbsenceMemo {
   attendanceIds: string[];
   /** ISO datetime Accountability auto-created this as "Assigned" -- undefined for a memo the cadet created fresh. */
   assignedAt: string | undefined;
-  /** AS-Class-absence fields -- a memo can cover a missed PMT, a missed AS-Class session, or both. All four are set together or not at all. */
+  /** AS-Class-absence fields -- a memo can cover a missed PMT, a missed AS-Class session, or both. All three are set together or not at all. Instructor is auto-derived from asClass, never picked. */
   asClass: AbsenceAsClass | undefined;
   classDate: string | undefined;
-  classTitle: string | undefined;
   instructor: Instructor | undefined;
   reason: AbsenceReason;
+  /** Free text -- required when reason is "Other". */
+  reasonOther: string | undefined;
   /** Whether medical documentation was sent to the detachment separately from this memo. */
   medicalDocSent: boolean;
   pdfUrl: string | undefined;

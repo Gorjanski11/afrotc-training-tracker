@@ -49,7 +49,9 @@ function pct(n: number | undefined): string {
   return n === undefined ? "—" : `${Math.round(n * 100)}%`;
 }
 
-const ABSENCE_ACTIONABLE = new Set(["Assigned", "Pending", "Returned"]);
+// "Pending"/"Submitted" (already turned in, awaiting cadre review) deliberately excluded -- reviewing
+// those is POC/Cadre's job, not something the cadet still owes.
+const ABSENCE_ACTIONABLE = new Set(["Assigned", "Returned"]);
 const DEVIATION_ACTIONABLE = new Set(["Assigned", "Late", "Returned"]);
 
 /** Section 13 -- every GMC cadet's personal, self-service dashboard (own numbers only, no filters needed). */
@@ -75,7 +77,12 @@ export function GmcDashboardScreen({ cadet, roster, events, attendance, absenceM
 
   const memoHistory = useMemo(() => {
     const rows = [
-      ...myAbsenceMemos.map((m) => ({ kind: "Absence" as const, date: m.submittedAt || m.assignedAt || "", status: m.status, reason: m.reason })),
+      ...myAbsenceMemos.map((m) => ({
+        kind: "Absence" as const,
+        date: m.submittedAt || m.assignedAt || "",
+        status: m.status,
+        reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+      })),
       ...myDeviationMemos.map((m) => ({ kind: "Deviation" as const, date: m.submittedAt ?? m.dateAssigned, status: m.status, reason: m.reason })),
     ];
     return rows.sort((a, b) => b.date.localeCompare(a.date));

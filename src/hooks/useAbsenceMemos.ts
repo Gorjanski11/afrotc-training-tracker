@@ -15,9 +15,9 @@ export interface AbsenceMemoInput {
   assignedAt: string | undefined;
   asClass: AbsenceAsClass | undefined;
   classDate: string | undefined;
-  classTitle: string | undefined;
   instructor: Instructor | undefined;
   reason: AbsenceReason;
+  reasonOther: string | undefined;
   medicalDocSent: boolean;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
@@ -41,9 +41,9 @@ function mapMemo(id: string, data: Record<string, unknown>): AbsenceMemo {
     assignedAt: (data.assignedAt as string | null | undefined) ?? undefined,
     asClass: (data.asClass as AbsenceAsClass | null | undefined) ?? undefined,
     classDate: (data.classDate as string | null | undefined) ?? undefined,
-    classTitle: (data.classTitle as string | null | undefined) ?? undefined,
     instructor: (data.instructor as Instructor | null | undefined) ?? undefined,
     reason: ((data.reason as AbsenceReason) ?? "Other") as AbsenceReason,
+    reasonOther: (data.reasonOther as string | null | undefined) ?? undefined,
     medicalDocSent: (data.medicalDocSent as boolean) ?? false,
     pdfUrl: (data.pdfUrl as string | null | undefined) ?? undefined,
     pdfFileName: (data.pdfFileName as string | null | undefined) ?? undefined,

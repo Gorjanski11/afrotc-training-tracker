@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
+import { formatCadetName } from "../domain/nameUtils";
 import type { AbsenceMemoStatus, AbsenceReason } from "../domain/constants";
 import type { AbsenceMemoRef, Cadet, PmtEvent } from "../domain/types";
 
@@ -55,17 +56,18 @@ export function useAbsenceMemoAssignments() {
    * assignment; every other existing status (Assigned/Pending/Accepted/Returned) already covers it.
    */
   const assignAbsenceMemo = useCallback(
-    async (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, attendanceId: string) => {
+    async (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => {
       const alreadyCovered = refs.some((m) => m.cadetId === cadet.id && m.pmtEventIds.includes(pmtEvent.id) && m.status !== "Rejected");
       if (alreadyCovered) return;
 
       await addDoc(collection(db, COLLECTION), {
         ...sanitizeForFirestore({
           cadetId: cadet.id,
-          cadetName: cadet.name,
+          cadetName: formatCadetName(cadet),
           pmtEventIds: [pmtEvent.id],
           attendanceIds: [attendanceId],
           reason: reason ?? "Other",
+          reasonOther: reason === "Other" ? reasonOther : undefined,
           medicalDocSent: false,
           status: "Assigned" as const,
           submittedAt: "",

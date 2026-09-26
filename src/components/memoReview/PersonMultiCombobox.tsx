@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { Cadet } from "../../domain/types";
 import type { PersonRef } from "../../domain/types";
 
@@ -30,7 +30,7 @@ export function PersonMultiCombobox({ people, value, onChange, placeholder = "Ad
     if (selectedEmails.has(email)) {
       onChange(value.filter((v) => v.email.trim().toLowerCase() !== email));
     } else {
-      onChange([...value, { email: p.email as string, name: p.name }]);
+      onChange([...value, { email: p.email as string, name: formatCadetName(p) }]);
     }
   };
 
@@ -66,7 +66,7 @@ export function PersonMultiCombobox({ people, value, onChange, placeholder = "Ad
                 {sorted.map((p) => (
                   <CommandItem key={p.id} value={p.name} onSelect={() => toggle(p)}>
                     <Check className={cn("mr-2 h-4 w-4", selectedEmails.has(p.email?.trim().toLowerCase() ?? "") ? "opacity-100" : "opacity-0")} />
-                    {p.name}
+                    {formatCadetName(p)}
                   </CommandItem>
                 ))}
               </CommandGroup>

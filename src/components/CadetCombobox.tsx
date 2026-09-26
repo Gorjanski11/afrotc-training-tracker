@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { compareByLastName } from "../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import type { Cadet } from "../domain/types";
 
 interface Props {
@@ -29,7 +29,7 @@ export function CadetCombobox({ cadets, value, onChange, className }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={open} className={cn("w-64 justify-between font-normal", className)}>
-          {selected ? `${selected.name} (${selected.devLevel ?? "no level"})` : "Select a cadet..."}
+          {selected ? `${formatCadetName(selected)} (${selected.devLevel ?? "no level"})` : "Select a cadet..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -49,7 +49,7 @@ export function CadetCombobox({ cadets, value, onChange, className }: Props) {
                   }}
                 >
                   <Check className={cn("mr-2 h-4 w-4", c.id === value ? "opacity-100" : "opacity-0")} />
-                  {c.name} ({c.devLevel ?? "no level"})
+                  {formatCadetName(c)} ({c.devLevel ?? "no level"})
                 </CommandItem>
               ))}
             </CommandGroup>

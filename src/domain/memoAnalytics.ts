@@ -23,7 +23,7 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
       cadetId: m.cadetId,
       cadetName: m.cadetName,
       date: m.submittedAt,
-      reason: m.reason,
+      reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
       status: m.status,
       lateSubmission: m.lateSubmission,
       pdfUrl: m.pdfUrl,

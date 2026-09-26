@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
-import { deriveClass, FLIGHTS, GROUPS, type Flight, type Group, type Standing } from "../../domain/constants";
+import { deriveClass, isCwlMember, FLIGHTS, GROUPS, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { computeCadetProgress } from "../../domain/progress";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFormDialog } from "../../components/CadetFormDialog";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -155,7 +155,14 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
           <TableBody>
             {rows.map(({ person, cls, progress, summary }) => (
               <TableRow key={person.id} className={person.status === "Inactive" ? "text-muted-foreground" : undefined}>
-                <TableCell className="whitespace-nowrap">{person.name}</TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {formatCadetName(person)}
+                  {isCwlMember(person.asClass, person.isCwl) && (
+                    <Badge variant="outline" className="ml-1.5">
+                      CWL
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>{person.asClass ?? "—"}</TableCell>
                 <TableCell>{person.devLevel ?? "—"}</TableCell>
                 <TableCell>{person.flight ?? "—"}</TableCell>
@@ -215,7 +222,7 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
         <ConfirmDialog
           open
           onClose={() => setDeletingCadet(undefined)}
-          title={`Delete ${deletingCadet.name}?`}
+          title={`Delete ${formatCadetName(deletingCadet)}?`}
           description={`This permanently removes them from the roster${
             deletingCompletionCount > 0 ? ` along with their ${deletingCompletionCount} logged Training Objective completion(s)` : ""
           }. This cannot be undone.`}

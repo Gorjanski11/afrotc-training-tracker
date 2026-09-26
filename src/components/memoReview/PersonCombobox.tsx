@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { Cadet } from "../../domain/types";
 
 interface Props {
@@ -28,7 +28,7 @@ export function PersonCombobox({ people, value, onChange, placeholder = "Select 
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={open} className={cn("w-64 justify-between font-normal", className)}>
-          {selected ? selected.name : placeholder}
+          {selected ? formatCadetName(selected) : placeholder}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -43,12 +43,12 @@ export function PersonCombobox({ people, value, onChange, placeholder = "Select 
                   key={p.id}
                   value={p.name}
                   onSelect={() => {
-                    onChange(p.email as string, p.name);
+                    onChange(p.email as string, formatCadetName(p));
                     setOpen(false);
                   }}
                 >
                   <Check className={cn("mr-2 h-4 w-4", p.email?.trim().toLowerCase() === value.trim().toLowerCase() ? "opacity-100" : "opacity-0")} />
-                  {p.name}
+                  {formatCadetName(p)}
                 </CommandItem>
               ))}
             </CommandGroup>

@@ -12,8 +12,9 @@ import { ClipboardList, ExternalLink, UserPlus, Pencil } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
-import { DEVIATION_MEMO_STATUSES, type DeviationMemoStatus } from "../../domain/constants";
+import { DEVIATION_MEMO_STATUSES, endOfDay, type DeviationMemoStatus } from "../../domain/constants";
 import { cadetsInAssignScope, getAuthorizedDeviationAssigners, getCcEligiblePeople, resolveDeviationAssignRule } from "../../domain/access";
+import { formatCadetName } from "../../domain/nameUtils";
 import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
@@ -118,13 +119,13 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
     try {
       await createMemo({
         cadetId: person.id,
-        cadetName: person.name,
+        cadetName: formatCadetName(person),
         assignedBy: assignedByName,
         assignedByEmail,
         cc,
         reason: reason.trim(),
         dateAssigned: new Date().toISOString(),
-        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        dueDate: dueDate ? endOfDay(dueDate).toISOString() : undefined,
         status: "Assigned",
         pdfUrl: undefined,
         pdfFileName: undefined,

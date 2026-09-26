@@ -7,6 +7,7 @@ import type { Cadet } from "../domain/types";
 
 export interface CadetInput {
   name: string;
+  rank: string | undefined;
   asClass: AsClass;
   devLevel: DevLevel;
   status: CadetStatus;
@@ -15,6 +16,7 @@ export interface CadetInput {
   flight: Flight | undefined;
   group: Group | undefined;
   isCadre: boolean;
+  isCwl: boolean;
   position: string | undefined;
   statusChangedDate: string | undefined;
 }
@@ -25,6 +27,7 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
   return {
     id,
     name: (data.name as string) ?? "",
+    rank: (data.rank as string | null | undefined) ?? undefined,
     asClass: data.asClass as AsClass | undefined,
     devLevel: data.devLevel as DevLevel | undefined,
     status: data.status as CadetStatus | undefined,
@@ -33,6 +36,7 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
     flight: (data.flight as Flight | null | undefined) ?? undefined,
     group: (data.group as Group | null | undefined) ?? undefined,
     isCadre: (data.isCadre as boolean | undefined) ?? false,
+    isCwl: (data.isCwl as boolean | undefined) ?? false,
     position: (data.position as string | null | undefined) ?? undefined,
     statusChangedDate: (data.statusChangedDate as string | null | undefined) ?? undefined,
   };

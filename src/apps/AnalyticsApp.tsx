@@ -10,7 +10,7 @@ import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
-import { applyUnitScope, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
+import { applyUnitScope, excludeCadre, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS } from "../domain/constants";
 import { AccountabilityAnalyticsView } from "../screens/analytics/AccountabilityAnalyticsView";
 import { TrainingObjectivesAnalyticsView } from "../screens/analytics/TrainingObjectivesAnalyticsView";
@@ -47,7 +47,10 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
   const first: Screen = accountabilityAccess ? "accountability" : trainingObjectivesAccess !== "none" ? "trainingObjectives" : "memorandums";
   const [screen, setScreen] = useState<Screen>(first);
 
-  const scopedCadets = useMemo(() => applyUnitScope(unitScope, cadetsState.cadets), [unitScope, cadetsState.cadets]);
+  // Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside unit scoping.
+  const scopedCadets = useMemo(() => excludeCadre(applyUnitScope(unitScope, cadetsState.cadets)), [unitScope, cadetsState.cadets]);
+  // Memorandums Analytics is deliberately NOT unit-scoped (a commander sees every memo, not just their own unit's), but Cadre still never appear in its cadet lookup.
+  const memoRoster = useMemo(() => excludeCadre(cadetsState.cadets), [cadetsState.cadets]);
 
   const toCadets = useMemo(() => {
     if (trainingObjectivesAccess === "poc") return scopedCadets.filter((c) => c.devLevel && (POC_DEV_LEVELS as readonly string[]).includes(c.devLevel));
@@ -113,7 +116,13 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
               {accountabilityAccess && (
                 <TabsContent value="accountability">
                   <AnimatedPanel>
-                    <AccountabilityAnalyticsView roster={scopedCadets} events={eventsState.events} attendance={attendanceState.attendance} absenceMemos={absenceState.memos} />
+                    <AccountabilityAnalyticsView
+                      roster={scopedCadets}
+                      events={eventsState.events}
+                      attendance={attendanceState.attendance}
+                      absenceMemos={absenceState.memos}
+                      unitScope={unitScope}
+                    />
                   </AnimatedPanel>
                 </TabsContent>
               )}
@@ -133,7 +142,16 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
               {memoReviewAccess && (
                 <TabsContent value="memorandums">
                   <AnimatedPanel>
-                    <MemorandumsAnalyticsView roster={cadetsState.cadets} absenceMemos={absenceState.memos} deviationMemos={deviationState.memos} showAbsence={memoReviewAbsenceAccess} />
+                    <MemorandumsAnalyticsView
+                      roster={memoRoster}
+                      events={eventsState.events}
+                      attendance={attendanceState.attendance}
+                      absenceMemos={absenceState.memos}
+                      deviationMemos={deviationState.memos}
+                      showAbsence={memoReviewAbsenceAccess}
+                      updateAbsenceMemo={absenceState.updateMemo}
+                      updateDeviationMemo={deviationState.updateMemo}
+                    />
                   </AnimatedPanel>
                 </TabsContent>
               )}

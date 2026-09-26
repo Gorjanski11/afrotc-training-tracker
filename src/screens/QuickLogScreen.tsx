@@ -45,11 +45,12 @@ interface Props {
   updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
   deleteCompletion: (id: string) => Promise<void>;
   onSelectCadet: (cadetId: string) => void;
+  /** A GMC Flight Commander's `cadets` here is already just their own flight (Section 8) -- hide the redundant Flight filter. */
+  hideFlightFilter?: boolean;
+  /** Full (non-cohort-scoped, no-Cadre) roster, used only to look up the signed-in evaluator's own name. */
+  roster: Cadet[];
+  userEmail: string | null | undefined;
 }
-
-/** Every quick-marked entry is attributed to today's date and this evaluator, by design -- to backdate or credit
- *  a different evaluator, edit the entry from Cadet Detail instead (its popup has full date/evaluator control). */
-const QUICK_LOG_EVALUATOR = "Cortes Garay, Jorge";
 
 const NONE = "__none__";
 
@@ -69,7 +70,28 @@ function formatOccurrenceLabel(event: PmtEvent | undefined): string {
   return `${event.title} · ${date}`;
 }
 
-export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, createCompletion, updateCompletion, deleteCompletion, onSelectCadet }: Props) {
+export function QuickLogScreen({
+  cadets,
+  catalog,
+  completions,
+  pmtEvents,
+  createCompletion,
+  updateCompletion,
+  deleteCompletion,
+  onSelectCadet,
+  hideFlightFilter,
+  roster,
+  userEmail,
+}: Props) {
+  // Section 5: every quick-marked entry is attributed to the signed-in person, by name lookup
+  // against the roster -- to backdate or credit a different evaluator, edit the entry from Cadet
+  // Detail instead (its popup has full date/evaluator control).
+  const evaluatorName = useMemo(() => {
+    const normalized = userEmail?.trim().toLowerCase();
+    if (!normalized) return "";
+    return roster.find((p) => p.email?.trim().toLowerCase() === normalized)?.name ?? "";
+  }, [roster, userEmail]);
+
   const [cadetSearch, setCadetSearch] = useState("");
   const [objectiveSearch, setObjectiveSearch] = useState("");
   const [columnScope, setColumnScope] = useState<ColumnScope>("overdue");
@@ -291,7 +313,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           objectiveNumber: objective.number,
           proficiencyAchieved: value as ProficiencyCode,
           dateCompleted: todayIso(),
-          evaluator: QUICK_LOG_EVALUATOR,
+          evaluator: evaluatorName,
           notes: existing?.notes ?? "",
           pmtEventId,
           // The plain Pass toggle never produces a Partial entry -- even when overwriting a cell that
@@ -322,7 +344,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           </h2>
           <p className="text-sm text-muted-foreground">
             Mark proficiency directly in the grid. Every entry here is logged as today ({todayIso()}) by{" "}
-            <strong>{QUICK_LOG_EVALUATOR}</strong> — to backdate an entry or credit a different evaluator, edit it from Cadet Detail instead.
+            <strong>{evaluatorName || "you"}</strong> — to backdate an entry or credit a different evaluator, edit it from Cadet Detail instead.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -348,7 +370,7 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
             onChange={(e) => setObjectiveSearch(e.target.value)}
           />
         </div>
-        {availableFlights.length > 0 && (
+        {!hideFlightFilter && availableFlights.length > 0 && (
           <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Flight" />
@@ -561,6 +583,8 @@ export function QuickLogScreen({ cadets, catalog, completions, pmtEvents, create
           requiredProficiency={partialTarget.requiredCode}
           pmtEventId={partialTarget.occurrence.id}
           existingCompletion={getExistingCompletion(partialTarget.cadet.id, partialTarget.objective.id, partialTarget.occurrence.id, true)}
+          evaluatorOptions={roster}
+          userEmail={userEmail}
           createCompletion={createCompletion}
           updateCompletion={updateCompletion}
           allowMultiplePartial

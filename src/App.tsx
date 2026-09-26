@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldHalf, LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2 } from "lucide-react";
+import { ShieldHalf, LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { resolveTabAccess } from "./domain/access";
@@ -15,8 +15,10 @@ import { AccountabilityApp } from "./apps/AccountabilityApp";
 import { MemoReviewApp } from "./apps/MemoReviewApp";
 import { MemoSubmissionApp } from "./apps/MemoSubmissionApp";
 import { AnalyticsApp } from "./apps/AnalyticsApp";
+import { SettingsApp } from "./apps/SettingsApp";
+import { GmcDashboardApp } from "./apps/GmcDashboardApp";
 
-type HubTab = "trainingObjectives" | "accountability" | "memoReview" | "analytics" | "memoSubmission";
+type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "gmcDashboard" | "memoReview" | "analytics" | "settings";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -41,12 +43,15 @@ function App() {
 
   const tabAccess = resolveTabAccess(user?.email, cadetsState.cadets);
   const hasAnalyticsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none" || tabAccess.memoReview;
+  const hasSettingsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none";
   const visibleTabs: HubTab[] = [
-    ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
     ...(tabAccess.accountability ? (["accountability"] as const) : []),
+    ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
+    "memoSubmission",
+    ...(tabAccess.gmcDashboard ? (["gmcDashboard"] as const) : []),
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
-    "memoSubmission",
+    ...(hasSettingsAccess ? (["settings"] as const) : []),
   ];
   const [tab, setTab] = useState<HubTab>(visibleTabs[0]);
   const activeTab = visibleTabs.includes(tab) ? tab : visibleTabs[0];
@@ -88,16 +93,26 @@ function App() {
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
         <nav className="px-8 pt-2">
           <TabsList>
+            {tabAccess.accountability && (
+              <TabsTrigger value="accountability">
+                <ClipboardCheck className="h-3.5 w-3.5" />
+                Accountability
+              </TabsTrigger>
+            )}
             {tabAccess.trainingObjectives !== "none" && (
               <TabsTrigger value="trainingObjectives">
                 <GraduationCap className="h-3.5 w-3.5" />
                 TO's
               </TabsTrigger>
             )}
-            {tabAccess.accountability && (
-              <TabsTrigger value="accountability">
-                <ClipboardCheck className="h-3.5 w-3.5" />
-                Accountability
+            <TabsTrigger value="memoSubmission">
+              <Send className="h-3.5 w-3.5" />
+              Memo Submission
+            </TabsTrigger>
+            {tabAccess.gmcDashboard && (
+              <TabsTrigger value="gmcDashboard">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                My Dashboard
               </TabsTrigger>
             )}
             {tabAccess.memoReview && (
@@ -112,26 +127,42 @@ function App() {
                 Analytics
               </TabsTrigger>
             )}
-            <TabsTrigger value="memoSubmission">
-              <Send className="h-3.5 w-3.5" />
-              Memo Submission
-            </TabsTrigger>
+            {hasSettingsAccess && (
+              <TabsTrigger value="settings">
+                <Settings className="h-3.5 w-3.5" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
         </nav>
 
         <main className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait" initial={false}>
-            {activeTab === "trainingObjectives" && tabAccess.trainingObjectives !== "none" && (
-              <TabsContent value="trainingObjectives" className="h-full" forceMount>
-                <AnimatedPanel>
-                  <TrainingObjectivesApp key="trainingObjectives" cohortAccess={tabAccess.trainingObjectives} unitScope={tabAccess.unitScope} />
-                </AnimatedPanel>
-              </TabsContent>
-            )}
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>
                 <AnimatedPanel>
                   <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {activeTab === "trainingObjectives" && tabAccess.trainingObjectives !== "none" && (
+              <TabsContent value="trainingObjectives" className="h-full" forceMount>
+                <AnimatedPanel>
+                  <TrainingObjectivesApp key="trainingObjectives" cohortAccess={tabAccess.trainingObjectives} unitScope={tabAccess.unitScope} userEmail={user.email} />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {activeTab === "memoSubmission" && (
+              <TabsContent value="memoSubmission" className="h-full" forceMount>
+                <AnimatedPanel>
+                  <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {activeTab === "gmcDashboard" && tabAccess.gmcDashboard && (
+              <TabsContent value="gmcDashboard" className="h-full" forceMount>
+                <AnimatedPanel>
+                  <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
                 </AnimatedPanel>
               </TabsContent>
             )}
@@ -156,10 +187,10 @@ function App() {
                 </AnimatedPanel>
               </TabsContent>
             )}
-            {activeTab === "memoSubmission" && (
-              <TabsContent value="memoSubmission" className="h-full" forceMount>
+            {activeTab === "settings" && hasSettingsAccess && (
+              <TabsContent value="settings" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
+                  <SettingsApp key="settings" userEmail={user.email} />
                 </AnimatedPanel>
               </TabsContent>
             )}

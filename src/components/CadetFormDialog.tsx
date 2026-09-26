@@ -27,6 +27,8 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
   const [email, setEmail] = useState(existingCadet?.email ?? "");
   const [flight, setFlight] = useState<Flight | undefined>(existingCadet?.flight);
   const [group, setGroup] = useState<Group | undefined>(existingCadet?.group);
+  const [isCadre, setIsCadre] = useState(existingCadet?.isCadre ?? false);
+  const [position, setPosition] = useState(existingCadet?.position ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -38,6 +40,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
     setSaving(true);
     setError(undefined);
     try {
+      const statusChanged = status !== existingCadet?.status;
       await onSave({
         name: name.trim(),
         asClass,
@@ -47,10 +50,9 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
         email: email.trim(),
         flight: isGmc ? flight : undefined,
         group,
-        // Owned by the Accountability Roster screen, not this dialog -- preserve whatever's already there.
-        isCadre: existingCadet?.isCadre ?? false,
-        position: existingCadet?.position,
-        statusChangedDate: existingCadet?.statusChangedDate,
+        isCadre,
+        position: position.trim() === "" ? undefined : position.trim(),
+        statusChangedDate: statusChanged ? new Date().toISOString().slice(0, 10) : existingCadet?.statusChangedDate,
       });
       onClose();
     } catch (e) {
@@ -159,6 +161,16 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
             <Label>Email</Label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Optional" />
           </div>
+
+          <div className="grid gap-1.5">
+            <Label>Position</Label>
+            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Optional -- e.g. CWC, TRG/CTO, OFC" />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={isCadre} onChange={(e) => setIsCadre(e.target.checked)} />
+            Cadre (manual override -- Class becomes "Cadre" regardless of AS Level)
+          </label>
 
           <div className="grid gap-1.5">
             <Label>Notes</Label>

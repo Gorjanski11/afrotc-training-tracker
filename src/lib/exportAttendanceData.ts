@@ -7,8 +7,8 @@ function pctText(n: number | undefined): string {
   return n === undefined ? "" : `${Math.round(n * 100)}%`;
 }
 
-/** Everything Dashboard/Attendance/Analytics read from -- one workbook, one sheet per collection plus a computed per-cadet summary (standing, present/total, absences left). */
-export async function exportAttendanceData(roster: Cadet[], events: PmtEvent[], attendance: Attendance[]): Promise<void> {
+/** One sheet per collection plus a computed per-cadet summary (standing, present/total, absences left) -- exported separately from `exportAttendanceData` so Data Management (Section 6) can combine it with other categories into one workbook. */
+export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], attendance: Attendance[]): ExportSheet[] {
   const eventsById = new Map(events.map((e) => [e.id, e]));
   const rosterById = new Map(roster.map((p) => [p.id, p]));
   const activeRoster = roster.filter((p) => p.status === "Active");
@@ -116,5 +116,10 @@ export async function exportAttendanceData(roster: Cadet[], events: PmtEvent[], 
     }),
   };
 
-  await downloadWorkbook(`afrotc-accountability-tracker-export-${todayForFilename()}.xlsx`, [summarySheet, rosterSheet, attendanceSheet, eventsSheet]);
+  return [summarySheet, rosterSheet, attendanceSheet, eventsSheet];
+}
+
+/** Everything Dashboard/Attendance/Analytics read from -- one workbook, one sheet per collection plus a computed per-cadet summary (standing, present/total, absences left). */
+export async function exportAttendanceData(roster: Cadet[], events: PmtEvent[], attendance: Attendance[]): Promise<void> {
+  await downloadWorkbook(`afrotc-accountability-tracker-export-${todayForFilename()}.xlsx`, buildAttendanceSheets(roster, events, attendance));
 }

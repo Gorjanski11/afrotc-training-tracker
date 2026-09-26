@@ -9,9 +9,10 @@ export interface CombinedMemoRow {
   date: string;
   reason: string;
   status: string;
-  lateSubmission: boolean;
+  lateSubmission: "late" | "dns" | undefined;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
+  notes: string;
 }
 
 export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: DeviationMemo[]): CombinedMemoRow[] {
@@ -27,6 +28,7 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
       lateSubmission: m.lateSubmission,
       pdfUrl: m.pdfUrl,
       pdfFileName: m.pdfFileName,
+      notes: m.status === "Returned" ? m.returnReason ?? "" : m.reviewNotes,
     })),
     ...deviationMemos.map((m) => ({
       kind: "Deviation" as const,
@@ -36,9 +38,10 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
       date: m.submittedAt ?? m.dateAssigned,
       reason: m.reason,
       status: m.status,
-      lateSubmission: false,
+      lateSubmission: undefined,
       pdfUrl: m.pdfUrl,
       pdfFileName: m.pdfFileName,
+      notes: m.reviewNotes,
     })),
   ];
   return rows.sort((a, b) => b.date.localeCompare(a.date));

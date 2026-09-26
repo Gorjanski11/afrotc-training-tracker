@@ -3,24 +3,21 @@ import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutDashboard, UserRound, BookOpen, CalendarDays, Users, ListChecks, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, UserRound, BookOpen, ListChecks, ArrowLeft } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
-import { useTrainingObjectives, type TrainingObjectiveSeed } from "../hooks/useTrainingObjectives";
+import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "../domain/constants";
-import { applyUnitScope, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
+import { applyUnitScope, excludeCadre, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { HomeScreen } from "../screens/HomeScreen";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { CadetDetailScreen } from "../screens/CadetDetailScreen";
 import { ReferenceLibraryScreen } from "../screens/ReferenceLibraryScreen";
-import { RosterScreen } from "../screens/RosterScreen";
-import { CalendarScreen } from "../screens/CalendarScreen";
 import { QuickLogScreen } from "../screens/QuickLogScreen";
-import trainingObjectivesSeed from "../data/trainingObjectivesSeed.json";
 
 type TopLevel = "home" | "poc" | "gmc";
-type Screen = "dashboard" | "cadet" | "reference" | "calendar" | "roster" | "quicklog";
+type Screen = "dashboard" | "cadet" | "reference" | "quicklog";
 
 const COHORT_DEV_LEVELS: Record<"poc" | "gmc", readonly DevLevel[]> = {
   poc: POC_DEV_LEVELS,
@@ -40,12 +37,13 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 interface Props {
   /** "poc"/"gmc" skips the Home cohort-picker entirely and locks to that one cohort; "full" behaves as before (Home picker, either cohort). Never rendered at all when "none" -- the hub simply doesn't show this tab. */
   cohortAccess: TrainingObjectivesAccess;
-  /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5). */
+  /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5/8). */
   unitScope: UnitScope;
+  userEmail: string | null | undefined;
 }
 
-/** POC/GMC "TO's" tracking -- Dashboard, Cadet Detail, Reference Library, Calendar, Roster, Quick Log, Analytics. */
-export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
+/** POC/GMC "TO's" tracking -- Dashboard, Cadet Detail, Reference Library, Quick Log. Roster/Calendar moved to Settings (Section 6). */
+export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Props) {
   const cadetsState = useCadets();
   const catalogState = useTrainingObjectives();
   const completionsState = useCompletions();
@@ -75,27 +73,21 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
   /**
    * "POC TO's" and "GMC TO's" are the same screens reading the same shared roster/catalog/PMT
    * calendar -- they're just scoped to their cohort's cadets here, not a parallel data model.
+   * Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside cohort/unit scoping.
    */
   const cohortCadets = useMemo(() => {
     if (topLevel === "home") return [];
     const levels = COHORT_DEV_LEVELS[topLevel];
     const inCohort = cadetsState.cadets.filter((c) => c.devLevel && (levels as readonly string[]).includes(c.devLevel));
-    return applyUnitScope(unitScope, inCohort);
+    return excludeCadre(applyUnitScope(unitScope, inCohort));
   }, [topLevel, cadetsState.cadets, unitScope]);
+
+  // Evaluator autofill (Section 5) needs the POC-class evaluator pool from the FULL roster, not just
+  // this cohort's cadets -- a POC evaluator must be selectable even while logging a GMC cadet.
+  const fullRosterNoCadre = useMemo(() => excludeCadre(cadetsState.cadets), [cadetsState.cadets]);
 
   const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading;
   const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error;
-
-  const deleteCadet = async (cadetId: string) => {
-    await completionsState.deleteCompletionsForCadet(cadetId);
-    await cadetsState.deleteCadet(cadetId);
-  };
-
-  const importCatalog = async () => {
-    const seed = trainingObjectivesSeed as TrainingObjectiveSeed[];
-    await catalogState.seedFromJson(seed);
-    return seed.length;
-  };
 
   return (
     <div className="flex h-full flex-col">
@@ -147,14 +139,6 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
                 <BookOpen className="h-3.5 w-3.5" />
                 Reference Library
               </TabsTrigger>
-              <TabsTrigger value="calendar">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Calendar
-              </TabsTrigger>
-              <TabsTrigger value="roster">
-                <Users className="h-3.5 w-3.5" />
-                Roster
-              </TabsTrigger>
               <TabsTrigger value="quicklog">
                 <ListChecks className="h-3.5 w-3.5" />
                 Quick Log
@@ -188,6 +172,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
                     createCompletion={completionsState.createCompletion}
                     updateCompletion={completionsState.updateCompletion}
                     onSelectCadet={goToCadet}
+                    evaluatorOptions={fullRosterNoCadre}
+                    userEmail={userEmail}
                   />
                 )}
               </AnimatedPanel>
@@ -195,34 +181,6 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
             <TabsContent value="reference">
               <AnimatedPanel>
                 <ReferenceLibraryScreen sections={catalogState.sections} devLevels={COHORT_DEV_LEVELS[topLevel]} />
-              </AnimatedPanel>
-            </TabsContent>
-            <TabsContent value="calendar">
-              <AnimatedPanel>
-                <CalendarScreen
-                  events={pmtEventsState.events}
-                  catalog={catalogState.catalog}
-                  createEvent={pmtEventsState.createEvent}
-                  updateEvent={pmtEventsState.updateEvent}
-                  deleteEvent={pmtEventsState.deleteEvent}
-                />
-              </AnimatedPanel>
-            </TabsContent>
-            <TabsContent value="roster">
-              <AnimatedPanel>
-                <RosterScreen
-                  cohort={topLevel}
-                  cadets={cohortCadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  createCadet={cadetsState.createCadet}
-                  updateCadet={cadetsState.updateCadet}
-                  deleteCadet={deleteCadet}
-                  onSelectCadet={goToCadet}
-                  importCatalog={importCatalog}
-                  allowedDevLevels={COHORT_DEV_LEVELS[topLevel]}
-                />
               </AnimatedPanel>
             </TabsContent>
             <TabsContent value="quicklog">
@@ -236,6 +194,9 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope }: Props) {
                   updateCompletion={completionsState.updateCompletion}
                   deleteCompletion={completionsState.deleteCompletion}
                   onSelectCadet={goToCadet}
+                  hideFlightFilter={unitScope.kind === "flight"}
+                  userEmail={userEmail}
+                  roster={fullRosterNoCadre}
                 />
               </AnimatedPanel>
             </TabsContent>

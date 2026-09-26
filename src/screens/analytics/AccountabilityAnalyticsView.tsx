@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PMT_EVENT_TYPES, FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type PmtEventType, type Flight, type Group } from "../../domain/constants";
+import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
 import {
   computeSessionTrend,
@@ -25,6 +25,7 @@ import { compareByLastName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { Stepper } from "../../components/analytics/Stepper";
 import { exportAttendanceData } from "../../lib/exportAttendanceData";
+import type { UnitScope } from "../../domain/access";
 import type { Attendance, PmtEvent, Cadet, AbsenceMemo } from "../../domain/types";
 
 interface Props {
@@ -32,6 +33,8 @@ interface Props {
   events: PmtEvent[];
   attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
+  /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
+  unitScope: UnitScope;
 }
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
@@ -60,40 +63,30 @@ function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; 
   );
 }
 
-function CadetBucketStats({
-  label,
-  tally,
-  hasThreshold = true,
-  fixedTotal,
-}: {
-  label: string;
-  tally: BucketTally;
-  hasThreshold?: boolean;
-  fixedTotal?: number;
-}) {
+/** Exported for reuse -- the GMC self-service Dashboard (Section 13) and Memorandums Analytics' per-cadet view (Section 16) show the same PT/LLAB-FM-D&C pair. */
+export function CadetBucketStats({ label, tally, fixedTotal }: { label: string; tally: BucketTally; fixedTotal: number }) {
+  // Present/Total is against the fixed semester total (Section 2), not "however many sessions have happened so far".
   const presentCount = tally.statusCounts.P + tally.statusCounts.AE;
-  const absencesLeft = hasThreshold && fixedTotal !== undefined ? absencesRemainingForGoodStanding(tally, fixedTotal) : undefined;
+  const absencesLeft = absencesRemainingForGoodStanding(tally, fixedTotal);
   return (
     <div className="rounded-md border border-input p-3">
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium">{label}</span>
-        {hasThreshold && (tally.standing ? <StandingBadge standing={tally.standing} /> : <span className="text-xs text-muted-foreground">No data yet</span>)}
+        {tally.standing ? <StandingBadge standing={tally.standing} /> : <span className="text-xs text-muted-foreground">No data yet</span>}
       </div>
-      <div className={cn("grid gap-2 text-center", hasThreshold ? "grid-cols-3" : "grid-cols-2")}>
+      <div className="grid grid-cols-3 gap-2 text-center">
         <div>
-          <div className="text-lg font-semibold tabular-nums">{tally.countedEvents === 0 ? "—" : `${presentCount}/${tally.countedEvents}`}</div>
+          <div className="text-lg font-semibold tabular-nums">{`${presentCount}/${fixedTotal}`}</div>
           <div className="text-[11px] text-muted-foreground">Present/Total</div>
         </div>
         <div>
           <div className="text-lg font-semibold tabular-nums">{pct(tally.percent)}</div>
           <div className="text-[11px] text-muted-foreground">Attendance %</div>
         </div>
-        {hasThreshold && (
-          <div>
-            <div className="text-lg font-semibold tabular-nums">{absencesLeft ?? "—"}</div>
-            <div className="text-[11px] text-muted-foreground">Absences left (Good)</div>
-          </div>
-        )}
+        <div>
+          <div className="text-lg font-semibold tabular-nums">{absencesLeft}</div>
+          <div className="text-[11px] text-muted-foreground">Absences left (Good)</div>
+        </div>
       </div>
       <div className="mt-2 text-center text-[11px] text-muted-foreground">
         Late: {tally.statusCounts.L} · Excused: {tally.statusCounts.AE} · Unexcused: {tally.statusCounts.A}
@@ -114,9 +107,9 @@ type ClassFilter = (typeof CLASS_OPTIONS)[number];
 type TrendView = "combined" | "split" | "pt" | "llab";
 const TREND_VIEW_OPTIONS: { value: TrendView; label: string }[] = [
   { value: "combined", label: "All Combined" },
-  { value: "split", label: "Split (PT + LLAB/FM)" },
+  { value: "split", label: "Split (PT + LLAB/FM/D&C)" },
   { value: "pt", label: "PT only" },
-  { value: "llab", label: "LLAB/FM only" },
+  { value: "llab", label: "LLAB/FM/D&C only" },
 ];
 
 function pct(n: number | undefined): string {
@@ -130,19 +123,65 @@ function cutoffAtNow<T extends { date: string }>(points: T[]): T[] {
   return points.slice(0, cutoffIndex + 1);
 }
 
-export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos }: Props) {
+/**
+ * Section 14 fix: recharts 3.x's `<LineChart onClick>` only reads the *hover*-populated
+ * `activeTooltipIndex`, not a fresh click's own position, unless the tooltip's `trigger` is
+ * explicitly "click" (which would break the existing hover-preview UX) -- so a raw click reliably
+ * does nothing. Reading each dot's own payload directly, bypassing that broken interaction-state
+ * path entirely, is what actually works.
+ */
+function ClickableDot({
+  cx,
+  cy,
+  payload,
+  dotFill,
+  eventKey,
+  onDotClick,
+}: {
+  cx?: number;
+  cy?: number;
+  payload?: Record<string, unknown>;
+  dotFill: string;
+  eventKey: string;
+  onDotClick: (eventId: string | undefined) => void;
+}) {
+  if (cx === undefined || cy === undefined) return null;
+  const eventId = payload?.[eventKey] as string | undefined;
+  return (
+    <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ cursor: eventId ? "pointer" : "default" }} onClick={() => onDotClick(eventId)} />
+  );
+}
+
+export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope }: Props) {
+  const hideGroupFilter = unitScope.kind === "group";
+  const hideFlightFilter = unitScope.kind === "flight";
+
   // Master filters (Cadet/Flight/Group/Class) -- exclusive, "last one picked wins". PMT type is
   // NOT part of this group anymore (Section 6a) -- the trend chart has its own view toggle and the
   // master table has its own dedicated stepper, both independent of this roster-scoping group.
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
-  const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
-  const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
+  const [masterFlight, setMasterFlight] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
+  const [masterGroup, setMasterGroup] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
   const [masterClass, setMasterClass] = useState<ClassFilter | "All">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
-  const [tablePmtType, setTablePmtType] = useState<PmtEventType>("PT");
   const [axis, setAxis] = useState<UnitAxis>("flight");
   const [exporting, setExporting] = useState(false);
   const [drillDownEventId, setDrillDownEventId] = useState<string | undefined>();
+
+  // Master attendance table's own dedicated filters (Section 10) -- start matching the page's top
+  // filters, but change independently from here on.
+  const [tableCadetId, setTableCadetId] = useState<string>(masterCadetId);
+  const [tableFlight, setTableFlight] = useState<Flight | "All">(masterFlight);
+  const [tableGroup, setTableGroup] = useState<Group | "All">(masterGroup);
+  const [tableClass, setTableClass] = useState<ClassFilter | "All">(masterClass);
+  const [tableBucketChoice, setTableBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
+
+  const setTableExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
+    setTableCadetId(which === "cadet" ? value : ALL_CADETS);
+    setTableFlight(which === "flight" ? (value as Flight | "All") : "All");
+    setTableGroup(which === "group" ? (value as Group | "All") : "All");
+    setTableClass(which === "class" ? (value as ClassFilter | "All") : "All");
+  };
 
   const activeRoster = useMemo(() => roster.filter((p) => p.status === "Active"), [roster]);
   const sortedActiveRoster = useMemo(() => [...activeRoster].sort((a, b) => compareByLastName(a.name, b.name)), [activeRoster]);
@@ -304,13 +343,20 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     return tracked.size;
   }, [statsRoster, attendance, pmtEventsById]);
 
-  // --- Master attendance table (always visible, own PMT-type stepper) ---
-  const tableBucket = bucketForEventType(tablePmtType);
+  // --- Master attendance table (always visible, own dedicated filters + PT/LLAB-FM-D&C stepper) ---
   const tableEvents = useMemo(
-    () => events.filter((e) => e.eventType === tablePmtType).sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
-    [events, tablePmtType]
+    () => events.filter((e) => bucketForEventType(e.eventType) === tableBucketChoice).sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
+    [events, tableBucketChoice]
   );
-  const tableRoster = statsRoster;
+  const tableRoster = useMemo(
+    () =>
+      sortedActiveRoster
+        .filter((p) => tableFlight === "All" || p.flight === tableFlight)
+        .filter((p) => tableGroup === "All" || p.group === tableGroup)
+        .filter((p) => tableClass === "All" || deriveClass(p.asClass, p.isCadre) === tableClass)
+        .filter((p) => tableCadetId === ALL_CADETS || p.id === tableCadetId),
+    [sortedActiveRoster, tableFlight, tableGroup, tableClass, tableCadetId]
+  );
   const cellByKey = useMemo(() => {
     const map = new Map<string, Attendance>();
     for (const record of attendance) map.set(`${record.cadetId}__${record.pmtEventId}`, record);
@@ -341,32 +387,36 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={sortedActiveRoster} value={masterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
-        <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Flight" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All flights</SelectItem>
-            {FLIGHTS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f} Flight
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All groups</SelectItem>
-            {GROUPS.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideFlightFilter && (
+          <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!hideGroupFilter && (
+          <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={masterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Class" />
@@ -426,23 +476,30 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                 <p className="text-sm text-muted-foreground">No sessions in this filter yet.</p>
               ) : (
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart
-                    data={splitTrendData}
-                    margin={chartMargin}
-                    onClick={(state) => {
-                      const idx = state?.activeTooltipIndex;
-                      if (typeof idx !== "number") return;
-                      const row = splitTrendData[idx];
-                      handleTrendClick(row?.ptEventId ?? row?.llabEventId);
-                    }}
-                  >
+                  <LineChart data={splitTrendData} margin={chartMargin}>
                     <CartesianGrid stroke="var(--chart-grid)" />
                     <XAxis dataKey="dateLabel" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
                     <YAxis domain={[0, 100]} unit="%" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
                     <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Line type="monotone" dataKey="ptPct" name="PT" stroke="var(--chart-series-1)" strokeWidth={2} dot={{ r: 3, cursor: "pointer" }} connectNulls />
-                    <Line type="monotone" dataKey="llabPct" name="LLAB/FM" stroke="var(--chart-series-3)" strokeWidth={2} dot={{ r: 3, cursor: "pointer" }} connectNulls />
+                    <Line
+                      type="monotone"
+                      dataKey="ptPct"
+                      name="PT"
+                      stroke="var(--chart-series-1)"
+                      strokeWidth={2}
+                      dot={<ClickableDot dotFill="var(--chart-series-1)" eventKey="ptEventId" onDotClick={handleTrendClick} />}
+                      connectNulls
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="llabPct"
+                      name="LLAB/FM/D&C"
+                      stroke="var(--chart-series-3)"
+                      strokeWidth={2}
+                      dot={<ClickableDot dotFill="var(--chart-series-3)" eventKey="llabEventId" onDotClick={handleTrendClick} />}
+                      connectNulls
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               )
@@ -450,15 +507,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
               <p className="text-sm text-muted-foreground">No sessions in this filter yet.</p>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart
-                  data={singleTrendData}
-                  margin={chartMargin}
-                  onClick={(state) => {
-                    const idx = state?.activeTooltipIndex;
-                    if (typeof idx !== "number") return;
-                    handleTrendClick(singleTrendData[idx]?.eventId);
-                  }}
-                >
+                <LineChart data={singleTrendData} margin={chartMargin}>
                   <CartesianGrid stroke="var(--chart-grid)" />
                   <XAxis dataKey="dateLabel" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
                   <YAxis domain={[0, 100]} unit="%" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
@@ -469,7 +518,14 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                       item.payload.label,
                     ]}
                   />
-                  <Line type="monotone" dataKey="percentPct" stroke="var(--chart-series-1)" strokeWidth={2} dot={{ r: 3, cursor: "pointer" }} connectNulls />
+                  <Line
+                    type="monotone"
+                    dataKey="percentPct"
+                    stroke="var(--chart-series-1)"
+                    strokeWidth={2}
+                    dot={<ClickableDot dotFill="var(--chart-series-1)" eventKey="eventId" onDotClick={handleTrendClick} />}
+                    connectNulls
+                  />
                 </LineChart>
               </ResponsiveContainer>
             )}
@@ -484,7 +540,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle>
                 <Scale className="h-4 w-4 text-primary" />
-                {hasCadetFilter && selectedCadet ? `PT vs LLAB/FM for ${selectedCadet.name}` : "PT vs LLAB/FM by unit"}
+                {hasCadetFilter && selectedCadet ? `PT vs LLAB/FM/D&C for ${selectedCadet.name}` : "PT vs LLAB/FM/D&C by unit"}
               </CardTitle>
               {showComparison && <Stepper options={AXIS_OPTIONS} value={axis} onChange={(v) => setAxis(v as UnitAxis)} />}
             </CardHeader>
@@ -493,7 +549,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                 selectedCadetSummary ? (
                   <div className="space-y-3">
                     <CadetBucketStats label="PT" tally={selectedCadetSummary.pt} fixedTotal={SEMESTER_PMT_TOTALS.PT} />
-                    <CadetBucketStats label="LLAB/FM" tally={selectedCadetSummary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
+                    <CadetBucketStats label="LLAB/FM/D&C" tally={selectedCadetSummary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
                   </div>
                 ) : null
               ) : comparisonData.length === 0 ? (
@@ -507,7 +563,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                     <Tooltip cursor={{ fill: "var(--muted)" }} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="ptPct" name="PT" fill="var(--chart-series-1)" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                    <Bar dataKey="llabFmPct" name="LLAB/FM" fill="var(--chart-series-3)" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="llabFmPct" name="LLAB/FM/D&C" fill="var(--chart-series-3)" radius={[3, 3, 0, 0]} maxBarSize={28} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -539,7 +595,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                         <div className="text-[11px] text-muted-foreground">Buckets below Good</div>
                       </div>
                     </div>
-                    <CadetBucketStats label="D&C / Other" tally={selectedCadetSummary.other} hasThreshold={false} />
                   </div>
                 )
               ) : pieData.length === 0 ? (
@@ -569,11 +624,64 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
               <Table2 className="h-4 w-4 text-primary" />
               Master attendance table
             </CardTitle>
-            <Stepper options={PMT_EVENT_TYPES.map((t) => ({ value: t, label: t }))} value={tablePmtType} onChange={(v) => setTablePmtType(v as PmtEventType)} />
+            <Stepper
+              options={[
+                { value: "PT", label: "PT" },
+                { value: "LLAB_FM", label: "LLAB/FM/D&C" },
+              ]}
+              value={tableBucketChoice}
+              onChange={(v) => setTableBucketChoice(v as "PT" | "LLAB_FM")}
+            />
           </CardHeader>
           <CardContent>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <CadetFilterCombobox roster={sortedActiveRoster} value={tableCadetId} onChange={(v) => setTableExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+              {!hideFlightFilter && (
+                <Select value={tableFlight} onValueChange={(v) => setTableExclusiveFilter("flight", v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Flight" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All flights</SelectItem>
+                    {FLIGHTS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f} Flight
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!hideGroupFilter && (
+                <Select value={tableGroup} onValueChange={(v) => setTableExclusiveFilter("group", v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All groups</SelectItem>
+                    {GROUPS.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Select value={tableClass} onValueChange={(v) => setTableExclusiveFilter("class", v)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">POC + GMC</SelectItem>
+                  {CLASS_OPTIONS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {tableEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No {tablePmtType} sessions yet.</p>
+              <p className="text-sm text-muted-foreground">No {tableBucketChoice === "PT" ? "PT" : "LLAB/FM/D&C"} sessions yet.</p>
             ) : (
               <div className="overflow-x-auto">
                 <Table aria-label="Master attendance table">
@@ -591,7 +699,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                   <TableBody>
                     {tableRoster.map((cadet) => {
                       const summary = computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById);
-                      const standing = tableBucket === "PT" ? summary.pt.standing : tableBucket === "LLAB_FM" ? summary.llabFm.standing : undefined;
+                      const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
                       return (
                         <TableRow key={cadet.id}>
                           <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">{cadet.name}</TableCell>
@@ -691,7 +799,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   );
 }
 
-function StatusDot({ status }: { status: Attendance["status"] }) {
+export function StatusDot({ status }: { status: Attendance["status"] }) {
   const cls =
     status === "P"
       ? "bg-success text-success-foreground"
@@ -703,7 +811,7 @@ function StatusDot({ status }: { status: Attendance["status"] }) {
   return <span className={cn("inline-flex h-5 w-7 items-center justify-center rounded text-[10px] font-medium", cls)}>{status}</span>;
 }
 
-function StandingBadge({ standing }: { standing: "Good" | "Warning" | "Hard Limit" }) {
+export function StandingBadge({ standing }: { standing: "Good" | "Warning" | "Hard Limit" }) {
   const variant = standing === "Good" ? "success" : standing === "Warning" ? "warning" : "destructive";
   return <Badge variant={variant}>{standing}</Badge>;
 }

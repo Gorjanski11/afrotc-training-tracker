@@ -5,20 +5,32 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ExternalLink } from "lucide-react";
-import { FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
+import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
+import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { combineMemos, filterByRosterScope, shortDate, type CombinedMemoRow } from "../../domain/memoAnalytics";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
-import type { AbsenceMemo, DeviationMemo, Cadet } from "../../domain/types";
+import { CadetBucketStats } from "./AccountabilityAnalyticsView";
+import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
+import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
+import type { AbsenceMemoStatus, DeviationMemoStatus } from "../../domain/constants";
+import type { AbsenceMemo, Attendance, DeviationMemo, Cadet, PmtEvent } from "../../domain/types";
 
 interface Props {
   roster: Cadet[];
+  events: PmtEvent[];
+  attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
   /** Absence Memos are only ever included when the signed-in person has full access (Section 6). */
   showAbsence: boolean;
+  updateAbsenceMemo: (id: string, input: Partial<AbsenceMemoInput>) => Promise<void>;
+  updateDeviationMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
 }
 
 type ViewMode = "all" | "absence" | "deviation";
+
+const ABSENCE_STATUS_OPTIONS: AbsenceMemoStatus[] = ["Assigned", "Pending", "Accepted", "Rejected", "Returned"];
+const DEVIATION_STATUS_OPTIONS: DeviationMemoStatus[] = ["Assigned", "Submitted", "Late", "Accepted", "Returned", "Not Submitted"];
 
 function statusVariant(status: string): "success" | "destructive" | "warning" | "secondary" | "outline" {
   if (status === "Accepted") return "success";
@@ -26,6 +38,15 @@ function statusVariant(status: string): "success" | "destructive" | "warning" | 
   if (status === "Returned" || status === "Late") return "warning";
   if (status === "Pending" || status === "Submitted") return "secondary";
   return "outline";
+}
+
+function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | undefined }) {
+  if (!lateSubmission) return null;
+  return (
+    <Badge variant="destructive" className="text-[10px]">
+      {lateSubmission === "dns" ? "DNS" : "Late"}
+    </Badge>
+  );
 }
 
 function PdfLink({ url, name }: { url: string | undefined; name: string | undefined }) {
@@ -38,7 +59,7 @@ function PdfLink({ url, name }: { url: string | undefined; name: string | undefi
   );
 }
 
-export function MemorandumsAnalyticsView({ roster, absenceMemos, deviationMemos, showAbsence }: Props) {
+export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo }: Props) {
   const [mode, setMode] = useState<ViewMode>("all");
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [flight, setFlight] = useState<Flight | "All">("All");
@@ -68,6 +89,19 @@ export function MemorandumsAnalyticsView({ roster, absenceMemos, deviationMemos,
       ),
     [deviationMemos, roster, cadetId, flight, group]
   );
+
+  // Section 16: an individual cadet's own PT/LLAB-FM-D&C standing, shown right below the filters --
+  // hidden entirely (not just a message) whenever a Group/Flight filter is active instead.
+  const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+  const selectedCadetSummary = useMemo(
+    () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),
+    [cadetId, attendance, pmtEventsById]
+  );
+
+  const handleStatusChange = async (row: CombinedMemoRow, status: string) => {
+    if (row.kind === "Absence") await updateAbsenceMemo(row.id, { status: status as AbsenceMemoStatus, reviewedAt: new Date().toISOString() });
+    else await updateDeviationMemo(row.id, { status: status as DeviationMemoStatus, reviewedAt: new Date().toISOString() });
+  };
 
   return (
     <div>
@@ -115,10 +149,17 @@ export function MemorandumsAnalyticsView({ roster, absenceMemos, deviationMemos,
         </Select>
       </div>
 
+      {selectedCadetSummary && (
+        <div className="mb-6 grid gap-4 sm:grid-cols-2">
+          <CadetBucketStats label="PT" tally={selectedCadetSummary.pt} fixedTotal={SEMESTER_PMT_TOTALS.PT} />
+          <CadetBucketStats label="LLAB/FM/D&C" tally={selectedCadetSummary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
+        </div>
+      )}
+
       <Card>
         <CardContent className="pt-6">
           {mode === "all" ? (
-            <CombinedTable rows={combined} />
+            <CombinedTable rows={combined} onStatusChange={handleStatusChange} />
           ) : mode === "absence" ? (
             <AbsenceTable memos={filteredAbsence} />
           ) : (
@@ -130,7 +171,7 @@ export function MemorandumsAnalyticsView({ roster, absenceMemos, deviationMemos,
   );
 }
 
-function CombinedTable({ rows }: { rows: CombinedMemoRow[] }) {
+function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onStatusChange: (row: CombinedMemoRow, status: string) => void }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No memorandums match this filter.</p>;
   return (
     <Table aria-label="All memorandums">
@@ -142,6 +183,7 @@ function CombinedTable({ rows }: { rows: CombinedMemoRow[] }) {
           <TableHead>Reason</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
+          <TableHead>Notes</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -155,17 +197,25 @@ function CombinedTable({ rows }: { rows: CombinedMemoRow[] }) {
             <TableCell className="max-w-xs truncate">{row.reason}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
-                <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
-                {row.lateSubmission && (
-                  <Badge variant="destructive" className="text-[10px]">
-                    Late
-                  </Badge>
-                )}
+                <Select value={row.status} onValueChange={(v) => onStatusChange(row, v)}>
+                  <SelectTrigger className="h-7 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(row.kind === "Absence" ? ABSENCE_STATUS_OPTIONS : DEVIATION_STATUS_OPTIONS).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <LateBadge lateSubmission={row.lateSubmission} />
               </span>
             </TableCell>
             <TableCell>
               <PdfLink url={row.pdfUrl} name={row.pdfFileName} />
             </TableCell>
+            <TableCell className="max-w-xs truncate">{row.notes}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -198,11 +248,7 @@ function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
-                {m.lateSubmission && (
-                  <Badge variant="destructive" className="text-[10px]">
-                    Late
-                  </Badge>
-                )}
+                <LateBadge lateSubmission={m.lateSubmission} />
               </span>
             </TableCell>
             <TableCell>

@@ -2,21 +2,18 @@ import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, LayoutDashboard, Users, CalendarDays } from "lucide-react";
+import { ClipboardCheck, LayoutDashboard } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
-import { useExtraEvents } from "../hooks/useExtraEvents";
 import { useAttendance } from "../hooks/useAttendance";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useAutoFailCompletions } from "../hooks/useAutoFailCompletions";
 import { useAbsenceMemoAssignments } from "../hooks/useAbsenceMemoAssignments";
-import { applyUnitScope, type UnitScope } from "../domain/access";
+import { applyUnitScope, excludeCadre, type UnitScope } from "../domain/access";
 import { DashboardScreen } from "../screens/accountability/DashboardScreen";
-import { RosterScreen } from "../screens/accountability/RosterScreen";
-import { EventsScreen } from "../screens/accountability/EventsScreen";
 import { AttendanceScreen } from "../screens/accountability/AttendanceScreen";
 
-type Screen = "dashboard" | "roster" | "events" | "attendance";
+type Screen = "dashboard" | "attendance";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -31,20 +28,20 @@ interface Props {
   unitScope: UnitScope;
 }
 
-/** PT/LLAB/FM accountability -- Dashboard, Roster, Events, Accountability entry, Analytics. */
+/** PT/LLAB/FM accountability -- Dashboard, Accountability entry. Roster/Events moved to Settings (Section 6). */
 export function AccountabilityApp({ unitScope }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
-  const extraEventsState = useExtraEvents();
   const attendanceState = useAttendance();
   const catalogState = useTrainingObjectives();
   const { applyAbsenceNotPass } = useAutoFailCompletions();
   const absenceMemoAssignmentsState = useAbsenceMemoAssignments();
 
-  const scopedCadets = useMemo(() => applyUnitScope(unitScope, cadetsState.cadets), [unitScope, cadetsState.cadets]);
+  // Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside unit scoping.
+  const scopedCadets = useMemo(() => excludeCadre(applyUnitScope(unitScope, cadetsState.cadets)), [unitScope, cadetsState.cadets]);
 
   const [screen, setScreen] = useState<Screen>("dashboard");
-  // Dashboard's "Accountability" card jumps straight to a specific PMT in the Accountability
+  // Dashboard's "Missed Accountability" card jumps straight to a specific PMT in the Accountability
   // (attendance-taking) screen -- this is that target, threaded down as AttendanceScreen's initial selection.
   const [targetPmtEventId, setTargetPmtEventId] = useState<string | undefined>();
   const navigateToPmt = (pmtEventId: string) => {
@@ -52,20 +49,8 @@ export function AccountabilityApp({ unitScope }: Props) {
     setScreen("attendance");
   };
 
-  const dataLoading =
-    cadetsState.loading ||
-    eventsState.loading ||
-    extraEventsState.loading ||
-    attendanceState.loading ||
-    catalogState.loading ||
-    absenceMemoAssignmentsState.loading;
-  const loadError =
-    cadetsState.error ||
-    eventsState.error ||
-    extraEventsState.error ||
-    attendanceState.error ||
-    catalogState.error ||
-    absenceMemoAssignmentsState.error;
+  const dataLoading = cadetsState.loading || eventsState.loading || attendanceState.loading || catalogState.loading || absenceMemoAssignmentsState.loading;
+  const loadError = cadetsState.error || eventsState.error || attendanceState.error || catalogState.error || absenceMemoAssignmentsState.error;
 
   return (
     <div className="flex h-full flex-col">
@@ -75,14 +60,6 @@ export function AccountabilityApp({ unitScope }: Props) {
             <TabsTrigger value="dashboard">
               <LayoutDashboard className="h-3.5 w-3.5" />
               Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="roster">
-              <Users className="h-3.5 w-3.5" />
-              Roster
-            </TabsTrigger>
-            <TabsTrigger value="events">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Events
             </TabsTrigger>
             <TabsTrigger value="attendance">
               <ClipboardCheck className="h-3.5 w-3.5" />
@@ -118,30 +95,6 @@ export function AccountabilityApp({ unitScope }: Props) {
                   />
                 </AnimatedPanel>
               </TabsContent>
-              <TabsContent value="roster">
-                <AnimatedPanel>
-                  <RosterScreen
-                    roster={scopedCadets}
-                    events={eventsState.events}
-                    attendance={attendanceState.attendance}
-                    updatePerson={cadetsState.updateCadetFields}
-                  />
-                </AnimatedPanel>
-              </TabsContent>
-              <TabsContent value="events">
-                <AnimatedPanel>
-                  <EventsScreen
-                    events={eventsState.events}
-                    extraEvents={extraEventsState.extraEvents}
-                    createEvent={eventsState.createEvent}
-                    updateEvent={eventsState.updateEvent}
-                    deleteEvent={eventsState.deleteEvent}
-                    createExtraEvent={extraEventsState.createExtraEvent}
-                    updateExtraEvent={extraEventsState.updateExtraEvent}
-                    deleteExtraEvent={extraEventsState.deleteExtraEvent}
-                  />
-                </AnimatedPanel>
-              </TabsContent>
               <TabsContent value="attendance">
                 <AnimatedPanel>
                   <AttendanceScreen
@@ -156,6 +109,7 @@ export function AccountabilityApp({ unitScope }: Props) {
                     retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
                     linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
                     initialPmtEventId={targetPmtEventId}
+                    unitScope={unitScope}
                   />
                 </AnimatedPanel>
               </TabsContent>

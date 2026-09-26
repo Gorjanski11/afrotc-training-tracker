@@ -73,5 +73,13 @@ export function useAuth() {
     await updatePassword(current, newPassword);
   }, []);
 
-  return { user, authLoading, signIn, signOut: signOutUser, changePassword };
+  /** Re-proves identity with the current password, without changing it -- used to gate a sensitive one-off action (Data Management's PDF delete, Section 6) the same way a password change already does. Throws if the password is wrong. */
+  const reauthenticate = useCallback(async (password: string) => {
+    const current = auth.currentUser;
+    if (!current?.email) throw new Error("Not signed in.");
+    const credential = EmailAuthProvider.credential(current.email, password);
+    await reauthenticateWithCredential(current, credential);
+  }, []);
+
+  return { user, authLoading, signIn, signOut: signOutUser, changePassword, reauthenticate };
 }

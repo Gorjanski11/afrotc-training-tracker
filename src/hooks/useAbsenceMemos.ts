@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
-import type { AbsenceAsClass, AbsenceMemoStatus, AbsenceReason, AsClass, Instructor } from "../domain/constants";
+import type { AbsenceAsClass, AbsenceMemoStatus, AbsenceReason, Instructor } from "../domain/constants";
 import type { AbsenceMemo } from "../domain/types";
 
 const COLLECTION = "absenceMemos";
@@ -19,7 +19,6 @@ export interface AbsenceMemoInput {
   instructor: Instructor | undefined;
   reason: AbsenceReason;
   medicalDocSent: boolean;
-  asClassAtSubmission: AsClass | undefined;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
   status: AbsenceMemoStatus;
@@ -29,7 +28,7 @@ export interface AbsenceMemoInput {
   reviewNotes: string;
   returnReason: string | undefined;
   attendanceUpdatedAt: string | undefined;
-  lateSubmission: boolean;
+  lateSubmission: "late" | "dns" | undefined;
 }
 
 function mapMemo(id: string, data: Record<string, unknown>): AbsenceMemo {
@@ -46,7 +45,6 @@ function mapMemo(id: string, data: Record<string, unknown>): AbsenceMemo {
     instructor: (data.instructor as Instructor | null | undefined) ?? undefined,
     reason: ((data.reason as AbsenceReason) ?? "Other") as AbsenceReason,
     medicalDocSent: (data.medicalDocSent as boolean) ?? false,
-    asClassAtSubmission: (data.asClassAtSubmission as AsClass | null | undefined) ?? undefined,
     pdfUrl: (data.pdfUrl as string | null | undefined) ?? undefined,
     pdfFileName: (data.pdfFileName as string | null | undefined) ?? undefined,
     status: ((data.status as AbsenceMemoStatus) ?? "Pending") as AbsenceMemoStatus,
@@ -56,7 +54,7 @@ function mapMemo(id: string, data: Record<string, unknown>): AbsenceMemo {
     reviewNotes: (data.reviewNotes as string) ?? "",
     returnReason: (data.returnReason as string | null | undefined) ?? undefined,
     attendanceUpdatedAt: (data.attendanceUpdatedAt as string | null | undefined) ?? undefined,
-    lateSubmission: (data.lateSubmission as boolean) ?? false,
+    lateSubmission: (data.lateSubmission as "late" | "dns" | null | undefined) ?? undefined,
   };
 }
 

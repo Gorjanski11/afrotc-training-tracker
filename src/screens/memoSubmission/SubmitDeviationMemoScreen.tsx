@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { ClipboardList, Upload } from "lucide-react";
+import { ClipboardList, Upload, CheckCircle2 } from "lucide-react";
+import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
 import type { DeviationMemo, Cadet } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
@@ -12,6 +13,14 @@ interface Props {
   memos: DeviationMemo[];
   updateMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
 }
+
+const REQUIREMENTS_LIST = (
+  <ul className="list-disc space-y-2 pl-4">
+    <li>The attached PDF must be the actual signed deviation memorandum, not a draft or a photo of a partial document.</li>
+    <li>Make sure the reason and any corrective action described match what you discussed with whoever assigned this memo.</li>
+    <li className="font-medium text-foreground">Once submitted, this cannot be edited -- if cadre returns it, you'll get a chance to fix and resubmit.</li>
+  </ul>
+);
 
 function isOverdue(memo: DeviationMemo): boolean {
   return memo.status === "Assigned" && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
@@ -23,6 +32,8 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
   const [file, setFile] = useState<File | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const [confirmingMemo, setConfirmingMemo] = useState<DeviationMemo | undefined>();
 
   const myAssigned = useMemo(
     () => memos.filter((m) => m.cadetId === cadetId && m.status === "Assigned").sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
@@ -54,6 +65,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
       });
       setSubmittingId(undefined);
       setFile(undefined);
+      setJustSubmitted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to submit.");
     } finally {
@@ -68,6 +80,13 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
         <ClipboardList className="h-5 w-5 text-primary" />
         Deviation Memo
       </h2>
+
+      {justSubmitted && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-success/50 bg-success/10 p-3 text-sm text-success">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          Submitted. Cadre will review it and let you know if anything needs to be fixed.
+        </div>
+      )}
 
       <div className="space-y-6">
         <Card>
@@ -111,7 +130,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                               className="text-xs text-muted-foreground"
                             />
                           )}
-                          <Button size="sm" disabled={!file || busy} onClick={() => handleSubmit(m)}>
+                          <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(m)}>
                             {busy ? "Uploading..." : "Submit"}
                           </Button>
                         </div>
@@ -165,7 +184,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                           className="text-xs text-muted-foreground"
                         />
                       )}
-                      <Button size="sm" disabled={!file || busy} onClick={() => handleSubmit(m)}>
+                      <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(m)}>
                         {busy ? "Uploading..." : "Resubmit"}
                       </Button>
                     </div>
@@ -209,6 +228,17 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
           </Card>
         )}
       </div>
+
+      <SubmissionRequirementsDialog
+        open={!!confirmingMemo}
+        onClose={() => setConfirmingMemo(undefined)}
+        busy={busy}
+        requirements={REQUIREMENTS_LIST}
+        onConfirm={async () => {
+          if (confirmingMemo) await handleSubmit(confirmingMemo);
+          setConfirmingMemo(undefined);
+        }}
+      />
     </div>
   );
 }

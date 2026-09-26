@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Send, CheckCircle2, Plus, Upload, CalendarClock } from "lucide-react";
+import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
-import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, AS_CLASSES, INSTRUCTORS, absenceMemoDeadline } from "../../domain/constants";
-import type { AbsenceAsClass, AbsenceReason, AsClass, Instructor } from "../../domain/constants";
+import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTORS, absenceMemoDeadline } from "../../domain/constants";
+import type { AbsenceAsClass, AbsenceReason, Instructor } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent, Cadet } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -23,6 +24,29 @@ interface Props {
 }
 
 const NONE = "__none__";
+
+/** Shared between the always-visible sidebar and the pre-submit confirmation dialog (Section 18) -- one copy of the text. */
+const REQUIREMENTS_LIST = (
+  <ul className="list-disc space-y-2 pl-4">
+    <li>The absence memorandum must explain the reason for the absence, and it must be redacted IAW DAFH 33-337, The Tongue &amp; Quill.</li>
+    <li>
+      The memorandum's MEMORANDUM FOR line must read "DET 756/OFC" for PMT absences, and/or "AS___ INSTRUCTOR" for AS class absences, as applicable,
+      with the AS class code substituted into the respective line. If the memorandum is addressed to multiple offices, each subsequent office must
+      be aligned under the first, as demonstrated in Chapter 14 of DAFH 33-337.
+    </li>
+    <li>
+      The memorandum's FROM line must reflect the cadet's office symbol, as reflected in the latest Cadet Wing Organizational Chart (e.g., DET
+      756/TRG), or the organizational symbol of your flight.
+    </li>
+    <li>The memorandum's SUBJECT line must read "Absence Memorandum".</li>
+    <li>
+      The second line of the memorandum's signature block must reflect the cadet's duty title as reflected in the latest Cadet Wing Organizational
+      chart (e.g., Maintenance Group Commander), or flight membership, if the cadet does not currently hold a Cadet Wing Position (e.g., Alpha
+      Flight Member).
+    </li>
+    <li className="font-medium text-foreground">Should the aforementioned submission requirements not be met, the absence will not be excused.</li>
+  </ul>
+);
 
 function eventLabel(events: PmtEvent[], id: string): string {
   const e = events.find((ev) => ev.id === id);
@@ -43,6 +67,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | undefined>();
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [resubmittingId, setResubmittingId] = useState<string | undefined>();
   const [resubmitFile, setResubmitFile] = useState<File | undefined>();
@@ -56,12 +81,19 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const [futureTw, setFutureTw] = useState<string>(NONE);
   const [futureSelectedIds, setFutureSelectedIds] = useState<Set<string>>(new Set());
   const [futureReason, setFutureReason] = useState<AbsenceReason | typeof NONE>(NONE);
-  const [futureAsClass, setFutureAsClass] = useState<AsClass | typeof NONE>(cadet.asClass ?? NONE);
+  // Section 3: the same "Add an AS-Class absence" mini-form as the current/immediate flow below,
+  // just also offered here -- for reporting a future AS-Class session you already know you'll miss.
+  const [futureAddAsClass, setFutureAddAsClass] = useState(false);
+  const [futureAsClass, setFutureAsClass] = useState<AbsenceAsClass | typeof NONE>(NONE);
+  const [futureClassDate, setFutureClassDate] = useState("");
+  const [futureClassTitle, setFutureClassTitle] = useState("");
+  const [futureInstructor, setFutureInstructor] = useState<Instructor | typeof NONE>(NONE);
   const [futureMedicalDocSent, setFutureMedicalDocSent] = useState(false);
   const [futureFile, setFutureFile] = useState<File | undefined>();
   const [futureSubmitting, setFutureSubmitting] = useState(false);
   const [futureSubmitError, setFutureSubmitError] = useState<string | undefined>();
   const [futureJustSubmitted, setFutureJustSubmitted] = useState(false);
+  const [futureConfirmOpen, setFutureConfirmOpen] = useState(false);
 
   const myAssigned = useMemo(
     () => memos.filter((m) => m.cadetId === cadetId && m.status === "Assigned").sort((a, b) => (a.assignedAt ?? "").localeCompare(b.assignedAt ?? "")),
@@ -123,11 +155,16 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     setFutureTw(NONE);
     setFutureSelectedIds(new Set());
     setFutureReason(NONE);
-    setFutureAsClass(cadet.asClass ?? NONE);
+    setFutureAddAsClass(false);
+    setFutureAsClass(NONE);
+    setFutureClassDate("");
+    setFutureClassTitle("");
+    setFutureInstructor(NONE);
     setFutureMedicalDocSent(false);
     setFutureFile(undefined);
   };
 
+  const hasFutureClassInfo = futureAddAsClass && futureAsClass !== NONE && futureClassDate.trim() && futureClassTitle.trim() && futureInstructor !== NONE;
   const canSubmitFuture = futureSelectedIds.size > 0 && futureReason !== NONE && !!futureFile;
 
   const hasClassInfo = addAsClass && asClass !== NONE && classDate.trim() && classTitle.trim() && instructor !== NONE;
@@ -188,7 +225,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         instructor: hasClassInfo ? (instructor as Instructor) : undefined,
         reason,
         medicalDocSent,
-        asClassAtSubmission: undefined,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
         status: late ? "Rejected" : "Pending",
@@ -198,7 +234,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         reviewNotes: late ? "Automatically rejected -- submitted after the deadline." : "",
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
-        lateSubmission: late,
+        lateSubmission: late ? "late" : undefined,
       });
 
       // The auto-assigned records this submission covers are now folded into the memo above --
@@ -236,13 +272,12 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         // cadet is marked absent as expected.
         attendanceIds: pmtEventIds.map(() => ""),
         assignedAt: undefined,
-        asClass: undefined,
-        classDate: undefined,
-        classTitle: undefined,
-        instructor: undefined,
+        asClass: hasFutureClassInfo ? (futureAsClass as AbsenceAsClass) : undefined,
+        classDate: hasFutureClassInfo ? new Date(futureClassDate).toISOString() : undefined,
+        classTitle: hasFutureClassInfo ? futureClassTitle.trim() : undefined,
+        instructor: hasFutureClassInfo ? (futureInstructor as Instructor) : undefined,
         reason: futureReason as AbsenceReason,
         medicalDocSent: futureMedicalDocSent,
-        asClassAtSubmission: futureAsClass === NONE ? undefined : futureAsClass,
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
         status: "Pending",
@@ -252,7 +287,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         reviewNotes: "",
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
-        lateSubmission: false,
+        lateSubmission: undefined,
       });
 
       resetFutureForm();
@@ -281,7 +316,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         status: late ? "Rejected" : "Pending",
         submittedAt: now.toISOString(),
         returnReason: undefined,
-        lateSubmission: late,
+        lateSubmission: late ? "late" : undefined,
         ...(late
           ? { reviewedAt: now.toISOString(), reviewedBy: "C/Maj Cortes Garay", reviewNotes: "Automatically rejected -- resubmitted after the 48-hour deadline." }
           : {}),
@@ -468,7 +503,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               </div>
 
               {submitError && <p className="text-sm text-destructive">{submitError}</p>}
-              <Button onClick={handleSubmit} disabled={submitting || !canSubmit}>
+              <Button onClick={() => setConfirmOpen(true)} disabled={submitting || !canSubmit}>
                 <Send className="h-3.5 w-3.5" />
                 {submitting ? "Submitting..." : "Submit Memo"}
               </Button>
@@ -540,22 +575,63 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label>Your AS Class</Label>
-                <Select value={futureAsClass} onValueChange={(v) => setFutureAsClass(v as AsClass | typeof NONE)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>Select</SelectItem>
-                    {AS_CLASSES.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!futureAddAsClass ? (
+                <Button type="button" variant="outline" size="sm" onClick={() => setFutureAddAsClass(true)}>
+                  <Plus className="h-3.5 w-3.5" />
+                  Add an AS-Class absence
+                </Button>
+              ) : (
+                <div className="space-y-3 rounded-md border border-input p-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">AS-Class absence</p>
+                    <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setFutureAddAsClass(false)}>
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>AS Class</Label>
+                      <Select value={futureAsClass} onValueChange={(v) => setFutureAsClass(v as AbsenceAsClass | typeof NONE)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Select</SelectItem>
+                          {ABSENCE_AS_CLASSES.map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Date of class</Label>
+                      <Input type="date" value={futureClassDate} onChange={(e) => setFutureClassDate(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Material covered that day</Label>
+                    <Input value={futureClassTitle} onChange={(e) => setFutureClassTitle(e.target.value)} placeholder="e.g. Chapter 4: Leadership Theory" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Instructor</Label>
+                    <Select value={futureInstructor} onValueChange={(v) => setFutureInstructor(v as Instructor | typeof NONE)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>Select</SelectItem>
+                        {INSTRUCTORS.map((i) => (
+                          <SelectItem key={i} value={i}>
+                            {i}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label>Reason</Label>
@@ -600,7 +676,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               </div>
 
               {futureSubmitError && <p className="text-sm text-destructive">{futureSubmitError}</p>}
-              <Button onClick={handleFutureSubmit} disabled={futureSubmitting || !canSubmitFuture}>
+              <Button onClick={() => setFutureConfirmOpen(true)} disabled={futureSubmitting || !canSubmitFuture}>
                 <Send className="h-3.5 w-3.5" />
                 {futureSubmitting ? "Submitting..." : "Submit in advance"}
               </Button>
@@ -628,29 +704,30 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
           <CardHeader>
             <CardTitle>Memorandum requirements</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <ul className="list-disc space-y-2 pl-4">
-              <li>The absence memorandum must explain the reason for the absence, and it must be redacted IAW DAFH 33-337, The Tongue &amp; Quill.</li>
-              <li>
-                The memorandum's MEMORANDUM FOR line must read "DET 756/OFC" for PMT absences, and/or "AS___ INSTRUCTOR" for AS class absences, as
-                applicable, with the AS class code substituted into the respective line. If the memorandum is addressed to multiple offices, each
-                subsequent office must be aligned under the first, as demonstrated in Chapter 14 of DAFH 33-337.
-              </li>
-              <li>
-                The memorandum's FROM line must reflect the cadet's office symbol, as reflected in the latest Cadet Wing Organizational Chart (e.g.,
-                DET 756/TRG), or the organizational symbol of your flight.
-              </li>
-              <li>The memorandum's SUBJECT line must read "Absence Memorandum".</li>
-              <li>
-                The second line of the memorandum's signature block must reflect the cadet's duty title as reflected in the latest Cadet Wing
-                Organizational chart (e.g., Maintenance Group Commander), or flight membership, if the cadet does not currently hold a Cadet Wing
-                Position (e.g., Alpha Flight Member).
-              </li>
-              <li className="font-medium text-foreground">Should the aforementioned submission requirements not be met, the absence will not be excused.</li>
-            </ul>
-          </CardContent>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">{REQUIREMENTS_LIST}</CardContent>
         </Card>
       </div>
+
+      <SubmissionRequirementsDialog
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        busy={submitting}
+        requirements={REQUIREMENTS_LIST}
+        onConfirm={async () => {
+          await handleSubmit();
+          setConfirmOpen(false);
+        }}
+      />
+      <SubmissionRequirementsDialog
+        open={futureConfirmOpen}
+        onClose={() => setFutureConfirmOpen(false)}
+        busy={futureSubmitting}
+        requirements={REQUIREMENTS_LIST}
+        onConfirm={async () => {
+          await handleFutureSubmit();
+          setFutureConfirmOpen(false);
+        }}
+      />
     </div>
   );
 }

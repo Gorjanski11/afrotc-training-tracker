@@ -17,11 +17,12 @@ interface Props {
   className?: string;
 }
 
-/** Same combobox pattern as the other sites, plus a pinned "All cadets" entry at the top so a filter can be cleared by typing/picking it just like any other option. */
+/** Same combobox pattern as the other sites, plus a pinned "All cadets" entry at the top so a filter can be cleared by typing/picking it just like any other option. Cadre supervise, they're never a selectable subject (Section 4) -- filtered here so every caller gets this for free. */
 export function CadetFilterCombobox({ roster, value, onChange, allLabel, className }: Props) {
   const [open, setOpen] = useState(false);
-  const sorted = useMemo(() => [...roster].sort((a, b) => compareByLastName(a.name, b.name)), [roster]);
-  const selected = value === ALL_CADETS ? undefined : roster.find((c) => c.id === value);
+  const trackable = useMemo(() => roster.filter((c) => !c.isCadre), [roster]);
+  const sorted = useMemo(() => [...trackable].sort((a, b) => compareByLastName(a.name, b.name)), [trackable]);
+  const selected = value === ALL_CADETS ? undefined : trackable.find((c) => c.id === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

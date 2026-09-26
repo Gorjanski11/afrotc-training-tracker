@@ -23,6 +23,12 @@ export interface TabAccess {
   /** Always true for anyone signed in -- Memo Submission has no restriction. */
   memoSubmission: boolean;
   unitScope: UnitScope;
+  /**
+   * True for every GMC-class cadet (Section 13) -- computed independently of whichever tier above
+   * this person resolved to, so a plain GMC cadet (otherwise CADET_ONLY) still gets it, and a GMC
+   * Flight Commander gets it on top of their existing access.
+   */
+  gmcDashboard: boolean;
 }
 
 const ALL_ACCESS: TabAccess = {
@@ -32,6 +38,7 @@ const ALL_ACCESS: TabAccess = {
   memoReviewAbsence: true,
   memoSubmission: true,
   unitScope: SCOPE_ALL,
+  gmcDashboard: false,
 };
 const TO_FULL_ONLY: TabAccess = {
   trainingObjectives: "full",
@@ -40,6 +47,7 @@ const TO_FULL_ONLY: TabAccess = {
   memoReviewAbsence: false,
   memoSubmission: true,
   unitScope: SCOPE_ALL,
+  gmcDashboard: false,
 };
 const MEMO_DEVIATION_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -48,6 +56,7 @@ const MEMO_DEVIATION_ONLY: TabAccess = {
   memoReviewAbsence: false,
   memoSubmission: true,
   unitScope: SCOPE_ALL,
+  gmcDashboard: false,
 };
 const CADET_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -56,17 +65,18 @@ const CADET_ONLY: TabAccess = {
   memoReviewAbsence: false,
   memoSubmission: true,
   unitScope: SCOPE_ALL,
+  gmcDashboard: false,
 };
 CADET_ONLY.memoReview = false;
 
 /** A POC Group Commander -- TO's POC-only, Accountability + TO's scoped to their own group. */
 function pocGroupAccess(group: Group): TabAccess {
-  return { trainingObjectives: "poc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "group", group } };
+  return { trainingObjectives: "poc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "group", group }, gmcDashboard: false };
 }
 
 /** A GMC Flight Commander -- TO's GMC-only, Accountability + TO's scoped to their own flight. */
 function gmcFlightAccess(flight: Flight): TabAccess {
-  return { trainingObjectives: "gmc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "flight", flight } };
+  return { trainingObjectives: "gmc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "flight", flight }, gmcDashboard: false };
 }
 
 /** Montalvo Nieves -- GMC-wide (all 4 flights), not scoped to a single flight. */
@@ -77,6 +87,7 @@ const GMC_WIDE_ACCESS: TabAccess = {
   memoReviewAbsence: false,
   memoSubmission: true,
   unitScope: { kind: "gmc" },
+  gmcDashboard: false,
 };
 
 /**
@@ -113,9 +124,19 @@ const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
 /**
  * Resolves what a signed-in person can see. Cadre (roster `isCadre` flag) get full access
  * automatically even without being individually listed above; everyone else not listed gets
- * Memo Submission only.
+ * Memo Submission only. `gmcDashboard` (Section 13) is resolved as an independent extra step on
+ * top of whichever tier above applies -- every GMC-class cadet gets it, regardless of tier.
  */
 export function resolveTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {
+  const base = resolveBaseTabAccess(email, roster);
+  if (!email) return base;
+  const normalized = email.trim().toLowerCase();
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  const gmcDashboard = match !== undefined && deriveClass(match.asClass, match.isCadre) === "GMC";
+  return { ...base, gmcDashboard };
+}
+
+function resolveBaseTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {
   if (!email) return CADET_ONLY;
   const normalized = email.trim().toLowerCase();
   const explicit = ACCESS_BY_EMAIL[normalized];
@@ -131,6 +152,16 @@ export function applyUnitScope(scope: UnitScope, roster: Cadet[]): Cadet[] {
   if (scope.kind === "group") return roster.filter((p) => p.group === scope.group);
   if (scope.kind === "flight") return roster.filter((p) => p.flight === scope.flight);
   return roster.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
+}
+
+/** Cadre supervise everyone but are never a trackable subject themselves (Section 4) -- excluded from every roster-scoped view except the Settings Roster (the deliberate "account database" exception). */
+export function excludeCadre(roster: Cadet[]): Cadet[] {
+  return roster.filter((p) => !p.isCadre);
+}
+
+/** The whole ALL_ACCESS tier (Cadre + Cortes Garay + Saltiel + Mo Velez) -- gates Settings' Account Manager and the Data Management screen. */
+export function isFullAccess(email: string | null | undefined, roster: Cadet[]): boolean {
+  return resolveBaseTabAccess(email, roster) === ALL_ACCESS;
 }
 
 // ---------------------------------------------------------------------------
@@ -189,7 +220,7 @@ export function resolveDeviationAssignRule(email: string | null | undefined, ros
 
 /** Cadets a given assign scope allows targeting -- drives the cadet picker in the Assign tab. */
 export function cadetsInAssignScope(scope: DeviationAssignScope, roster: Cadet[]): Cadet[] {
-  if (scope === "everyone") return roster;
+  if (scope === "everyone") return excludeCadre(roster); // a Deviation Memo target is always a cadet, never Cadre (Section 4)
   if (scope === "everyone-except-cadre") return roster.filter((p) => !p.isCadre);
   if (scope === "any-gmc") return roster.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
   return roster.filter((p) => p.flight === scope.flight);

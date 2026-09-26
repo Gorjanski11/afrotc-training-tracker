@@ -18,10 +18,12 @@ function sortByLastName(cadets: Cadet[]): Cadet[] {
   return [...cadets].sort((a, b) => compareByLastName(a.name, b.name));
 }
 
+/** Cadre supervise, they're never a selectable subject (Section 4) -- filtered here so every caller gets this for free. */
 export function CadetCombobox({ cadets, value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);
-  const sorted = useMemo(() => sortByLastName(cadets), [cadets]);
-  const selected = cadets.find((c) => c.id === value);
+  const trackable = useMemo(() => cadets.filter((c) => !c.isCadre), [cadets]);
+  const sorted = useMemo(() => sortByLastName(trackable), [trackable]);
+  const selected = trackable.find((c) => c.id === value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

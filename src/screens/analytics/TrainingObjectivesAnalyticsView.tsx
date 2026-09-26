@@ -179,6 +179,69 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
         />
       </div>
 
+      <div className="mb-6 grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <ListOrdered className="h-4 w-4 text-primary" />
+              Completion % by PLO section
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {byPlo.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing due yet.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, byPlo.length * 34)}>
+                <BarChart data={byPlo} layout="vertical" margin={chartMargin}>
+                  <CartesianGrid horizontal={false} stroke="var(--chart-grid)" />
+                  <XAxis type="number" domain={[0, 100]} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} unit="%" />
+                  <YAxis type="category" dataKey="plo" width={140} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
+                  <Tooltip
+                    cursor={{ fill: "var(--muted)" }}
+                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
+                    formatter={(value, _name, item) => {
+                      const row = item.payload as PloCompletionRow;
+                      return [`${value}% (${row.completedCount}/${row.requiredCount})`, "Completion"];
+                    }}
+                  />
+                  <Bar dataKey="percent" radius={[0, 4, 4, 0]} maxBarSize={22} fill="var(--chart-series-3)" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Overdue objectives
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {overdue.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing overdue right now.</p>
+            ) : (
+              <div className="max-h-96 space-y-2 overflow-y-auto">
+                {overdue.map((row) => (
+                  <div key={row.objectiveId} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate" title={row.title}>
+                      <Badge variant="outline" className="mr-1.5">
+                        {row.number}
+                      </Badge>
+                      {row.title}
+                    </span>
+                    <span className="shrink-0 font-medium text-destructive">
+                      {row.overdueCount} cadet{row.overdueCount === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="mb-6">
         <CardHeader className="mb-1 flex-row items-center justify-between space-y-0">
           <CardTitle>
@@ -248,69 +311,6 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
           </div>
         </CardContent>
       </Card>
-
-      <div className="mb-6 grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <ListOrdered className="h-4 w-4 text-primary" />
-              Completion % by PLO section
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {byPlo.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing due yet.</p>
-            ) : (
-              <ResponsiveContainer width="100%" height={Math.max(180, byPlo.length * 34)}>
-                <BarChart data={byPlo} layout="vertical" margin={chartMargin}>
-                  <CartesianGrid horizontal={false} stroke="var(--chart-grid)" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} unit="%" />
-                  <YAxis type="category" dataKey="plo" width={140} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
-                  <Tooltip
-                    cursor={{ fill: "var(--muted)" }}
-                    contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
-                    formatter={(value, _name, item) => {
-                      const row = item.payload as PloCompletionRow;
-                      return [`${value}% (${row.completedCount}/${row.requiredCount})`, "Completion"];
-                    }}
-                  />
-                  <Bar dataKey="percent" radius={[0, 4, 4, 0]} maxBarSize={22} fill="var(--chart-series-3)" />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              Overdue objectives
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overdue.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing overdue right now.</p>
-            ) : (
-              <div className="max-h-96 space-y-2 overflow-y-auto">
-                {overdue.map((row) => (
-                  <div key={row.objectiveId} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate" title={row.title}>
-                      <Badge variant="outline" className="mr-1.5">
-                        {row.number}
-                      </Badge>
-                      {row.title}
-                    </span>
-                    <span className="shrink-0 font-medium text-destructive">
-                      {row.overdueCount} cadet{row.overdueCount === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

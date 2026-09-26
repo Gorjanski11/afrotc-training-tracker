@@ -122,6 +122,11 @@ function isPostAccountabilityCloseTime(event: PmtEvent): Date {
   return close;
 }
 
+/** How many whole hours past its 2000 deadline this PMT's accountability report is -- 0 if not yet closed (Section 7). */
+export function hoursOverdue(event: PmtEvent, now: Date = new Date()): number {
+  return Math.max(0, Math.floor((now.getTime() - isPostAccountabilityCloseTime(event).getTime()) / 3_600_000));
+}
+
 function isoWeekMonday(dateStr: string): string {
   const d = new Date(dateStr);
   const dayIndex = (d.getDay() + 6) % 7; // Mon=0..Sun=6, local time

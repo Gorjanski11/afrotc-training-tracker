@@ -2,20 +2,18 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileText, LayoutDashboard, ClipboardList, Mail } from "lucide-react";
+import { FileText, LayoutDashboard, ClipboardList } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useAttendanceLink } from "../hooks/useAttendanceLink";
 import { useAttendanceRecords } from "../hooks/useAttendanceRecords";
-import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
 import { DeviationMemosScreen } from "../screens/memoReview/DeviationMemosScreen";
-import { AutomaticMemorandumsScreen } from "../screens/memoReview/AutomaticMemorandumsScreen";
 
-type Screen = "dashboard" | "absence" | "deviation" | "automatic";
+type Screen = "dashboard" | "absence" | "deviation";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -31,7 +29,7 @@ interface Props {
   userEmail: string | null | undefined;
 }
 
-/** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation, History, Automatic Memorandums. */
+/** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation. Memorandum Templates and History moved to Settings (Section 6). */
 export function MemoReviewApp({ showAbsence, userEmail }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
@@ -39,26 +37,13 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
   const deviationState = useDeviationMemos();
   const attendanceLink = useAttendanceLink();
   const attendanceRecordsState = useAttendanceRecords();
-  const emailTemplatesState = useEmailTemplates();
 
   const [screen, setScreen] = useState<Screen>("dashboard");
 
   const dataLoading =
-    cadetsState.loading ||
-    eventsState.loading ||
-    absenceState.loading ||
-    deviationState.loading ||
-    attendanceLink.loading ||
-    attendanceRecordsState.loading ||
-    emailTemplatesState.loading;
+    cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading || attendanceRecordsState.loading;
   const loadError =
-    cadetsState.error ||
-    eventsState.error ||
-    absenceState.error ||
-    deviationState.error ||
-    attendanceLink.error ||
-    attendanceRecordsState.error ||
-    emailTemplatesState.error;
+    cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error || attendanceRecordsState.error;
 
   return (
     <div className="flex h-full flex-col">
@@ -78,10 +63,6 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
             <TabsTrigger value="deviation">
               <ClipboardList className="h-3.5 w-3.5" />
               Deviation Memos
-            </TabsTrigger>
-            <TabsTrigger value="automatic">
-              <Mail className="h-3.5 w-3.5" />
-              Automatic Memorandums
             </TabsTrigger>
           </TabsList>
         </nav>
@@ -135,11 +116,6 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
                     updateMemo={deviationState.updateMemo}
                     userEmail={userEmail}
                   />
-                </AnimatedPanel>
-              </TabsContent>
-              <TabsContent value="automatic">
-                <AnimatedPanel>
-                  <AutomaticMemorandumsScreen templates={emailTemplatesState.templates} saveTemplate={emailTemplatesState.saveTemplate} />
                 </AnimatedPanel>
               </TabsContent>
             </>

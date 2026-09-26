@@ -192,8 +192,6 @@ export interface AbsenceMemo {
   reason: AbsenceReason;
   /** Whether medical documentation was sent to the detachment separately from this memo. */
   medicalDocSent: boolean;
-  /** Cadet's own roster AS Class at the time of submission -- only collected on the future-PMT submission flow. */
-  asClassAtSubmission: AsClass | undefined;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
   status: AbsenceMemoStatus;
@@ -206,8 +204,13 @@ export interface AbsenceMemo {
   returnReason: string | undefined;
   /** Set once the Accepted/Rejected Attendance side-effect has actually been written, so it's never silently reapplied. */
   attendanceUpdatedAt: string | undefined;
-  /** True when this memo was auto-rejected for being late (first submission, a resubmit, or a missed-deadline escalation) -- kept even if cadre later overrides the status, so history/analytics can still show it was originally late. */
-  lateSubmission: boolean;
+  /**
+   * Set when this memo was auto-rejected for being late -- kept even if cadre later overrides the
+   * status, so history/analytics can still show why. `"late"` = submitted within the 72h+24h grace
+   * window but after the 72h deadline. `"dns"` (Did Not Submit) = never submitted at all, even
+   * through the grace window (the `escalateOverdueAbsenceMemos` escalation path).
+   */
+  lateSubmission: "late" | "dns" | undefined;
 }
 
 /** One person referenced by email+display name -- used for the deviation memo assigner/CC fields (Section 7 of the plan), where identity needs to be matched reliably rather than just displayed. */

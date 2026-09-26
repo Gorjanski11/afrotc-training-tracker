@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
 import { isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import { compareByLastName } from "../../domain/nameUtils";
+import type { UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
 import type { Attendance, PmtEvent, Cadet, TrainingObjective } from "../../domain/types";
 
@@ -21,8 +22,10 @@ interface Props {
   assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, attendanceId: string) => Promise<void>;
   retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string) => Promise<void>;
   linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string) => Promise<boolean>;
-  /** Set by the Dashboard's "Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
+  /** Set by the Dashboard's "Missed Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
   initialPmtEventId?: string;
+  /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
+  unitScope: UnitScope;
 }
 
 const NONE = "__none__";
@@ -43,7 +46,10 @@ export function AttendanceScreen({
   retractAbsenceMemoAssignment,
   linkPreSubmittedAttendance,
   initialPmtEventId,
+  unitScope,
 }: Props) {
+  const hideGroupFilter = unitScope.kind === "group";
+  const hideFlightFilter = unitScope.kind === "flight";
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 
@@ -64,8 +70,8 @@ export function AttendanceScreen({
   const [pending, setPending] = useState<Record<string, { status: AttendanceStatus; absenceReason: AbsenceReason | undefined }>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
-  const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
-  const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
+  const [groupFilter, setGroupFilter] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
+  const [flightFilter, setFlightFilter] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
 
   // Dashboard's "Accountability" card jumping here with a specific PMT -- select its Training Week
   // (so it actually appears in the filtered dropdown) and the PMT itself.
@@ -250,32 +256,36 @@ export function AttendanceScreen({
             )}
           </SelectContent>
         </Select>
-        <Select value={groupFilter} onValueChange={handleGroupChange}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All groups</SelectItem>
-            {GROUPS.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={flightFilter} onValueChange={handleFlightChange}>
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder="Flight" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All flights</SelectItem>
-            {FLIGHTS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f} Flight
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideGroupFilter && (
+          <Select value={groupFilter} onValueChange={handleGroupChange}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!hideFlightFilter && (
+          <Select value={flightFilter} onValueChange={handleFlightChange}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {selectedEvent && windowClosed && (
           <span className="flex items-center gap-1.5 text-sm text-warning-foreground">
             <TriangleAlert className="h-4 w-4 text-warning" />
@@ -285,7 +295,7 @@ export function AttendanceScreen({
       </div>
 
       {!selectedEvent ? (
-        <p className="text-sm text-muted-foreground">No PMT selected -- add one from the Events tab first.</p>
+        <p className="text-sm text-muted-foreground">No PMT selected -- add one from Settings &gt; Events first.</p>
       ) : groupFilter === "All" && flightFilter === "All" ? (
         <p className="text-sm text-muted-foreground">Pick a Group or a Flight above to load the roster.</p>
       ) : (

@@ -48,7 +48,15 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   const [overriding, setOverriding] = useState(false);
 
   const pendingMemos = useMemo(() => memos.filter((m) => m.status === "Pending").sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)), [memos]);
-  const decidedMemos = useMemo(() => memos.filter((m) => m.status !== "Pending" && m.status !== "Assigned").sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)), [memos]);
+  // Section 9/15: sorted by date reviewed, most recent first, capped to the last 10 -- the full history lives in Memorandums Analytics.
+  const decidedMemos = useMemo(
+    () =>
+      memos
+        .filter((m) => m.status !== "Pending" && m.status !== "Assigned")
+        .sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? ""))
+        .slice(0, 10),
+    [memos]
+  );
 
   const openReview = (memo: AbsenceMemo) => {
     setReviewingId(memo.id);
@@ -179,10 +187,11 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
             <Table aria-label="Decided absence memos">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Cadet</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead>Reviewed</TableHead>
+                  <TableHead>Cadet</TableHead>
                   <TableHead>By</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>PDF</TableHead>
                   <TableHead>Notes</TableHead>
                   <TableHead />
                 </TableRow>
@@ -190,17 +199,27 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
               <TableBody>
                 {decidedMemos.map((m) => (
                   <TableRow key={m.id}>
+                    <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
                     <TableCell>{m.cadetName}</TableCell>
+                    <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell className="flex items-center gap-1.5">
                       <StatusBadge status={m.status} />
                       {m.lateSubmission && (
                         <Badge variant="destructive" className="text-[10px]">
-                          Late
+                          {m.lateSubmission === "dns" ? "DNS" : "Late"}
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>{m.reviewedBy ?? "—"}</TableCell>
+                    <TableCell>
+                      {m.pdfUrl ? (
+                        <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
+                          <ExternalLink className="h-3 w-3" />
+                          {m.pdfFileName}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
                     <TableCell>
                       <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
@@ -211,7 +230,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                 ))}
                 {decidedMemos.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nothing decided yet.
                     </TableCell>
                   </TableRow>

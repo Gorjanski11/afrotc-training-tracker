@@ -3,8 +3,8 @@ import { DEV_LEVELS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
-/** Everything on screen for the current cohort (Dashboard/Analytics/Roster/Quick Log all read from these same four lists) -- one workbook, one sheet per collection plus a computed progress summary. */
-export async function exportTrainingData(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): Promise<void> {
+/** One sheet per collection plus a computed progress summary -- exported separately from `exportTrainingData` so Data Management (Section 6) can combine it with other categories into one workbook. */
+export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): ExportSheet[] {
   const objectivesById = new Map(catalog.map((o) => [o.id, o]));
   const eventsById = new Map(pmtEvents.map((e) => [e.id, e]));
 
@@ -128,11 +128,10 @@ export async function exportTrainingData(cadets: Cadet[], catalog: TrainingObjec
     }),
   };
 
-  await downloadWorkbook(`afrotc-training-tracker-export-${todayForFilename()}.xlsx`, [
-    progressSheet,
-    cadetsSheet,
-    objectivesSheet,
-    completionsSheet,
-    pmtEventsSheet,
-  ]);
+  return [progressSheet, cadetsSheet, objectivesSheet, completionsSheet, pmtEventsSheet];
+}
+
+/** Everything on screen for the current cohort (Dashboard/Analytics/Roster/Quick Log all read from these same four lists) -- one workbook, one sheet per collection plus a computed progress summary. */
+export async function exportTrainingData(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): Promise<void> {
+  await downloadWorkbook(`afrotc-training-tracker-export-${todayForFilename()}.xlsx`, buildTrainingSheets(cadets, catalog, completions, pmtEvents));
 }

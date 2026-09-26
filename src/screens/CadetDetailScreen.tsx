@@ -25,11 +25,14 @@ interface Props {
   createCompletion: (input: CompletionInput) => Promise<Completion>;
   updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
   onSelectCadet: (cadetId: string) => void;
+  /** Full (non-cohort-scoped, no-Cadre) roster, POC-filtered inside CompletionEntryDialog for the Evaluator picker (Section 5). */
+  evaluatorOptions: Cadet[];
+  userEmail: string | null | undefined;
 }
 
 type ViewMode = "list" | "table";
 
-export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtEvents, createCompletion, updateCompletion, onSelectCadet }: Props) {
+export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtEvents, createCompletion, updateCompletion, onSelectCadet, evaluatorOptions, userEmail }: Props) {
   const cadet = cadets.find((c) => c.id === cadetId);
   const [dialogObjective, setDialogObjective] = useState<TrainingObjective | undefined>();
   const [explanationObjective, setExplanationObjective] = useState<TrainingObjective | undefined>();
@@ -231,6 +234,8 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
           objective={dialogObjective}
           requiredProficiency={activeRequiredProficiency}
           existingCompletion={activeCompletion}
+          evaluatorOptions={evaluatorOptions}
+          userEmail={userEmail}
           createCompletion={createCompletion}
           updateCompletion={updateCompletion}
         />

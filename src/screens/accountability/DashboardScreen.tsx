@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LayoutDashboard, Users, TriangleAlert, ShieldAlert, ClipboardCheck, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { computeCadetAttendanceSummary, isPostAccountabilityWindowClosed } from "../../domain/attendance";
+import { computeCadetAttendanceSummary, hoursOverdue, isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import type { PmtEvent, Attendance, Cadet } from "../../domain/types";
 
 interface Props {
@@ -30,7 +30,8 @@ const EVENT_TYPE_STYLES: Record<string, string> = {
   "D&C": "bg-secondary text-secondary-foreground",
 };
 
-function WeekView({ events }: { events: PmtEvent[] }) {
+/** Exported for reuse by the GMC self-service Dashboard (Section 13). */
+export function WeekView({ events }: { events: PmtEvent[] }) {
   const days = useMemo(() => {
     const start = isoWeekStart(new Date());
     return Array.from({ length: 7 }, (_, i) => {
@@ -193,7 +194,7 @@ export function DashboardScreen({ roster, events, attendance, onNavigateToPmt }:
         <CardHeader>
           <CardTitle>
             <ClipboardCheck className="h-4 w-4 text-destructive" />
-            Accountability
+            Missed Accountability
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -212,7 +213,10 @@ export function DashboardScreen({ roster, events, attendance, onNavigateToPmt }:
                     {e.trainingWeek !== undefined ? `TW ${e.trainingWeek} - ` : ""}
                     {e.title} ({new Date(e.eventDate).toLocaleDateString()})
                   </span>
-                  <span className="text-muted-foreground">{e.eventType}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    {e.eventType}
+                    <span className="text-destructive">{hoursOverdue(e)}h overdue</span>
+                  </span>
                 </button>
               ))}
             </div>

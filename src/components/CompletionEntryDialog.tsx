@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RosterSearchSelect } from "./RosterSearchSelect";
-import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, deriveClass, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { getLookForCriteria } from "../domain/proficiencyCriteria";
 import { compareByLastName } from "../domain/nameUtils";
 import { cn } from "@/lib/utils";
@@ -35,6 +35,9 @@ interface Props {
    */
   allowMultiplePartial?: boolean;
   findExistingCompletion?: (cadetId: string) => Completion | undefined;
+  /** Full (non-cohort-scoped, no-Cadre) roster -- Evaluator (Section 5) is filtered to POC-class from this, not the cohort-scoped `cadets`, since a POC evaluator must be selectable even while logging a GMC cadet. */
+  evaluatorOptions: Cadet[];
+  userEmail: string | null | undefined;
 }
 
 function todayIso(): string {
@@ -54,10 +57,19 @@ export function CompletionEntryDialog({
   updateCompletion,
   allowMultiplePartial,
   findExistingCompletion,
+  evaluatorOptions,
+  userEmail,
 }: Props) {
+  const pocEvaluators = useMemo(() => evaluatorOptions.filter((p) => deriveClass(p.asClass, p.isCadre) === "POC"), [evaluatorOptions]);
+  const autofillEvaluator = useMemo(() => {
+    const normalized = userEmail?.trim().toLowerCase();
+    if (!normalized) return "";
+    return evaluatorOptions.find((p) => p.email?.trim().toLowerCase() === normalized)?.name ?? "";
+  }, [evaluatorOptions, userEmail]);
+
   const [proficiency, setProficiency] = useState<ProficiencyCode>(existingCompletion?.proficiencyAchieved ?? requiredProficiency);
   const [dateCompleted, setDateCompleted] = useState(existingCompletion?.dateCompleted?.slice(0, 10) ?? todayIso());
-  const [evaluator, setEvaluator] = useState(existingCompletion?.evaluator ?? "");
+  const [evaluator, setEvaluator] = useState(existingCompletion?.evaluator ?? autofillEvaluator);
   const [notes, setNotes] = useState(existingCompletion?.notes ?? "");
   const [multiplePartial, setMultiplePartial] = useState(false);
   const [selectedCadetIds, setSelectedCadetIds] = useState<Set<string>>(() => new Set([cadet.id]));
@@ -184,7 +196,7 @@ export function CompletionEntryDialog({
 
           <div className="grid gap-1.5">
             <Label>Evaluator</Label>
-            <RosterSearchSelect cadets={cadets} value={evaluator} onChange={setEvaluator} placeholder="Optional" />
+            <RosterSearchSelect cadets={pocEvaluators} value={evaluator} onChange={setEvaluator} placeholder="Optional" />
           </div>
 
           <div className="grid gap-1.5">

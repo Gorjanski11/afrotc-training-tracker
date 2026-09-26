@@ -9,19 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group } from "../../domain/constants";
+import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
 import {
   computeSessionTrend,
   computeCadetSessionTrend,
+  computeCombinedDayTrend,
+  computeCadetCombinedDayTrend,
   computeUnitComparison,
   computeStandingDistribution,
   getMissedCadetsForEvent,
   unitOfAxis,
   type UnitAxis,
   type SessionTrendPoint,
+  type MissedCadetRow,
 } from "../../domain/accountabilityAnalytics";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { Stepper } from "../../components/analytics/Stepper";
 import { exportAttendanceData } from "../../lib/exportAttendanceData";
@@ -152,8 +155,32 @@ function ClickableDot({
       {/* Real click target -- much bigger than the visible dot (3px is too small to reliably
           click), and pointer-events explicitly forced on in case an ancestor recharts layer set
           pointer-events: none for its own decorative/clip-path purposes. */}
-      <circle cx={cx} cy={cy} r={10} fill="transparent" style={{ pointerEvents: "all" }} />
+      <circle cx={cx} cy={cy} r={14} fill="transparent" style={{ pointerEvents: "all" }} />
       <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ pointerEvents: "none" }} />
+    </g>
+  );
+}
+
+/** Same click-target treatment as `ClickableDot`, for the Combined view's single line -- a day's point can carry both a PT and a LLAB/FM/D&C event id at once, so both open together. */
+function CombinedClickableDot({
+  cx,
+  cy,
+  payload,
+  onDotClick,
+}: {
+  cx?: number;
+  cy?: number;
+  payload?: { ptEventId?: string; llabEventId?: string };
+  onDotClick: (ptEventId: string | undefined, llabEventId: string | undefined) => void;
+}) {
+  if (cx === undefined || cy === undefined) return null;
+  const ptEventId = payload?.ptEventId;
+  const llabEventId = payload?.llabEventId;
+  const clickable = !!ptEventId || !!llabEventId;
+  return (
+    <g style={{ cursor: clickable ? "pointer" : "default" }} onClick={() => onDotClick(ptEventId, llabEventId)}>
+      <circle cx={cx} cy={cy} r={14} fill="transparent" style={{ pointerEvents: "all" }} />
+      <circle cx={cx} cy={cy} r={3} fill="var(--chart-series-1)" stroke="none" style={{ pointerEvents: "none" }} />
     </g>
   );
 }
@@ -172,7 +199,10 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const [trendView, setTrendView] = useState<TrendView>("combined");
   const [axis, setAxis] = useState<UnitAxis>("flight");
   const [exporting, setExporting] = useState(false);
-  const [drillDownEventId, setDrillDownEventId] = useState<string | undefined>();
+  // A day can have both a PT and a LLAB/FM/D&C session -- the Combined trend view merges them into
+  // one point (Section: combined-day drill-down), so the drill-down needs to be able to reference
+  // both at once instead of a single eventId.
+  const [drillDownDay, setDrillDownDay] = useState<{ ptEventId?: string; llabEventId?: string } | undefined>();
 
   // Master attendance table's own dedicated filters (Section 10) -- start matching the page's top
   // filters, but change independently from here on.
@@ -181,6 +211,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const [tableGroup, setTableGroup] = useState<Group | "All">(masterGroup);
   const [tableClass, setTableClass] = useState<ClassFilter | "All">(masterClass);
   const [tableBucketChoice, setTableBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
+  const [tableStanding, setTableStanding] = useState<Standing | "All">("All");
 
   const setTableExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
     setTableCadetId(which === "cadet" ? value : ALL_CADETS);
@@ -215,11 +246,11 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === masterCadetId), [filteredRoster, hasCadetFilter, masterCadetId]);
 
   // --- Attendance trend --------------------------------------------------
-  const trendBucketFor = (view: "combined" | "pt" | "llab") => (view === "combined" ? "ALL" : view === "pt" ? "PT" : "LLAB_FM");
-
+  // "combined" is handled separately below (computeCombinedDayTrend) since it merges same-day PT +
+  // LLAB/FM/D&C sessions into one point instead of per-event.
   const singleTrend: SessionTrendPoint[] = useMemo(() => {
-    if (trendView === "split") return [];
-    const bucket = trendBucketFor(trendView as "combined" | "pt" | "llab");
+    if (trendView !== "pt" && trendView !== "llab") return [];
+    const bucket = trendView === "pt" ? "PT" : "LLAB_FM";
     return hasCadetFilter
       ? computeCadetSessionTrend(bucket, masterCadetId, attendance, events)
       : computeSessionTrend(bucket, filteredRoster, attendance, events);
@@ -237,6 +268,26 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
       })),
     [singleTrend]
   );
+
+  const combinedTrendData = useMemo(() => {
+    if (trendView !== "combined") return [];
+    const points = hasCadetFilter
+      ? computeCadetCombinedDayTrend(masterCadetId, attendance, events)
+      : computeCombinedDayTrend(filteredRoster, attendance, events);
+    return cutoffAtNow(points).map((t) => ({
+      date: t.date,
+      dateLabel: new Date(t.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      label: t.label,
+      percentPct: t.percent === undefined ? null : Math.round(t.percent * 100),
+      countedCadets: t.countedCadets,
+      ptEventId: t.ptEventId,
+      ptPct: t.ptPercent === undefined ? null : Math.round(t.ptPercent * 100),
+      ptCountedCadets: t.ptCountedCadets,
+      llabEventId: t.llabEventId,
+      llabPct: t.llabPercent === undefined ? null : Math.round(t.llabPercent * 100),
+      llabCountedCadets: t.llabCountedCadets,
+    }));
+  }, [trendView, hasCadetFilter, masterCadetId, filteredRoster, attendance, events]);
 
   const splitTrendData = useMemo(() => {
     if (trendView !== "split") return [];
@@ -277,20 +328,50 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     return cutoffAtNow(rows);
   }, [trendView, hasCadetFilter, masterCadetId, filteredRoster, attendance, events]);
 
+  // Single-event dots (PT-only/LLAB-only views, and each line in Split view) resolve their own
+  // bucket from the event itself. The Combined view's dots already know both ids for that day.
   const handleTrendClick = (eventId: string | undefined) => {
-    if (eventId) setDrillDownEventId(eventId);
+    if (!eventId) return;
+    const event = pmtEventsById.get(eventId);
+    if (!event) return;
+    setDrillDownDay(bucketForEventType(event.eventType) === "PT" ? { ptEventId: eventId } : { llabEventId: eventId });
+  };
+  const handleCombinedDayClick = (ptEventId: string | undefined, llabEventId: string | undefined) => {
+    if (ptEventId || llabEventId) setDrillDownDay({ ptEventId, llabEventId });
   };
 
-  const drillDownEvent = drillDownEventId ? pmtEventsById.get(drillDownEventId) : undefined;
-  const missedCadets = useMemo(
-    () => (drillDownEvent ? getMissedCadetsForEvent(drillDownEvent, roster, attendance, absenceMemos) : []),
-    [drillDownEvent, roster, attendance, absenceMemos]
+  const ptDrillDownEvent = drillDownDay?.ptEventId ? pmtEventsById.get(drillDownDay.ptEventId) : undefined;
+  const llabDrillDownEvent = drillDownDay?.llabEventId ? pmtEventsById.get(drillDownDay.llabEventId) : undefined;
+  const hasDrillDown = !!ptDrillDownEvent || !!llabDrillDownEvent;
+
+  const ptMissedCadets = useMemo(
+    () => (ptDrillDownEvent ? getMissedCadetsForEvent(ptDrillDownEvent, roster, attendance, absenceMemos) : []),
+    [ptDrillDownEvent, roster, attendance, absenceMemos]
   );
-  const drillDownSessionPercent = useMemo(() => {
-    if (!drillDownEvent) return undefined;
-    const point = singleTrendData.find((p) => p.eventId === drillDownEvent.id) ?? splitTrendData.find((p) => p.ptEventId === drillDownEvent.id || p.llabEventId === drillDownEvent.id);
-    return point && "percentPct" in point ? point.percentPct : undefined;
-  }, [drillDownEvent, singleTrendData, splitTrendData]);
+  const llabMissedCadets = useMemo(
+    () => (llabDrillDownEvent ? getMissedCadetsForEvent(llabDrillDownEvent, roster, attendance, absenceMemos) : []),
+    [llabDrillDownEvent, roster, attendance, absenceMemos]
+  );
+
+  // Reuses whichever trend series already computed this event's percent (single-session for the
+  // PT/LLAB-only and Split views, cumulative-through-this-day when a cadet filter is active) rather
+  // than recomputing it a third way.
+  const percentForEvent = (eventId: string): number | undefined => {
+    const single = singleTrendData.find((p) => p.eventId === eventId);
+    if (single) return single.percentPct ?? undefined;
+    const split = splitTrendData.find((p) => p.ptEventId === eventId || p.llabEventId === eventId);
+    if (split) return (split.ptEventId === eventId ? split.ptPct : split.llabPct) ?? undefined;
+    const combined = combinedTrendData.find((p) => p.ptEventId === eventId || p.llabEventId === eventId);
+    if (combined) return (combined.ptEventId === eventId ? combined.ptPct : combined.llabPct) ?? undefined;
+    return undefined;
+  };
+  const ptDrillDownPercent = ptDrillDownEvent ? percentForEvent(ptDrillDownEvent.id) : undefined;
+  const llabDrillDownPercent = llabDrillDownEvent ? percentForEvent(llabDrillDownEvent.id) : undefined;
+
+  const closeDrillDownAndFilterCadet = (cadetId: string) => {
+    setDrillDownDay(undefined);
+    setExclusiveFilter("cadet", cadetId);
+  };
 
   // --- PT vs LLAB/FM comparison ------------------------------------------
   const showComparison = !hasCadetFilter;
@@ -360,8 +441,14 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
         .filter((p) => tableFlight === "All" || p.flight === tableFlight)
         .filter((p) => tableGroup === "All" || p.group === tableGroup)
         .filter((p) => tableClass === "All" || deriveClass(p.asClass, p.isCadre) === tableClass)
-        .filter((p) => tableCadetId === ALL_CADETS || p.id === tableCadetId),
-    [sortedActiveRoster, tableFlight, tableGroup, tableClass, tableCadetId]
+        .filter((p) => tableCadetId === ALL_CADETS || p.id === tableCadetId)
+        .filter((p) => {
+          if (tableStanding === "All") return true;
+          const summary = computeCadetAttendanceSummary(p.id, attendance, pmtEventsById);
+          const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
+          return standing === tableStanding;
+        }),
+    [sortedActiveRoster, tableFlight, tableGroup, tableClass, tableCadetId, tableStanding, tableBucketChoice, attendance, pmtEventsById]
   );
   const cellByKey = useMemo(() => {
     const map = new Map<string, Attendance>();
@@ -377,6 +464,78 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
       setExporting(false);
     }
   };
+
+  // One PMT's drill-down content -- rendered once per event when a Combined-view day has both a PT
+  // and a LLAB/FM/D&C session, so both show in the same dialog. Clicking a cadet's name here closes
+  // the dialog and switches the whole page to that cadet's individual analytics (Section: cadet
+  // click-through) instead of showing a second, separate view.
+  const renderDrillDownSection = (event: PmtEvent, percent: number | undefined, missed: MissedCadetRow[]) => (
+    <div key={event.id} className="space-y-2">
+      <p className="text-sm font-semibold text-muted-foreground">
+        {event.eventType} — {event.title}
+      </p>
+      {hasCadetFilter && selectedCadet ? (
+        <div className="text-sm">
+          <p className="mb-1">
+            Overall attendance rate: <strong>{percent ?? "—"}%</strong>
+          </p>
+          {missed.length === 0 ? (
+            <p className="text-muted-foreground">{formatCadetName(selectedCadet)} was present.</p>
+          ) : (
+            <p>
+              Status: <Badge variant="destructive">{missed[0]?.memoStatus}</Badge>
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2 text-sm">
+          <p>
+            Overall attendance rate: <strong>{percent ?? "—"}%</strong>
+          </p>
+          {missed.length === 0 ? (
+            <p className="text-muted-foreground">No absences or lates recorded for this session.</p>
+          ) : (
+            <div className="max-h-96 overflow-y-auto rounded-md border border-input">
+              <Table aria-label={`Cadets who missed ${event.title}`}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cadet</TableHead>
+                    <TableHead>Unit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Memo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {missed.map((row) => (
+                    <TableRow key={row.cadet.id}>
+                      <TableCell>
+                        <button
+                          type="button"
+                          className="text-primary underline-offset-2 hover:underline"
+                          onClick={() => closeDrillDownAndFilterCadet(row.cadet.id)}
+                        >
+                          {formatCadetName(row.cadet)}
+                        </button>
+                      </TableCell>
+                      <TableCell>{row.cadet.flight ?? row.cadet.group ?? "—"}</TableCell>
+                      <TableCell>
+                        <StatusDot status={row.status} />
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
+                          {row.memoStatus}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -509,6 +668,42 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                   </LineChart>
                 </ResponsiveContainer>
               )
+            ) : trendView === "combined" ? (
+              combinedTrendData.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No sessions in this filter yet.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={combinedTrendData} margin={chartMargin}>
+                    <CartesianGrid stroke="var(--chart-grid)" />
+                    <XAxis dataKey="dateLabel" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
+                    <YAxis domain={[0, 100]} unit="%" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
+                    <Tooltip
+                      contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload || payload.length === 0) return null;
+                        const row = payload[0].payload as (typeof combinedTrendData)[number];
+                        const describe = (pct: number | null, counted: number) =>
+                          pct === null ? "no session" : hasCadetFilter ? `${pct}% cumulative` : `${pct}% (${counted} cadets)`;
+                        return (
+                          <div style={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, padding: 8 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{row.label}</div>
+                            <div>PT: {describe(row.ptPct, row.ptCountedCadets)}</div>
+                            <div>LLAB/FM/D&amp;C: {describe(row.llabPct, row.llabCountedCadets)}</div>
+                          </div>
+                        );
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="percentPct"
+                      stroke="var(--chart-series-1)"
+                      strokeWidth={2}
+                      dot={<CombinedClickableDot onDotClick={handleCombinedDayClick} />}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )
             ) : singleTrendData.length === 0 ? (
               <p className="text-sm text-muted-foreground">No sessions in this filter yet.</p>
             ) : (
@@ -546,7 +741,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <CardTitle>
                 <Scale className="h-4 w-4 text-primary" />
-                {hasCadetFilter && selectedCadet ? `PT vs LLAB/FM/D&C for ${selectedCadet.name}` : "PT vs LLAB/FM/D&C by unit"}
+                {hasCadetFilter && selectedCadet ? `PT vs LLAB/FM/D&C for ${formatCadetName(selectedCadet)}` : "PT vs LLAB/FM/D&C by unit"}
               </CardTitle>
               {showComparison && <Stepper options={AXIS_OPTIONS} value={axis} onChange={(v) => setAxis(v as UnitAxis)} />}
             </CardHeader>
@@ -582,7 +777,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             <CardHeader>
               <CardTitle>
                 <PieChartIcon className="h-4 w-4 text-primary" />
-                {hasCadetFilter && selectedCadet ? `Standing for ${selectedCadet.name}` : "Standing distribution (active cadets)"}
+                {hasCadetFilter && selectedCadet ? `Standing for ${formatCadetName(selectedCadet)}` : "Standing distribution (active cadets)"}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -685,6 +880,17 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={tableStanding} onValueChange={(v) => setTableStanding(v as Standing | "All")}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Standing" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All standings</SelectItem>
+                  <SelectItem value="Good">Good</SelectItem>
+                  <SelectItem value="Warning">Warning</SelectItem>
+                  <SelectItem value="Hard Limit">Hard Limit</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             {tableEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No {tableBucketChoice === "PT" ? "PT" : "LLAB/FM/D&C"} sessions yet.</p>
@@ -708,7 +914,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                       const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
                       return (
                         <TableRow key={cadet.id}>
-                          <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">{cadet.name}</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">{formatCadetName(cadet)}</TableCell>
                           {tableEvents.map((e) => {
                             const record = cellByKey.get(`${cadet.id}__${e.id}`);
                             return (
@@ -736,67 +942,23 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
         </Card>
       </motion.div>
 
-      <Dialog open={!!drillDownEvent} onOpenChange={(o) => !o && setDrillDownEventId(undefined)}>
-        <DialogContent className="max-w-lg">
-          {drillDownEvent && (
+      <Dialog open={hasDrillDown} onOpenChange={(o) => !o && setDrillDownDay(undefined)}>
+        <DialogContent className="max-w-2xl">
+          {hasDrillDown && (
             <>
               <DialogHeader>
                 <DialogTitle>
-                  {drillDownEvent.title} — {new Date(drillDownEvent.eventDate).toLocaleDateString()}
+                  {[ptDrillDownEvent, llabDrillDownEvent]
+                    .filter((e): e is PmtEvent => !!e)
+                    .map((e) => e.title)
+                    .join(" + ")}{" "}
+                  — {new Date((ptDrillDownEvent ?? llabDrillDownEvent)!.eventDate).toLocaleDateString()}
                 </DialogTitle>
               </DialogHeader>
-              {hasCadetFilter && selectedCadet ? (
-                <div className="text-sm">
-                  <p className="mb-2">
-                    Overall attendance rate for this session: <strong>{drillDownSessionPercent ?? "—"}%</strong>
-                  </p>
-                  {missedCadets.length === 0 ? (
-                    <p className="text-muted-foreground">{selectedCadet.name} was present.</p>
-                  ) : (
-                    <p>
-                      Status: <Badge variant="destructive">{missedCadets[0]?.memoStatus}</Badge>
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-3 text-sm">
-                  <p>
-                    Overall attendance rate: <strong>{drillDownSessionPercent ?? "—"}%</strong>
-                  </p>
-                  {missedCadets.length === 0 ? (
-                    <p className="text-muted-foreground">No absences or lates recorded for this session.</p>
-                  ) : (
-                    <div className="max-h-72 overflow-y-auto rounded-md border border-input">
-                      <Table aria-label="Cadets who missed this session">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Cadet</TableHead>
-                            <TableHead>Unit</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Memo</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {missedCadets.map((row) => (
-                            <TableRow key={row.cadet.id}>
-                              <TableCell>{row.cadet.name}</TableCell>
-                              <TableCell>{row.cadet.flight ?? row.cadet.group ?? "—"}</TableCell>
-                              <TableCell>
-                                <StatusDot status={row.status} />
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
-                                  {row.memoStatus}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="space-y-5">
+                {ptDrillDownEvent && renderDrillDownSection(ptDrillDownEvent, ptDrillDownPercent, ptMissedCadets)}
+                {llabDrillDownEvent && renderDrillDownSection(llabDrillDownEvent, llabDrillDownPercent, llabMissedCadets)}
+              </div>
             </>
           )}
         </DialogContent>

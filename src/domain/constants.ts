@@ -79,11 +79,12 @@ export function deriveClass(asLevel: AsClass | undefined, isCadre: boolean): Ros
 /**
  * CWL is a badge, not a roster class or Group -- confirmed with cadre it must not change anyone's
  * Group field or AS Class (several CWL members are Group Commanders whose own Accountability/TO
- * views are scoped by that Group field, and reassigning it would break that scoping). AS700 implies
- * CWL automatically; anyone else is CWL only via the manual `isCwl` override on their roster record.
+ * views are scoped by that Group field, and reassigning it would break that scoping). AS700 is
+ * unrelated -- it just marks a cadet as no longer taking AS classes, nothing to do with leadership
+ * -- so CWL is purely the manual `isCwl` override, never auto-derived from AS Class.
  */
-export function isCwlMember(asClass: AsClass | undefined, isCwl: boolean): boolean {
-  return isCwl || asClass === "AS700";
+export function isCwlMember(_asClass: AsClass | undefined, isCwl: boolean): boolean {
+  return isCwl;
 }
 
 export const EXTRA_EVENT_TYPES = ["Extra PT", "Extra D&C", "Reposition", "Bonding"] as const;

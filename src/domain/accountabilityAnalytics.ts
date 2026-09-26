@@ -114,6 +114,143 @@ export function computeCadetSessionTrend(bucket: TrendBucket, cadetId: string, a
   });
 }
 
+/** One entry per calendar day that has a PT and/or a LLAB/FM/D&C session -- used only by the "Combined" trend view so a day with both doesn't render as two overlapping points on one line. */
+interface DayEvents {
+  date: string;
+  ptEvent: PmtEvent | undefined;
+  llabEvent: PmtEvent | undefined;
+}
+
+function groupEventsByDay(events: PmtEvent[]): DayEvents[] {
+  const byDate = new Map<string, DayEvents>();
+  for (const e of events) {
+    const bucket = bucketForEventType(e.eventType);
+    if (bucket === "OTHER") continue;
+    const row = byDate.get(e.eventDate) ?? { date: e.eventDate, ptEvent: undefined, llabEvent: undefined };
+    if (bucket === "PT" && !row.ptEvent) row.ptEvent = e;
+    if (bucket === "LLAB_FM" && !row.llabEvent) row.llabEvent = e;
+    byDate.set(e.eventDate, row);
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function tallyWeighted(records: Attendance[]): { percent: number | undefined; counted: number } {
+  let weightedSum = 0;
+  let counted = 0;
+  for (const r of records) {
+    const weight = ATTENDANCE_WEIGHT[r.status];
+    if (weight === undefined) continue;
+    weightedSum += weight;
+    counted += 1;
+  }
+  return { percent: counted === 0 ? undefined : weightedSum / counted, counted };
+}
+
+export interface CombinedDayTrendPoint {
+  date: string;
+  label: string;
+  percent: number | undefined;
+  countedCadets: number;
+  ptEventId: string | undefined;
+  ptPercent: number | undefined;
+  ptCountedCadets: number;
+  llabEventId: string | undefined;
+  llabPercent: number | undefined;
+  llabCountedCadets: number;
+}
+
+/**
+ * Cohort-wide "Combined" trend, one point per calendar DAY (not per event) -- a day with both a PT
+ * and a LLAB/FM/D&C session merges into a single point (percent = weighted across both sessions'
+ * attendance together), while still exposing each session's own percent/eventId separately so the
+ * hover tooltip and click-to-drill-down can show/open both PMTs for that day instead of just
+ * whichever one the point happened to represent.
+ */
+export function computeCombinedDayTrend(activeRoster: Cadet[], attendance: Attendance[], events: PmtEvent[]): CombinedDayTrendPoint[] {
+  const activeIds = new Set(activeRoster.map((p) => p.id));
+  const byEvent = new Map<string, Attendance[]>();
+  for (const record of attendance) {
+    if (!activeIds.has(record.cadetId)) continue;
+    const list = byEvent.get(record.pmtEventId) ?? [];
+    list.push(record);
+    byEvent.set(record.pmtEventId, list);
+  }
+
+  return groupEventsByDay(events).map((day) => {
+    const ptRecords = day.ptEvent ? (byEvent.get(day.ptEvent.id) ?? []) : [];
+    const llabRecords = day.llabEvent ? (byEvent.get(day.llabEvent.id) ?? []) : [];
+    const ptTally = tallyWeighted(ptRecords);
+    const llabTally = tallyWeighted(llabRecords);
+    const combinedTally = tallyWeighted([...ptRecords, ...llabRecords]);
+    return {
+      date: day.date,
+      label: [day.ptEvent?.title, day.llabEvent?.title].filter(Boolean).join(" + ") || "Session",
+      percent: combinedTally.percent,
+      countedCadets: combinedTally.counted,
+      ptEventId: day.ptEvent?.id,
+      ptPercent: ptTally.percent,
+      ptCountedCadets: ptTally.counted,
+      llabEventId: day.llabEvent?.id,
+      llabPercent: llabTally.percent,
+      llabCountedCadets: llabTally.counted,
+    };
+  });
+}
+
+/**
+ * Same day-merge as `computeCombinedDayTrend`, but for a single cadet's *cumulative* running percent
+ * (matching `computeCadetSessionTrend`'s fixed-total-shortfall math) -- tracks PT and LLAB/FM running
+ * totals in parallel so a day with both sessions can show/open both, same reasoning as above.
+ */
+export function computeCadetCombinedDayTrend(cadetId: string, attendance: Attendance[], events: PmtEvent[]): CombinedDayTrendPoint[] {
+  const byEvent = new Map<string, Attendance>();
+  for (const record of attendance) {
+    if (record.cadetId === cadetId) byEvent.set(record.pmtEventId, record);
+  }
+
+  const ptFixed = SEMESTER_PMT_TOTALS.PT;
+  const llabFixed = SEMESTER_PMT_TOTALS.LLAB_FM;
+  const combinedFixed = ptFixed + llabFixed;
+
+  const shortfallPercent = (fixedTotal: number, counted: number, weighted: number) => Math.max(0, (fixedTotal - (counted - weighted)) / fixedTotal);
+
+  let ptWeighted = 0;
+  let ptCounted = 0;
+  let llabWeighted = 0;
+  let llabCounted = 0;
+
+  return groupEventsByDay(events).map((day) => {
+    if (day.ptEvent) {
+      const record = byEvent.get(day.ptEvent.id);
+      const weight = record ? ATTENDANCE_WEIGHT[record.status] : undefined;
+      if (weight !== undefined) {
+        ptWeighted += weight;
+        ptCounted += 1;
+      }
+    }
+    if (day.llabEvent) {
+      const record = byEvent.get(day.llabEvent.id);
+      const weight = record ? ATTENDANCE_WEIGHT[record.status] : undefined;
+      if (weight !== undefined) {
+        llabWeighted += weight;
+        llabCounted += 1;
+      }
+    }
+    return {
+      date: day.date,
+      label: [day.ptEvent?.title, day.llabEvent?.title].filter(Boolean).join(" + ") || "Session",
+      percent: shortfallPercent(combinedFixed, ptCounted + llabCounted, ptWeighted + llabWeighted),
+      countedCadets: ptCounted + llabCounted > 0 ? 1 : 0,
+      ptEventId: day.ptEvent?.id,
+      ptPercent: ptCounted > 0 ? shortfallPercent(ptFixed, ptCounted, ptWeighted) : undefined,
+      ptCountedCadets: ptCounted > 0 ? 1 : 0,
+      llabEventId: day.llabEvent?.id,
+      llabPercent: llabCounted > 0 ? shortfallPercent(llabFixed, llabCounted, llabWeighted) : undefined,
+      llabCountedCadets: llabCounted > 0 ? 1 : 0,
+    };
+  });
+}
+
 export interface UnitComparisonRow {
   unit: string;
   ptPercent: number | undefined;

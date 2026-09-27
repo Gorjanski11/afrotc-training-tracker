@@ -3,7 +3,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import { formatCadetName } from "../domain/nameUtils";
-import type { AbsenceMemoStatus, AbsenceReason } from "../domain/constants";
+import { ABSENCE_MEMO_AUTO_ASSIGN_START, type AbsenceMemoStatus, type AbsenceReason } from "../domain/constants";
 import type { AbsenceMemoRef, Cadet, PmtEvent } from "../domain/types";
 
 const COLLECTION = "absenceMemos";
@@ -57,6 +57,7 @@ export function useAbsenceMemoAssignments() {
    */
   const assignAbsenceMemo = useCallback(
     async (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => {
+      if (new Date(pmtEvent.eventDate).getTime() < new Date(ABSENCE_MEMO_AUTO_ASSIGN_START).getTime()) return;
       const alreadyCovered = refs.some((m) => m.cadetId === cadet.id && m.pmtEventIds.includes(pmtEvent.id) && m.status !== "Rejected");
       if (alreadyCovered) return;
 

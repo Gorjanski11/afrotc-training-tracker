@@ -143,6 +143,16 @@ export function standingForPercent(percent: number | undefined): Standing | unde
 /** Fixed semester totals for the attendance % denominator (Section 1 of the plan) -- update these each semester. D&C occurrences count toward LLAB_FM since D&C is a type of LLAB session. */
 export const SEMESTER_PMT_TOTALS: Record<"PT" | "LLAB_FM", number> = { PT: 27, LLAB_FM: 28 };
 
+/**
+ * One-time transition marker: PT/LLAB/FM/D&C attendance before this semester was tracked on a
+ * different platform, and its Absent records were bulk-imported here with no memos (cadre will
+ * backfill the real memo history manually later). A PMT dated before this never auto-assigns an
+ * Absence Memo (useAbsenceMemoAssignments), even if its attendance is re-saved later -- otherwise
+ * re-opening an old date and touching Save would spam fresh "Assigned" memos for absences that
+ * were never actually tracked as needing one here. PMTs on/after this date behave normally.
+ */
+export const ABSENCE_MEMO_AUTO_ASSIGN_START = "2026-09-29";
+
 // AS Class options for an academic-class absence (as opposed to a PMT absence) -- deliberately a
 // narrower list than the full roster AS_CLASSES above (no AS250/AS500/AS600 -- those don't have
 // their own AS-class instruction block).

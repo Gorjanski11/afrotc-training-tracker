@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { ExternalLink, Link2, Flame, Mail, FolderGit2 } from "lucide-react";
+import { ExternalLink, Link2, Flame, FolderGit2 } from "lucide-react";
 
 const LINKS = [
   {
@@ -13,12 +13,6 @@ const LINKS = [
     description: "Source code for this hub -- issues, commit history, and the deploy workflow.",
     href: "https://github.com/Gorjanski11/afrotc-training-tracker",
     icon: FolderGit2,
-  },
-  {
-    label: "Resend Dashboard",
-    description: "Delivery logs for every automated email this hub sends (memo assignments, reminders, escalations).",
-    href: "https://resend.com/emails",
-    icon: Mail,
   },
 ];
 

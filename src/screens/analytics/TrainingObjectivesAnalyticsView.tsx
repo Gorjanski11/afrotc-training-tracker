@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLO_SECTIONS, FLIGHTS, GROUPS, DEV_LEVELS, type DevLevel, type Flight, type Group } from "../../domain/constants";
+import { PLO_SECTIONS, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group } from "../../domain/constants";
 import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
 import { formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
@@ -49,13 +49,41 @@ function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; 
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
 
+const COHORT_OPTIONS = ["POC", "GMC"] as const;
+type CohortFilter = (typeof COHORT_OPTIONS)[number];
+
 /** Section 6b -- same Cadet/Flight/Group exclusive-filter bar as Accountability Analytics, plus this screen's own Class (Dev Level) and PLO filters, all of which now feed every chart below. */
 export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS }: Props) {
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
   const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
   const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
+  const [cohortFilter, setCohortFilter] = useState<CohortFilter | "All">("All");
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [ploFilter, setPloFilter] = useState<string>("All");
+
+  /** Switching Cohort resets Dev Level if it no longer applies (e.g. GMC selected while Dev Level was still SCL) instead of silently showing zero cadets. */
+  const handleCohortChange = (v: string) => {
+    const next = v as CohortFilter | "All";
+    setCohortFilter(next);
+    const validLevels = next === "All" ? DEV_LEVELS : next === "POC" ? POC_DEV_LEVELS : GMC_DEV_LEVELS;
+    if (devLevelFilter !== "All" && !(validLevels as readonly DevLevel[]).includes(devLevelFilter)) setDevLevelFilter("All");
+  };
+
+  const devLevelOptions = useMemo(() => {
+    const validLevels = cohortFilter === "All" ? DEV_LEVELS : cohortFilter === "POC" ? POC_DEV_LEVELS : GMC_DEV_LEVELS;
+    return availableDevLevels.filter((lvl) => (validLevels as readonly DevLevel[]).includes(lvl));
+  }, [availableDevLevels, cohortFilter]);
+
+  // A viewer already scoped to just one cohort (e.g. a POC Group Commander) never has the other
+  // cohort's cadets to begin with -- no point offering a Cohort choice that always shows nothing.
+  const availableCohorts = useMemo(
+    () =>
+      COHORT_OPTIONS.filter((c) => {
+        const validLevels = c === "POC" ? POC_DEV_LEVELS : GMC_DEV_LEVELS;
+        return availableDevLevels.some((lvl) => (validLevels as readonly DevLevel[]).includes(lvl));
+      }),
+    [availableDevLevels]
+  );
   const [cadetTableView, setCadetTableView] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -68,11 +96,12 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
   const filteredCadets = useMemo(
     () =>
       cadets
+        .filter((c) => cohortFilter === "All" || deriveClass(c.asClass, c.isCadre) === cohortFilter)
         .filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter)
         .filter((c) => masterFlight === "All" || c.flight === masterFlight)
         .filter((c) => masterGroup === "All" || c.group === masterGroup)
         .filter((c) => masterCadetId === ALL_CADETS || c.id === masterCadetId),
-    [cadets, devLevelFilter, masterFlight, masterGroup, masterCadetId]
+    [cadets, cohortFilter, devLevelFilter, masterFlight, masterGroup, masterCadetId]
   );
   const filteredCatalog = useMemo(() => (ploFilter === "All" ? catalog : catalog.filter((o) => o.plo === ploFilter)), [catalog, ploFilter]);
 
@@ -140,13 +169,28 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
             ))}
           </SelectContent>
         </Select>
+        {availableCohorts.length > 1 && (
+          <Select value={cohortFilter} onValueChange={handleCohortChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Cohort" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">POC + GMC</SelectItem>
+              {availableCohorts.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>
           <SelectTrigger className="w-40">
-            <SelectValue placeholder="Class" />
+            <SelectValue placeholder="Dev Level" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="All">All classes</SelectItem>
-            {availableDevLevels.map((lvl) => (
+            <SelectItem value="All">All dev levels</SelectItem>
+            {devLevelOptions.map((lvl) => (
               <SelectItem key={lvl} value={lvl}>
                 {lvl}
               </SelectItem>

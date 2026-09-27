@@ -8,7 +8,8 @@ import {
   EmailAuthProvider,
   type User,
 } from "firebase/auth";
-import { auth } from "../lib/firebase";
+import { httpsCallable } from "firebase/functions";
+import { auth, functions } from "../lib/firebase";
 
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"] as const;
@@ -73,7 +74,7 @@ export function useAuth() {
     await updatePassword(current, newPassword);
   }, []);
 
-  /** Re-proves identity with the current password, without changing it -- used to gate a sensitive one-off action (Data Management's PDF delete, Section 6) the same way a password change already does. Throws if the password is wrong. */
+  /** Re-proves identity with the current password, without changing it -- used to gate a sensitive one-off action (Data Management's PDF delete, Settings > Manage Passwords) the same way a password change already does. Throws if the password is wrong. */
   const reauthenticate = useCallback(async (password: string) => {
     const current = auth.currentUser;
     if (!current?.email) throw new Error("Not signed in.");
@@ -81,5 +82,16 @@ export function useAuth() {
     await reauthenticateWithCredential(current, credential);
   }, []);
 
-  return { user, authLoading, signIn, signOut: signOutUser, changePassword, reauthenticate };
+  /**
+   * Resets a DIFFERENT account's password -- only Cadre/Cortes Garay can call this at all (a Cloud
+   * Function, since the client SDK's updatePassword only ever works on the caller's own account),
+   * and the function independently re-checks that authorization server-side. The caller's own
+   * password should already have been verified via `reauthenticate` right before this runs.
+   */
+  const resetOtherPassword = useCallback(async (targetEmail: string, newPassword: string) => {
+    const call = httpsCallable<{ targetEmail: string; newPassword: string }, { success: boolean }>(functions, "resetCadetPassword");
+    await call({ targetEmail, newPassword });
+  }, []);
+
+  return { user, authLoading, signIn, signOut: signOutUser, changePassword, reauthenticate, resetOtherPassword };
 }

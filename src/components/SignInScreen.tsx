@@ -4,7 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogIn, ShieldHalf } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { auth } from "../lib/firebase";
 
 interface Props {
@@ -53,9 +53,7 @@ export function SignInScreen({ signIn }: Props) {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <div className="mb-1 flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <ShieldHalf className="h-4 w-4" />
-            </span>
+            <img src={`${import.meta.env.BASE_URL}det756-logo.webp`} alt="AFROTC Det 756" className="h-9 w-9 rounded-full object-cover" />
             <CardTitle>Borinkeneers Det 756</CardTitle>
           </div>
         </CardHeader>

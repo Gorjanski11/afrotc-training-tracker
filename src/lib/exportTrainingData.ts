@@ -82,7 +82,7 @@ export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[
   };
 
   const pmtEventsSheet: ExportSheet = {
-    name: "PMT Events",
+    name: "PMT Events (Training)",
     columns: [
       { header: "Title", key: "title", width: 28 },
       { header: "Date", key: "date", width: 14 },

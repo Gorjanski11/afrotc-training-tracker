@@ -69,7 +69,7 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
   };
 
   const eventsSheet: ExportSheet = {
-    name: "PMT Events",
+    name: "PMT Events (Accountability)",
     columns: [
       { header: "Title", key: "title", width: 28 },
       { header: "Date", key: "date", width: 14 },

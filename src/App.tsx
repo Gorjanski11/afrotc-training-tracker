@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldHalf, LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard } from "lucide-react";
+import { LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { resolveTabAccess } from "./domain/access";
@@ -72,9 +72,7 @@ function App() {
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-input bg-background px-8 py-3">
         <div className="flex items-center gap-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <ShieldHalf className="h-4 w-4" />
-          </span>
+          <img src={`${import.meta.env.BASE_URL}det756-logo.webp`} alt="AFROTC Det 756" className="h-9 w-9 rounded-full object-cover" />
           <h1 className="text-xl font-semibold">Borinkeneers Det 756</h1>
         </div>
         <div className="flex items-center gap-3">

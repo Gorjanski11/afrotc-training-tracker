@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
 import { connectAuthEmulator, getAuth, setPersistence, browserSessionPersistence } from "firebase/auth";
+import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
 
 // Firebase web config is not a secret -- Firebase's security model relies on
 // Firestore Security Rules (see firestore.rules), not on hiding this object.
@@ -18,6 +19,7 @@ export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const auth = getAuth(app);
+export const functions = getFunctions(app);
 
 // Session-only persistence -- closing the tab/browser signs the user out (Firebase's default,
 // browserLocalPersistence, would keep them signed in indefinitely across visits). Paired with the
@@ -32,4 +34,5 @@ if (import.meta.env.DEV && import.meta.env.VITE_USE_FIREBASE_EMULATOR === "true"
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
   connectStorageEmulator(storage, "127.0.0.1", 9199);
   connectAuthEmulator(auth, "http://127.0.0.1:9099");
+  connectFunctionsEmulator(functions, "127.0.0.1", 5001);
 }

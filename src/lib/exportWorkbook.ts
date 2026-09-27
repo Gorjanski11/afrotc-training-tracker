@@ -16,8 +16,18 @@ export async function downloadWorkbook(filename: string, sheets: ExportSheet[]):
   workbook.creator = "Borinkeneers AFROTC Det 756";
   workbook.created = new Date();
 
+  // Defensive: ExcelJS throws if two sheets share a name (already bit us once when Accountability
+  // and Training Objectives each had their own "PMT Events" sheet) -- de-duplicate here too so a
+  // future name collision degrades to a slightly odd sheet name instead of silently killing the
+  // whole export.
+  const usedNames = new Set<string>();
   for (const sheet of sheets) {
-    const ws = workbook.addWorksheet(sheet.name);
+    let name = sheet.name;
+    let suffix = 2;
+    while (usedNames.has(name)) name = `${sheet.name} (${suffix++})`;
+    usedNames.add(name);
+
+    const ws = workbook.addWorksheet(name);
     ws.columns = sheet.columns;
     ws.addRows(sheet.rows);
     ws.getRow(1).font = { bold: true };

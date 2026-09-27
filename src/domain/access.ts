@@ -164,6 +164,15 @@ export function isFullAccess(email: string | null | undefined, roster: Cadet[]):
   return resolveBaseTabAccess(email, roster) === ALL_ACCESS;
 }
 
+/** Cadre or Cortes Garay specifically -- deliberately narrower than `isFullAccess` (Saltiel/Mo Velez are full-access but NOT authorized to reset someone else's password). Gates Settings' Manage Passwords screen; the Cloud Function independently re-checks this same rule server-side. */
+export function isCadreOrCortesGaray(email: string | null | undefined, roster: Cadet[]): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  if (normalized === "jorge.cortes4@upr.edu") return true;
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  return match?.isCadre === true;
+}
+
 // ---------------------------------------------------------------------------
 // Section 7 -- Deviation Memo assign/review permission matrix
 // ---------------------------------------------------------------------------

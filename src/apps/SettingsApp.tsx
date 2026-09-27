@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus, KeyRound } from "lucide-react";
+import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useExtraEvents } from "../hooks/useExtraEvents";
@@ -14,17 +14,16 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCadreOrCortesGaray } from "../domain/access";
+import { isFullAccess } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
 import { QuickLinksScreen } from "../screens/settings/QuickLinksScreen";
 import { MemorandumTemplatesScreen } from "../screens/settings/MemorandumTemplatesScreen";
 import { DataManagementScreen } from "../screens/settings/DataManagementScreen";
-import { ManagePasswordsScreen } from "../screens/settings/ManagePasswordsScreen";
 import { NewSemesterScreen } from "../screens/settings/NewSemesterScreen";
 
-type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "passwords" | "newSemester";
+type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -52,7 +51,6 @@ export function SettingsApp({ userEmail }: Props) {
   const { reauthenticate, resetOtherPassword } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
-  const passwordAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
   const [section, setSection] = useState<Section>("roster");
 
   const dataLoading =
@@ -83,7 +81,6 @@ export function SettingsApp({ userEmail }: Props) {
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
     { value: "templates", label: "Memorandum Templates", icon: Mail },
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
-    ...(passwordAccess ? [{ value: "passwords" as const, label: "Manage Passwords", icon: KeyRound }] : []),
     { value: "newSemester", label: "New Semester", icon: CalendarPlus },
   ];
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
@@ -116,7 +113,15 @@ export function SettingsApp({ userEmail }: Props) {
           </div>
         ) : (
           <AnimatedPanel>
-            {activeSection === "accounts" && fullAccess && <AccountManagerScreen roster={cadetsState.cadets} updateCadetFields={cadetsState.updateCadetFields} />}
+            {activeSection === "accounts" && fullAccess && (
+              <AccountManagerScreen
+                roster={cadetsState.cadets}
+                updateCadetFields={cadetsState.updateCadetFields}
+                userEmail={userEmail}
+                reauthenticate={reauthenticate}
+                resetOtherPassword={resetOtherPassword}
+              />
+            )}
             {activeSection === "roster" && (
               <RosterScreen
                 roster={cadetsState.cadets}
@@ -161,9 +166,6 @@ export function SettingsApp({ userEmail }: Props) {
                 userEmail={userEmail}
                 reauthenticate={reauthenticate}
               />
-            )}
-            {activeSection === "passwords" && passwordAccess && (
-              <ManagePasswordsScreen roster={cadetsState.cadets} reauthenticate={reauthenticate} resetOtherPassword={resetOtherPassword} />
             )}
             {activeSection === "newSemester" && <NewSemesterScreen />}
           </AnimatedPanel>

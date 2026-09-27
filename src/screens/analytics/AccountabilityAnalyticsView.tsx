@@ -504,8 +504,13 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           {missed.length === 0 ? (
             <p className="text-muted-foreground">{formatCadetName(selectedCadet)} was present.</p>
           ) : (
-            <p>
-              Status: <Badge variant="destructive">{missed[0]?.memoStatus}</Badge>
+            <p className="flex items-center gap-2">
+              Status: <StatusDot status={missed[0]!.status} />
+              {missed[0]!.memoStatus && (
+                <Badge variant={missed[0]!.memoStatus === "Accepted" ? "success" : missed[0]!.memoStatus.includes("overdue") || missed[0]!.memoStatus === "Rejected" ? "destructive" : "secondary"}>
+                  {missed[0]!.memoStatus}
+                </Badge>
+              )}
             </p>
           )}
         </div>
@@ -544,9 +549,11 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                         <StatusDot status={row.status} />
                       </TableCell>
                       <TableCell>
-                        <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
-                          {row.memoStatus}
-                        </Badge>
+                        {row.memoStatus && (
+                          <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
+                            {row.memoStatus}
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

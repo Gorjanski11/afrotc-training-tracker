@@ -351,7 +351,8 @@ export type MissedMemoStatus = "Not submitted" | "Not submitted (overdue)" | "Pe
 export interface MissedCadetRow {
   cadet: Cadet;
   status: Attendance["status"];
-  memoStatus: MissedMemoStatus;
+  /** undefined for a Late (L) row -- a Late never requires an Absence Memo, so there's nothing to report here. */
+  memoStatus: MissedMemoStatus | undefined;
 }
 
 /** Every cadet who missed (A) or was Late (L) for a single PMT, with their flight/group (via `cadet`) and their Absence Memo status for that PMT, if any -- powers the trend chart's click-to-drill-down. */
@@ -366,13 +367,15 @@ export function getMissedCadetsForEvent(event: PmtEvent, roster: Cadet[], attend
     const cadet = rosterById.get(record.cadetId);
     if (!cadet) continue;
 
-    const memo = absenceMemos.find((m) => m.cadetId === record.cadetId && m.pmtEventIds.includes(event.id));
-    let memoStatus: MissedMemoStatus;
-    if (!memo || memo.status === "Assigned") memoStatus = now > deadline ? "Not submitted (overdue)" : "Not submitted";
-    else if (memo.status === "Pending") memoStatus = "Pending";
-    else if (memo.status === "Accepted") memoStatus = "Accepted";
-    else if (memo.status === "Rejected") memoStatus = "Rejected";
-    else memoStatus = "Returned";
+    let memoStatus: MissedMemoStatus | undefined;
+    if (record.status === "A") {
+      const memo = absenceMemos.find((m) => m.cadetId === record.cadetId && m.pmtEventIds.includes(event.id));
+      if (!memo || memo.status === "Assigned") memoStatus = now > deadline ? "Not submitted (overdue)" : "Not submitted";
+      else if (memo.status === "Pending") memoStatus = "Pending";
+      else if (memo.status === "Accepted") memoStatus = "Accepted";
+      else if (memo.status === "Rejected") memoStatus = "Rejected";
+      else memoStatus = "Returned";
+    }
 
     rows.push({ cadet, status: record.status, memoStatus });
   }

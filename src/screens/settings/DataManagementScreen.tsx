@@ -45,6 +45,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
 
   const [selected, setSelected] = useState<Set<ExportCategory>>(new Set(["accountability", "trainingObjectives", "memorandums"]));
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | undefined>();
 
   const [pdfs, setPdfs] = useState<StoredMemoPdf[] | undefined>();
   const [loadingPdfs, setLoadingPdfs] = useState(false);
@@ -66,6 +67,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
 
   const handleExport = async () => {
     setExporting(true);
+    setExportError(undefined);
     try {
       const sheets = [
         ...(selected.has("accountability") ? buildAttendanceSheets(roster, events, attendance) : []),
@@ -73,6 +75,8 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
         ...(selected.has("memorandums") ? buildMemoSheets(absenceMemos, deviationMemos) : []),
       ];
       await downloadWorkbook(`afrotc-export-${todayForFilename()}.xlsx`, sheets);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : "Failed to export.");
     } finally {
       setExporting(false);
     }
@@ -132,6 +136,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
             <Download className="h-4 w-4" />
             {exporting ? "Exporting..." : "Export to Excel"}
           </Button>
+          {exportError && <p className="text-sm text-destructive">{exportError}</p>}
         </CardContent>
       </Card>
 

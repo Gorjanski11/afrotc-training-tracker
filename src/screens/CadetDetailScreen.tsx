@@ -9,6 +9,7 @@ import { CheckCircle2, Circle, Clock, Info, TriangleAlert, UserRound } from "luc
 import { cn } from "@/lib/utils";
 import type { ProficiencyCode } from "../domain/constants";
 import { computeCadetProgress, bestCompletionForObjective, getObjectiveStatus, isOverdue } from "../domain/progress";
+import { formatCadetName } from "../domain/nameUtils";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CadetCombobox } from "../components/CadetCombobox";
@@ -66,7 +67,7 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
         <CadetCombobox cadets={cadets} value={cadet.id} onChange={onSelectCadet} />
         <h2 className="flex items-center gap-2 text-2xl font-semibold">
           <UserRound className="h-5 w-5 text-primary" />
-          {cadet.name}
+          {formatCadetName(cadet)}
         </h2>
         <Badge variant="outline">{cadet.devLevel ?? "No dev level set"}</Badge>
         <div className="flex min-w-56 items-center gap-2">

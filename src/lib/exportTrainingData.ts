@@ -1,4 +1,5 @@
 import { computeCadetProgress } from "../domain/progress";
+import { formatCadetName } from "../domain/nameUtils";
 import { DEV_LEVELS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
@@ -20,7 +21,7 @@ export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[
       { header: "Email", key: "email", width: 28 },
     ],
     rows: cadets.map((c) => ({
-      name: c.name,
+      name: formatCadetName(c),
       asClass: c.asClass ?? "",
       devLevel: c.devLevel ?? "",
       status: c.status ?? "",
@@ -118,7 +119,7 @@ export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[
     rows: cadets.map((c) => {
       const progress = computeCadetProgress(c.devLevel, catalog, completionsByCadet.get(c.id) ?? [], pmtEvents);
       return {
-        cadet: c.name,
+        cadet: formatCadetName(c),
         devLevel: c.devLevel ?? "",
         required: progress.requiredCount,
         completed: progress.completedCount,

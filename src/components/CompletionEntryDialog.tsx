@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RosterSearchSelect } from "./RosterSearchSelect";
 import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, deriveClass, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { getLookForCriteria } from "../domain/proficiencyCriteria";
-import { compareByLastName } from "../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { cn } from "@/lib/utils";
 import type { CompletionInput } from "../hooks/useCompletions";
 import type { Cadet, Completion, TrainingObjective } from "../domain/types";
@@ -64,7 +64,8 @@ export function CompletionEntryDialog({
   const autofillEvaluator = useMemo(() => {
     const normalized = userEmail?.trim().toLowerCase();
     if (!normalized) return "";
-    return evaluatorOptions.find((p) => p.email?.trim().toLowerCase() === normalized)?.name ?? "";
+    const match = evaluatorOptions.find((p) => p.email?.trim().toLowerCase() === normalized);
+    return match ? formatCadetName(match) : "";
   }, [evaluatorOptions, userEmail]);
 
   const [proficiency, setProficiency] = useState<ProficiencyCode>(existingCompletion?.proficiencyAchieved ?? requiredProficiency);
@@ -143,7 +144,7 @@ export function CompletionEntryDialog({
       <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>
-            {existingCompletion ? "Edit" : "Log"} Training Objective {objective.number} for {cadet.name}
+            {existingCompletion ? "Edit" : "Log"} Training Objective {objective.number} for {formatCadetName(cadet)}
           </DialogTitle>
         </DialogHeader>
 
@@ -254,7 +255,7 @@ export function CompletionEntryDialog({
                     {searchedCadets.map((c) => (
                       <label key={c.id} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-accent">
                         <input type="checkbox" checked={selectedCadetIds.has(c.id)} onChange={() => toggleCadet(c.id)} />
-                        {c.name}
+                        {formatCadetName(c)}
                       </label>
                     ))}
                     {searchedCadets.length === 0 && <p className="p-1 text-xs text-muted-foreground">No cadets match.</p>}

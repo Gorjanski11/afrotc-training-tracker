@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Save, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue } from "../domain/progress";
-import { compareByLastName } from "../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
@@ -89,7 +89,8 @@ export function QuickLogScreen({
   const evaluatorName = useMemo(() => {
     const normalized = userEmail?.trim().toLowerCase();
     if (!normalized) return "";
-    return roster.find((p) => p.email?.trim().toLowerCase() === normalized)?.name ?? "";
+    const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+    return match ? formatCadetName(match) : "";
   }, [roster, userEmail]);
 
   const [cadetSearch, setCadetSearch] = useState("");
@@ -460,7 +461,7 @@ export function QuickLogScreen({
               <TableRow key={cadet.id}>
                 <TableCell className="sticky left-0 z-10 bg-background">
                   <button className="text-left text-primary hover:underline" onClick={() => onSelectCadet(cadet.id)}>
-                    {cadet.name}
+                    {formatCadetName(cadet)}
                   </button>
                   <div className="text-xs text-muted-foreground">{cadet.devLevel ?? "no level"}</div>
                 </TableCell>

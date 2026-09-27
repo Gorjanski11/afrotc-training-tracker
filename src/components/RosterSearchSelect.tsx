@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { compareByLastName } from "../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import type { Cadet } from "../domain/types";
 
 interface Props {
@@ -40,12 +40,12 @@ export function RosterSearchSelect({ cadets, value, onChange, disabled, placehol
                   key={c.id}
                   value={c.name}
                   onSelect={() => {
-                    onChange(c.name);
+                    onChange(formatCadetName(c));
                     setOpen(false);
                   }}
                 >
-                  <Check className={cn("mr-2 h-4 w-4", c.name === value ? "opacity-100" : "opacity-0")} />
-                  {c.name}
+                  <Check className={cn("mr-2 h-4 w-4", formatCadetName(c) === value ? "opacity-100" : "opacity-0")} />
+                  {formatCadetName(c)}
                 </CommandItem>
               ))}
             </CommandGroup>

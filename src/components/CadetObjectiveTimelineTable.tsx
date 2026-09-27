@@ -5,6 +5,7 @@ import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue, completionForOccurrence, meetsRequirement } from "../domain/progress";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
+import { formatCadetName } from "../domain/nameUtils";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface Props {
@@ -82,7 +83,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
 
   return (
     <div className="overflow-x-auto">
-      <Table aria-label={`Objective x PMT timeline for ${cadet.name}`}>
+      <Table aria-label={`Objective x PMT timeline for ${formatCadetName(cadet)}`}>
         <TableHeader>
           <TableRow>
             <TableHead className="sticky left-0 z-10 min-w-56 bg-background">

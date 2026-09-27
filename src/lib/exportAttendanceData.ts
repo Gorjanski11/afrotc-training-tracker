@@ -1,4 +1,5 @@
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding } from "../domain/attendance";
+import { formatCadetName } from "../domain/nameUtils";
 import { ATTENDANCE_STATUS_LABELS, SEMESTER_PMT_TOTALS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
 import type { Attendance, PmtEvent, Cadet } from "../domain/types";
@@ -26,7 +27,7 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
       { header: "Cadre", key: "cadre", width: 10 },
     ],
     rows: roster.map((p) => ({
-      name: p.name,
+      name: formatCadetName(p),
       asClass: p.asClass ?? "",
       devLevel: p.devLevel ?? "",
       status: p.status ?? "",
@@ -52,7 +53,10 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
     rows: attendance.map((a) => {
       const event = eventsById.get(a.pmtEventId);
       return {
-        cadet: rosterById.get(a.cadetId)?.name ?? "",
+        cadet: (() => {
+          const person = rosterById.get(a.cadetId);
+          return person ? formatCadetName(person) : "";
+        })(),
         pmt: event?.title ?? "",
         date: event ? new Date(event.eventDate).toLocaleDateString() : "",
         type: event?.eventType ?? "",
@@ -102,7 +106,7 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
       const ptPresent = summary.pt.statusCounts.P + summary.pt.statusCounts.AE;
       const llabPresent = summary.llabFm.statusCounts.P + summary.llabFm.statusCounts.AE;
       return {
-        cadet: p.name,
+        cadet: formatCadetName(p),
         ptCount: summary.pt.countedEvents === 0 ? "" : `${ptPresent}/${summary.pt.countedEvents}`,
         ptPct: pctText(summary.pt.percent),
         ptStanding: summary.pt.standing ?? "",

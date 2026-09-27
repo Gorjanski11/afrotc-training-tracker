@@ -10,6 +10,7 @@ import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, List
 import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, FLIGHTS, GROUPS, DEV_LEVELS, type DevLevel, type Flight, type Group } from "../../domain/constants";
 import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
+import { formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { exportTrainingData } from "../../lib/exportTrainingData";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -77,6 +78,13 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
 
   const summary = useMemo(() => computeCohortSummary(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
   const byCadet = useMemo(() => computeCompletionByCadet(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
+  const cadetById = useMemo(() => new Map(cadets.map((c) => [c.id, c])), [cadets]);
+  // Display-only: the bar chart's Y-axis reads `name` straight off this array, so it needs the
+  // formatted name -- `byCadet` itself keeps the plain name since it's what compareByLastName sorts by.
+  const byCadetChartData = useMemo(
+    () => byCadet.map((row) => ({ ...row, name: (() => { const cadet = cadetById.get(row.cadetId); return cadet ? formatCadetName(cadet) : row.name; })() })),
+    [byCadet, cadetById]
+  );
   const byPlo = useMemo(() => computeCompletionByPlo(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
   const overdue = useMemo(() => computeOverdueObjectives(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
 
@@ -272,7 +280,10 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                     <TableCell>
                       <span className="flex items-center gap-2">
                         {row.flagged && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                        {row.name}
+                        {(() => {
+                          const cadet = cadetById.get(row.cadetId);
+                          return cadet ? formatCadetName(cadet) : row.name;
+                        })()}
                       </span>
                     </TableCell>
                     <TableCell>{row.devLevel ?? "—"}</TableCell>
@@ -284,7 +295,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
             </Table>
           ) : (
             <ResponsiveContainer width="100%" height={cadetChartHeight}>
-              <BarChart data={byCadet} layout="vertical" margin={chartMargin}>
+              <BarChart data={byCadetChartData} layout="vertical" margin={chartMargin}>
                 <CartesianGrid horizontal={false} stroke="var(--chart-grid)" />
                 <XAxis type="number" domain={[0, 100]} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} unit="%" />
                 <YAxis type="category" dataKey="name" width={160} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />

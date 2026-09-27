@@ -3,6 +3,7 @@ import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, wh
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
+import { formatCadetName } from "../domain/nameUtils";
 import type { Cadet, PmtEvent, TrainingObjective } from "../domain/types";
 
 const COLLECTION = "completions";
@@ -52,7 +53,7 @@ export function useAutoFailCompletions() {
 
       const input = {
         cadetId: cadet.id,
-        cadetName: cadet.name,
+        cadetName: formatCadetName(cadet),
         objectiveId,
         objectiveNumber: objective.number,
         proficiencyAchieved: notPassCode,

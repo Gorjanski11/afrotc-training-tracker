@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { FLIGHTS, GROUPS, type DevLevel, type Flight, type Group } from "../domain/constants";
 import { computeCadetProgress, shouldFlagCadet } from "../domain/progress";
 import { computeCohortSummary } from "../domain/analytics";
-import { compareByLastName } from "../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface HeroStatProps {
@@ -225,7 +225,7 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
                 <TableCell>
                   <span className="flex items-center gap-2">
                     {flagged && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                    {cadet.name}
+                    {formatCadetName(cadet)}
                   </span>
                 </TableCell>
                 <TableCell>{cadet.devLevel ?? "—"}</TableCell>

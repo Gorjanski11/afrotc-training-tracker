@@ -59,7 +59,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
   const [cadetId, setCadetId] = useState("");
   const me = roster.find((p) => p.email?.trim().toLowerCase() === userEmail.trim().toLowerCase());
   const [assignedByEmail, setAssignedByEmail] = useState(me?.email ?? "");
-  const [assignedByName, setAssignedByName] = useState(me?.name ?? "");
+  const [assignedByName, setAssignedByName] = useState(me ? formatCadetName(me) : "");
   const [cc, setCc] = useState<PersonRef[]>([]);
   const [reason, setReason] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -178,7 +178,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
       await updateMemo(memo.id, {
         status: overrideStatus,
         reviewedAt: new Date().toISOString(),
-        reviewedBy: me?.name ?? userEmail,
+        reviewedBy: me ? formatCadetName(me) : userEmail,
         reviewNotes: overrideNotes || memo.reviewNotes,
       });
       setOverrideId(undefined);

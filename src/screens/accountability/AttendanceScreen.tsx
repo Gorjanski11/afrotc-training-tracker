@@ -7,7 +7,7 @@ import { Save, TriangleAlert, ClipboardCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
 import { isPostAccountabilityWindowClosed } from "../../domain/attendance";
-import { compareByLastName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
 import type { Attendance, PmtEvent, Cadet, TrainingObjective } from "../../domain/types";
@@ -324,7 +324,7 @@ export function AttendanceScreen({
               const isDirty = cadet.id in pending;
               return (
                 <TableRow key={cadet.id}>
-                  <TableCell>{cadet.name}</TableCell>
+                  <TableCell>{formatCadetName(cadet)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       {ATTENDANCE_STATUSES.map((status) => (

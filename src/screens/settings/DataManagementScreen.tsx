@@ -11,6 +11,7 @@ import { buildTrainingSheets } from "../../lib/exportTrainingData";
 import { buildMemoSheets } from "../../lib/exportMemoData";
 import { downloadWorkbook, todayForFilename } from "../../lib/exportWorkbook";
 import { listAllMemoPdfs, deleteMemoPdf, type StoredMemoPdf } from "../../lib/storage";
+import { formatCadetName } from "../../domain/nameUtils";
 import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
@@ -164,7 +165,12 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
               <TableBody>
                 {pdfs.map((p) => (
                   <TableRow key={p.path}>
-                    <TableCell>{rosterById.get(p.cadetId)?.name ?? p.cadetId}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const person = rosterById.get(p.cadetId);
+                        return person ? formatCadetName(person) : p.cadetId;
+                      })()}
+                    </TableCell>
                     <TableCell>{p.folder === "absenceMemos" ? "Absence" : "Deviation"}</TableCell>
                     <TableCell>
                       <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">

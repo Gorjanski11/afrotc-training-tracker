@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, ListChecks } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getObjectiveStatus, isOverdue } from "../domain/progress";
+import { getObjectiveStatus, isOverdue, meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
@@ -17,8 +17,9 @@ import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/t
 /**
  * One grid column. Objectives covered by only one PMT get a single column (occurrence is that
  * PMT, or undefined if never scheduled). Objectives whose material is split across several PMTs
- * get one column PER occurrence, each independently gradeable -- every occurrence must be
- * satisfied on its own for the whole objective to read as completed (see getObjectiveStatus).
+ * get one column PER occurrence -- but a genuine Pass at any ONE of them satisfies the whole
+ * objective (see getObjectiveStatus), so the other occurrences' columns stop being actionable for
+ * that cadet once that happens (rendered as "Passed elsewhere" instead of Pass/Partial buttons).
  */
 interface QuickLogColumn {
   key: string;
@@ -505,6 +506,26 @@ export function QuickLogScreen({
                   // with an existing non-pass completion still shows it, read-only, for visibility. To
                   // change it, log it from Cadet Detail instead, which has the full proficiency picker.
                   const isNotPass = value !== NONE && !isPass && !isPartial;
+
+                  // Once a cadet has a genuine (non-partial) Pass on ANY occurrence of a multi-occurrence
+                  // objective, they don't need to pass it again at the others -- those other columns stop
+                  // being actionable for this cadet. A Partial elsewhere never triggers this (only a real
+                  // Pass does), and the occurrence that actually holds the pass still renders normally.
+                  const passedAtAnotherOccurrence =
+                    !isPass &&
+                    isMultiOccurrence &&
+                    (occurrencesByObjective.get(objective.id) ?? []).some((occ) => {
+                      if (occ.id === pmtEventId) return false;
+                      const other = getExistingCompletion(cadet.id, objective.id, occ.id, true);
+                      return meetsRequirement(other, requiredCode);
+                    });
+                  if (passedAtAnotherOccurrence) {
+                    return (
+                      <TableCell key={col.key} className={cn("text-center text-xs text-muted-foreground", tint)}>
+                        Passed elsewhere
+                      </TableCell>
+                    );
+                  }
                   return (
                     <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
                       <div className="flex flex-col items-center gap-1">

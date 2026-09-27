@@ -10,20 +10,21 @@ export interface CadetProgress {
 
 /**
  * Per-objective status relative to the PMT schedule and "today". For an objective covered by
- * several PMTs (material split across sessions), each occurrence is graded independently -- a
- * qualifying completion at one occurrence never substitutes for another, since they typically
- * cover different topics.
+ * several PMTs (material split across sessions), a genuine (non-partial) qualifying completion at
+ * ANY ONE occurrence satisfies the whole objective -- the cadet doesn't have to pass it again at
+ * the others. A Partial never satisfies it on its own (see meetsRequirement).
  * - not-scheduled: no PMT has ever covered this objective. Excluded from the
  *   required count entirely -- it isn't due until a PMT actually covers it.
- * - upcoming: a PMT covers it, and every occurrence that isn't yet satisfied is still in the
- *   future. Also excluded from the required count -- not due yet.
+ * - upcoming: a PMT covers it, nothing has satisfied it yet, and at least one occurrence is still
+ *   in the future (still a chance to pass one of them). Excluded from the required count -- not
+ *   due yet.
  * - due: reserved for a future grading-window/grace-period use; getObjectiveStatus never returns
  *   it today -- a past, unsatisfied occurrence reads as "missed" immediately (see below).
- * - missed: at least one occurrence's date has passed without a qualifying completion logged
- *   for that specific occurrence -- permanently lost, since a later PMT won't re-teach it. This
- *   is the only status that should ever read as a hard flag.
- * - completed: every occurrence has a completion that meets or exceeds the required proficiency
- *   (for a single-occurrence objective, any qualifying completion for it).
+ * - missed: nothing has satisfied it, and every occurrence's date has passed -- permanently lost,
+ *   since there's no PMT left that could still cover it. This is the only status that should ever
+ *   read as a hard flag.
+ * - completed: at least one occurrence has a completion that meets or exceeds the required
+ *   proficiency and isn't Partial (for a single-occurrence objective, any qualifying completion).
  */
 export type ObjectiveDueStatus = "not-scheduled" | "upcoming" | "due" | "missed" | "completed";
 
@@ -86,22 +87,13 @@ export function getObjectiveStatus(
     return { status: past ? "missed" : "upcoming", occurrences, bestCompletion };
   }
 
-  // Multi-occurrence: each PMT covers different material for the same objective, so every
-  // occurrence must be independently satisfied -- a qualifying completion at one PMT never
-  // substitutes for another, and a past occurrence with nothing logged against it specifically
-  // is permanently missed (no future PMT will re-teach what that session covered).
-  let anyMissed = false;
-  let allSatisfied = true;
-  for (const occurrence of occurrences) {
-    const satisfied = meetsRequirement(completionForOccurrence(objective.id, occurrence.id, cadetCompletions), required);
-    if (!satisfied) {
-      allSatisfied = false;
-      if (new Date(occurrence.eventDate).getTime() <= now) anyMissed = true;
-    }
-  }
-  if (allSatisfied) return { status: "completed", occurrences, bestCompletion };
-  if (anyMissed) return { status: "missed", occurrences, bestCompletion };
-  return { status: "upcoming", occurrences, bestCompletion };
+  // Multi-occurrence: a genuine (non-partial) pass at ANY ONE occurrence satisfies the whole
+  // objective -- the cadet doesn't have to pass every occurrence, just one of them. Only once
+  // every occurrence has passed with nothing qualifying logged anywhere is it permanently missed.
+  const anySatisfied = occurrences.some((occurrence) => meetsRequirement(completionForOccurrence(objective.id, occurrence.id, cadetCompletions), required));
+  if (anySatisfied) return { status: "completed", occurrences, bestCompletion };
+  const allPast = occurrences.every((occurrence) => new Date(occurrence.eventDate).getTime() <= now);
+  return { status: allPast ? "missed" : "upcoming", occurrences, bestCompletion };
 }
 
 /**

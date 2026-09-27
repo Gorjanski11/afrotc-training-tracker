@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TriangleAlert } from "lucide-react";
 import { PMT_EVENT_TYPES, type PmtEventType } from "../../domain/constants";
 import { findTrainingWeekConflicts } from "../../domain/attendance";
+import { TrainingObjectiveMultiSelect } from "../TrainingObjectiveMultiSelect";
 import type { PmtEventInput } from "../../hooks/usePmtEvents";
-import type { PmtEvent } from "../../domain/types";
+import type { PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   allEvents: PmtEvent[];
+  catalog: TrainingObjective[];
   existingEvent?: PmtEvent;
   defaultDate?: string;
   onSave: (input: PmtEventInput) => Promise<void>;
@@ -27,8 +29,7 @@ function toDatetimeLocal(iso: string | undefined): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** This dialog never manages Training Objective linkage (the TO's Calendar screen owns that) -- always preserves whatever objectiveIds an existing event already had. */
-export function PmtEventFormDialog({ open, onClose, allEvents, existingEvent, defaultDate, onSave }: Props) {
+export function PmtEventFormDialog({ open, onClose, allEvents, catalog, existingEvent, defaultDate, onSave }: Props) {
   const [title, setTitle] = useState(existingEvent?.title ?? "");
   const [eventDate, setEventDate] = useState(toDatetimeLocal(existingEvent?.eventDate) || defaultDate || "");
   const [eventType, setEventType] = useState<PmtEventType>(existingEvent?.eventType ?? "LLAB");
@@ -38,6 +39,7 @@ export function PmtEventFormDialog({ open, onClose, allEvents, existingEvent, de
   const [pocic3, setPocic3] = useState(existingEvent?.pocic3 ?? "");
   const [pocsup, setPocsup] = useState(existingEvent?.pocsup ?? "");
   const [trainingWeek, setTrainingWeek] = useState(existingEvent?.trainingWeek?.toString() ?? "");
+  const [objectiveIds, setObjectiveIds] = useState<string[]>(existingEvent?.objectiveIds ?? []);
   const [notes, setNotes] = useState(existingEvent?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -58,7 +60,7 @@ export function PmtEventFormDialog({ open, onClose, allEvents, existingEvent, de
       pocic3,
       pocsup,
       trainingWeek: Number(trainingWeek),
-      objectiveIds: existingEvent?.objectiveIds ?? [],
+      objectiveIds,
       notes,
     };
     const others = allEvents.filter((e) => e.id !== draft.id);
@@ -81,7 +83,7 @@ export function PmtEventFormDialog({ open, onClose, allEvents, existingEvent, de
         pocic3,
         pocsup,
         trainingWeek: trainingWeek.trim() === "" ? undefined : Number(trainingWeek),
-        objectiveIds: existingEvent?.objectiveIds ?? [],
+        objectiveIds,
         notes,
       });
       onClose();
@@ -163,6 +165,11 @@ export function PmtEventFormDialog({ open, onClose, allEvents, existingEvent, de
           <div className="grid gap-1.5">
             <Label>POC supervisor</Label>
             <Input value={pocsup} onChange={(e) => setPocsup(e.target.value)} placeholder="Optional" />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Training Objectives covered</Label>
+            <TrainingObjectiveMultiSelect catalog={catalog} value={objectiveIds} onChange={setObjectiveIds} />
           </div>
 
           <div className="grid gap-1.5">

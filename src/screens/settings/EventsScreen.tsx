@@ -3,20 +3,22 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { findTrainingWeekConflicts } from "../../domain/attendance";
 import { buildMonthGrid, isSameDay, isSameMonth, addMonths } from "../../domain/calendarUtils";
 import { PmtEventFormDialog } from "../../components/accountability/PmtEventFormDialog";
 import { ExtraEventFormDialog } from "../../components/accountability/ExtraEventFormDialog";
+import { EventDetailDialog } from "../../components/EventDetailDialog";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import type { PmtEventInput } from "../../hooks/usePmtEvents";
 import type { ExtraEventInput } from "../../hooks/useExtraEvents";
-import type { ExtraEvent, PmtEvent } from "../../domain/types";
+import type { ExtraEvent, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   events: PmtEvent[];
   extraEvents: ExtraEvent[];
+  catalog: TrainingObjective[];
   createEvent: (input: PmtEventInput) => Promise<PmtEvent>;
   updateEvent: (id: string, input: PmtEventInput) => Promise<PmtEvent>;
   deleteEvent: (id: string) => Promise<void>;
@@ -51,6 +53,7 @@ function EventChip({ label, type, onClick }: { label: string; type: string; onCl
 export function EventsScreen({
   events,
   extraEvents,
+  catalog,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -61,6 +64,7 @@ export function EventsScreen({
   const [tab, setTab] = useState<Tab>("pmt");
   const [pmtFormOpen, setPmtFormOpen] = useState(false);
   const [editingPmt, setEditingPmt] = useState<PmtEvent | undefined>();
+  const [viewingPmt, setViewingPmt] = useState<PmtEvent | undefined>();
   const [deletingPmt, setDeletingPmt] = useState<PmtEvent | undefined>();
   const [extraFormOpen, setExtraFormOpen] = useState(false);
   const [editingExtra, setEditingExtra] = useState<ExtraEvent | undefined>();
@@ -162,6 +166,9 @@ export function EventsScreen({
                   <TableCell>{event.location || "—"}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => setViewingPmt(event)}>
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -293,15 +300,7 @@ export function EventsScreen({
                       <div className="mb-1 text-xs">{day.getDate()}</div>
                       <div className="flex flex-col gap-0.5">
                         {dayPmt.map((e) => (
-                          <EventChip
-                            key={e.id}
-                            label={`${e.eventType} · ${e.title}`}
-                            type={e.eventType}
-                            onClick={() => {
-                              setEditingPmt(e);
-                              setPmtFormOpen(true);
-                            }}
-                          />
+                          <EventChip key={e.id} label={`${e.eventType} · ${e.title}`} type={e.eventType} onClick={() => setViewingPmt(e)} />
                         ))}
                         {dayExtra.map((e) => (
                           <EventChip
@@ -328,10 +327,27 @@ export function EventsScreen({
           open
           onClose={() => setPmtFormOpen(false)}
           allEvents={events}
+          catalog={catalog}
           existingEvent={editingPmt}
           onSave={async (input) => {
             if (editingPmt) await updateEvent(editingPmt.id, input);
             else await createEvent(input);
+          }}
+        />
+      )}
+      {viewingPmt && (
+        <EventDetailDialog
+          open
+          onClose={() => setViewingPmt(undefined)}
+          event={viewingPmt}
+          catalog={catalog}
+          onEdit={() => {
+            setEditingPmt(viewingPmt);
+            setViewingPmt(undefined);
+            setPmtFormOpen(true);
+          }}
+          onDelete={async () => {
+            await deleteEvent(viewingPmt.id);
           }}
         />
       )}

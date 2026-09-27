@@ -133,6 +133,7 @@ export function SettingsApp({ userEmail }: Props) {
               <EventsScreen
                 events={eventsState.events}
                 extraEvents={extraEventsState.extraEvents}
+                catalog={catalogState.catalog}
                 createEvent={eventsState.createEvent}
                 updateEvent={eventsState.updateEvent}
                 deleteEvent={eventsState.deleteEvent}

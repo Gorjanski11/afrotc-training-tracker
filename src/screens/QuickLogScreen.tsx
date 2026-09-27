@@ -149,24 +149,35 @@ export function QuickLogScreen({
   const isMultiOccurrenceObjective = (objectiveId: string): boolean => (occurrencesByObjective.get(objectiveId)?.length ?? 0) > 1;
 
   /**
-   * Schedule fact per objective, independent of any cadet or graded/optional status: does it still
-   * have a future PMT that could cover it? "repeats" = at least one occurrence is still upcoming
-   * (another chance later, whether or not one has already passed too). "lastChance" = it's had at
-   * least one occurrence and every one of them is already in the past -- nothing left on the
-   * calendar to cover it again. "none" = no PMT has ever covered it at all.
+   * Schedule fact per OCCURRENCE (column), not per objective -- an objective with 3 PMT occurrences
+   * needs each column judged against its own position in that objective's timeline, not one status
+   * copied onto all 3. For occurrence i of N (sorted ascending): "repeats" = there's a later
+   * occurrence of this same objective after it (regardless of whether this one itself is past or
+   * future -- another chance is still coming). Only the LAST occurrence can ever be "lastChance",
+   * and only once it's actually happened (a still-upcoming final occurrence isn't a "last chance"
+   * warning yet, it just hasn't come up); until then it's "none". Keyed the same way `columns` keys
+   * itself (`${objectiveId}:${occurrenceId}` when multi-occurrence, else the bare objectiveId) so
+   * the render loop can look a column's status up directly by `col.key`.
    */
-  const scheduleStatusByObjective = useMemo(() => {
+  const scheduleStatusByColumn = useMemo(() => {
     const now = Date.now();
     const map = new Map<string, "repeats" | "lastChance" | "none">();
     for (const objective of loggableObjectives) {
       const occurrences = occurrencesByObjective.get(objective.id) ?? [];
       if (occurrences.length === 0) {
         map.set(objective.id, "none");
-      } else if (occurrences.some((e) => new Date(e.eventDate).getTime() > now)) {
-        map.set(objective.id, "repeats");
-      } else {
-        map.set(objective.id, "lastChance");
+        continue;
       }
+      occurrences.forEach((occurrence, i) => {
+        const isLast = i === occurrences.length - 1;
+        const status: "repeats" | "lastChance" | "none" = !isLast
+          ? "repeats"
+          : new Date(occurrence.eventDate).getTime() <= now
+            ? "lastChance"
+            : "none";
+        const key = occurrences.length > 1 ? `${objective.id}:${occurrence.id}` : objective.id;
+        map.set(key, status);
+      });
     }
     return map;
   }, [loggableObjectives, occurrencesByObjective]);
@@ -222,11 +233,11 @@ export function QuickLogScreen({
     const ids = new Set<string>();
     for (const cadet of visibleCadets) {
       for (const id of columnEligibilityByCadet.get(cadet.id)?.applicable ?? []) {
-        if (scheduleStatusByObjective.get(id) !== "none") ids.add(id);
+        if ((occurrencesByObjective.get(id)?.length ?? 0) > 0) ids.add(id);
       }
     }
     return ids;
-  }, [visibleCadets, columnEligibilityByCadet, scheduleStatusByObjective]);
+  }, [visibleCadets, columnEligibilityByCadet, occurrencesByObjective]);
 
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
@@ -424,7 +435,7 @@ export function QuickLogScreen({
               <TableHead className="sticky left-0 z-10 min-w-40 bg-background">Cadet</TableHead>
               {columns.map((col) => {
                 const { objective, occurrence } = col;
-                const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
+                const schedule = scheduleStatusByColumn.get(col.key) ?? "none";
                 return (
                   <TableHead
                     key={col.key}
@@ -467,7 +478,7 @@ export function QuickLogScreen({
                 </TableCell>
                 {columns.map((col) => {
                   const { objective, occurrence, isMultiOccurrence } = col;
-                  const schedule = scheduleStatusByObjective.get(objective.id) ?? "none";
+                  const schedule = scheduleStatusByColumn.get(col.key) ?? "none";
                   const tint = schedule === "lastChance" ? "bg-destructive/5" : schedule === "repeats" ? "bg-success/5" : undefined;
                   const applicable = cadet.devLevel && objective.proficiencyByLevel[cadet.devLevel] !== "";
                   if (!applicable) {

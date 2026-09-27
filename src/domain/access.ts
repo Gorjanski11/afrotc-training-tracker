@@ -159,6 +159,11 @@ export function excludeCadre(roster: Cadet[]): Cadet[] {
   return roster.filter((p) => !p.isCadre);
 }
 
+/** An Inactive cadet is no longer being tracked -- excluded from Accountability and TO's the same way Cadre is, everywhere except the Settings Roster where cadre manages/reactivates them. */
+export function excludeInactive(roster: Cadet[]): Cadet[] {
+  return roster.filter((p) => p.status !== "Inactive");
+}
+
 /** The whole ALL_ACCESS tier (Cadre + Cortes Garay + Saltiel + Mo Velez) -- gates Settings' Account Manager and the Data Management screen. */
 export function isFullAccess(email: string | null | undefined, roster: Cadet[]): boolean {
   return resolveBaseTabAccess(email, roster) === ALL_ACCESS;

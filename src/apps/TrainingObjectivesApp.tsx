@@ -9,7 +9,7 @@ import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "../domain/constants";
-import { applyUnitScope, excludeCadre, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
+import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { HomeScreen } from "../screens/HomeScreen";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { CadetDetailScreen } from "../screens/CadetDetailScreen";
@@ -74,17 +74,18 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
    * "POC TO's" and "GMC TO's" are the same screens reading the same shared roster/catalog/PMT
    * calendar -- they're just scoped to their cohort's cadets here, not a parallel data model.
    * Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside cohort/unit scoping.
+   * An Inactive cadet is no longer tracked here either.
    */
   const cohortCadets = useMemo(() => {
     if (topLevel === "home") return [];
     const levels = COHORT_DEV_LEVELS[topLevel];
     const inCohort = cadetsState.cadets.filter((c) => c.devLevel && (levels as readonly string[]).includes(c.devLevel));
-    return excludeCadre(applyUnitScope(unitScope, inCohort));
+    return excludeInactive(excludeCadre(applyUnitScope(unitScope, inCohort)));
   }, [topLevel, cadetsState.cadets, unitScope]);
 
   // Evaluator autofill (Section 5) needs the POC-class evaluator pool from the FULL roster, not just
   // this cohort's cadets -- a POC evaluator must be selectable even while logging a GMC cadet.
-  const fullRosterNoCadre = useMemo(() => excludeCadre(cadetsState.cadets), [cadetsState.cadets]);
+  const fullRosterNoCadre = useMemo(() => excludeInactive(excludeCadre(cadetsState.cadets)), [cadetsState.cadets]);
 
   const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading;
   const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error;

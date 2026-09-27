@@ -9,7 +9,7 @@ import { useAttendance } from "../hooks/useAttendance";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useAutoFailCompletions } from "../hooks/useAutoFailCompletions";
 import { useAbsenceMemoAssignments } from "../hooks/useAbsenceMemoAssignments";
-import { applyUnitScope, excludeCadre, type UnitScope } from "../domain/access";
+import { applyUnitScope, excludeCadre, excludeInactive, type UnitScope } from "../domain/access";
 import { DashboardScreen } from "../screens/accountability/DashboardScreen";
 import { AttendanceScreen } from "../screens/accountability/AttendanceScreen";
 
@@ -38,7 +38,11 @@ export function AccountabilityApp({ unitScope }: Props) {
   const absenceMemoAssignmentsState = useAbsenceMemoAssignments();
 
   // Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside unit scoping.
-  const scopedCadets = useMemo(() => excludeCadre(applyUnitScope(unitScope, cadetsState.cadets)), [unitScope, cadetsState.cadets]);
+  // An Inactive cadet is no longer tracked here either.
+  const scopedCadets = useMemo(
+    () => excludeInactive(excludeCadre(applyUnitScope(unitScope, cadetsState.cadets))),
+    [unitScope, cadetsState.cadets]
+  );
 
   const [screen, setScreen] = useState<Screen>("dashboard");
   // Dashboard's "Missed Accountability" card jumps straight to a specific PMT in the Accountability

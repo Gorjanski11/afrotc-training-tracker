@@ -122,16 +122,25 @@ interface DayEvents {
 }
 
 function groupEventsByDay(events: PmtEvent[]): DayEvents[] {
-  const byDate = new Map<string, DayEvents>();
+  const byDay = new Map<string, DayEvents>();
   for (const e of events) {
     const bucket = bucketForEventType(e.eventType);
     if (bucket === "OTHER") continue;
-    const row = byDate.get(e.eventDate) ?? { date: e.eventDate, ptEvent: undefined, llabEvent: undefined };
+    // Group by calendar day, not the raw eventDate string -- a PT at 0630 and a LLAB at 1145 the
+    // same day have different exact timestamps and would otherwise never merge into one point.
+    const key = calendarDayKey(e.eventDate);
+    const row = byDay.get(key) ?? { date: e.eventDate, ptEvent: undefined, llabEvent: undefined };
     if (bucket === "PT" && !row.ptEvent) row.ptEvent = e;
     if (bucket === "LLAB_FM" && !row.llabEvent) row.llabEvent = e;
-    byDate.set(e.eventDate, row);
+    if (new Date(e.eventDate) < new Date(row.date)) row.date = e.eventDate;
+    byDay.set(key, row);
   }
-  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function calendarDayKey(eventDate: string): string {
+  const d = new Date(eventDate);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function tallyWeighted(records: Attendance[]): { percent: number | undefined; counted: number } {
@@ -305,27 +314,32 @@ export const STANDINGS: readonly Standing[] = ["Good", "Warning", "Hard Limit"];
 
 export interface StandingDistributionRow {
   standing: Standing;
-  ptCount: number;
-  llabFmCount: number;
+  count: number;
 }
 
-/** How many active cadets currently sit in each Standing bucket, per threshold-bearing bucket (PT, LLAB/FM). */
+const STANDING_SEVERITY: Record<Standing, number> = { Good: 0, Warning: 1, "Hard Limit": 2 };
+
+/**
+ * How many active cadets currently sit in each Standing bucket -- one cadet, one slice, matching
+ * the "Below-Good standing flags" stat tile's own worst-of-PT/LLAB-FM combining rule (a cadet who's
+ * Good in one bucket but Warning in the other counts as Warning overall, not once in each bucket's
+ * count -- previously this summed per-PMT-type counts, which double-counted anyone with a standing
+ * in both buckets).
+ */
 export function computeStandingDistribution(
   activeRoster: Cadet[],
   attendance: Attendance[],
   pmtEventsById: Map<string, PmtEvent>
 ): StandingDistributionRow[] {
-  const counts: Record<Standing, { pt: number; llabFm: number }> = {
-    Good: { pt: 0, llabFm: 0 },
-    Warning: { pt: 0, llabFm: 0 },
-    "Hard Limit": { pt: 0, llabFm: 0 },
-  };
+  const counts: Record<Standing, number> = { Good: 0, Warning: 0, "Hard Limit": 0 };
   for (const p of activeRoster) {
     const summary = computeCadetAttendanceSummary(p.id, attendance, pmtEventsById);
-    if (summary.pt.standing) counts[summary.pt.standing].pt += 1;
-    if (summary.llabFm.standing) counts[summary.llabFm.standing].llabFm += 1;
+    const standings = [summary.pt.standing, summary.llabFm.standing].filter((s): s is Standing => !!s);
+    if (standings.length === 0) continue;
+    const overall = standings.reduce((worst, s) => (STANDING_SEVERITY[s] > STANDING_SEVERITY[worst] ? s : worst));
+    counts[overall] += 1;
   }
-  return STANDINGS.map((s) => ({ standing: s, ptCount: counts[s].pt, llabFmCount: counts[s].llabFm }));
+  return STANDINGS.map((s) => ({ standing: s, count: counts[s] }));
 }
 
 // ---------------------------------------------------------------------------

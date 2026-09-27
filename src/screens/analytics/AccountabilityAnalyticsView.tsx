@@ -127,12 +127,28 @@ function cutoffAtNow<T extends { date: string }>(points: T[]): T[] {
 }
 
 /**
- * Section 14 fix: recharts 3.x's `<LineChart onClick>` only reads the *hover*-populated
- * `activeTooltipIndex`, not a fresh click's own position, unless the tooltip's `trigger` is
- * explicitly "click" (which would break the existing hover-preview UX) -- so a raw click reliably
- * does nothing. Reading each dot's own payload directly, bypassing that broken interaction-state
- * path entirely, is what actually works.
+ * Section 14 fix, revised: a raw click on the point itself proved too easy to miss (and recharts'
+ * own click-tracking is unreliable, see the original note below), so hovering the point now reveals
+ * a "Details" chip in its place -- clicking that chip is what actually opens the drill-down. The
+ * dot's own onClick is dropped entirely in favor of this two-step, more forgiving interaction.
+ *
+ * (Original Section 14 note, still true: recharts 3.x's `<LineChart onClick>` only reads the
+ * *hover*-populated `activeTooltipIndex`, not a fresh click's own position, unless the tooltip's
+ * `trigger` is explicitly "click" -- which would break the existing hover-preview UX.)
  */
+function DetailsChip({ cx, cy, onClick }: { cx: number; cy: number; onClick: () => void }) {
+  const width = 54;
+  const height = 18;
+  return (
+    <g style={{ cursor: "pointer" }} onClick={onClick}>
+      <rect x={cx - width / 2} y={cy - height / 2} width={width} height={height} rx={4} fill="var(--primary)" />
+      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={10} fill="var(--primary-foreground)">
+        Details
+      </text>
+    </g>
+  );
+}
+
 function ClickableDot({
   cx,
   cy,
@@ -148,20 +164,21 @@ function ClickableDot({
   eventKey: string;
   onDotClick: (eventId: string | undefined) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   if (cx === undefined || cy === undefined) return null;
   const eventId = payload?.[eventKey] as string | undefined;
+  if (!eventId) return <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" />;
   return (
-    <g style={{ cursor: eventId ? "pointer" : "default" }} onClick={() => onDotClick(eventId)}>
-      {/* Real click target -- much bigger than the visible dot (3px is too small to reliably
-          click), and pointer-events explicitly forced on in case an ancestor recharts layer set
-          pointer-events: none for its own decorative/clip-path purposes. */}
+    <g onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      {/* Generously-sized invisible hover target -- much bigger than the visible dot, which is too
+          small to reliably land a mouse on. */}
       <circle cx={cx} cy={cy} r={14} fill="transparent" style={{ pointerEvents: "all" }} />
-      <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ pointerEvents: "none" }} />
+      {hovered ? <DetailsChip cx={cx} cy={cy} onClick={() => onDotClick(eventId)} /> : <circle cx={cx} cy={cy} r={3} fill={dotFill} stroke="none" style={{ pointerEvents: "none" }} />}
     </g>
   );
 }
 
-/** Same click-target treatment as `ClickableDot`, for the Combined view's single line -- a day's point can carry both a PT and a LLAB/FM/D&C event id at once, so both open together. */
+/** Same hover-reveals-a-Details-chip treatment as `ClickableDot`, for the Combined view's single line -- a day's point can carry both a PT and a LLAB/FM/D&C event id at once, so both open together. */
 function CombinedClickableDot({
   cx,
   cy,
@@ -173,14 +190,19 @@ function CombinedClickableDot({
   payload?: { ptEventId?: string; llabEventId?: string };
   onDotClick: (ptEventId: string | undefined, llabEventId: string | undefined) => void;
 }) {
+  const [hovered, setHovered] = useState(false);
   if (cx === undefined || cy === undefined) return null;
   const ptEventId = payload?.ptEventId;
   const llabEventId = payload?.llabEventId;
-  const clickable = !!ptEventId || !!llabEventId;
+  if (!ptEventId && !llabEventId) return <circle cx={cx} cy={cy} r={3} fill="var(--chart-series-1)" stroke="none" />;
   return (
-    <g style={{ cursor: clickable ? "pointer" : "default" }} onClick={() => onDotClick(ptEventId, llabEventId)}>
+    <g onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
       <circle cx={cx} cy={cy} r={14} fill="transparent" style={{ pointerEvents: "all" }} />
-      <circle cx={cx} cy={cy} r={3} fill="var(--chart-series-1)" stroke="none" style={{ pointerEvents: "none" }} />
+      {hovered ? (
+        <DetailsChip cx={cx} cy={cy} onClick={() => onDotClick(ptEventId, llabEventId)} />
+      ) : (
+        <circle cx={cx} cy={cy} r={3} fill="var(--chart-series-1)" stroke="none" style={{ pointerEvents: "none" }} />
+      )}
     </g>
   );
 }
@@ -391,7 +413,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
 
   const distribution = useMemo(() => computeStandingDistribution(filteredRoster, attendance, pmtEventsById), [filteredRoster, attendance, pmtEventsById]);
   const pieData = useMemo(
-    () => distribution.map((row) => ({ name: row.standing, value: row.ptCount + row.llabFmCount })).filter((row) => row.value > 0),
+    () => distribution.map((row) => ({ name: row.standing, value: row.count })).filter((row) => row.value > 0),
     [distribution]
   );
 
@@ -645,7 +667,19 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                     <CartesianGrid stroke="var(--chart-grid)" />
                     <XAxis dataKey="dateLabel" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
                     <YAxis domain={[0, 100]} unit="%" tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
-                    <Tooltip contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload || payload.length === 0) return null;
+                        const row = payload[0].payload as (typeof splitTrendData)[number];
+                        return (
+                          <div style={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12, padding: 8 }}>
+                            <div style={{ fontWeight: 600, marginBottom: 4 }}>{row.dateLabel}</div>
+                            <div style={{ color: "var(--chart-series-1)" }}>PT: {row.ptPct === null ? "no session" : `${row.ptPct}%`}</div>
+                            <div style={{ color: "var(--chart-series-3)" }}>LLAB/FM/D&amp;C: {row.llabPct === null ? "no session" : `${row.llabPct}%`}</div>
+                          </div>
+                        );
+                      }}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line
                       type="monotone"
@@ -730,7 +764,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                 </LineChart>
               </ResponsiveContainer>
             )}
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">Click a point on the chart for a breakdown of that session.</p>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">Hover a point and click Details for a breakdown of that session.</p>
           </CardContent>
         </Card>
       </motion.div>

@@ -21,6 +21,13 @@ import { PocDashboardApp } from "./apps/PocDashboardApp";
 
 type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDashboard" | "memoReview" | "analytics" | "settings";
 
+/**
+ * Every new account is created by an admin with this same shared password (go-around for Firebase
+ * having no native "must change password on first login" flag) -- signing in with it exactly forces
+ * the Change Password dialog open, pre-filled, and undismissable until a real password is set.
+ */
+const SHARED_TEMP_PASSWORD = "det756";
+
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="h-full">
@@ -40,7 +47,21 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 function App() {
   const { user, authLoading, signIn, signOut, changePassword } = useAuth();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
   const cadetsState = useCadets();
+
+  const handleSignIn = async (email: string, password: string) => {
+    await signIn(email, password);
+    if (password === SHARED_TEMP_PASSWORD) {
+      setForcedPasswordChange(true);
+      setChangePasswordOpen(true);
+    }
+  };
+
+  const handleChangePasswordClose = () => {
+    setChangePasswordOpen(false);
+    setForcedPasswordChange(false);
+  };
 
   const tabAccess = resolveTabAccess(user?.email, cadetsState.cadets);
   const hasAnalyticsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none" || tabAccess.memoReview;
@@ -66,7 +87,7 @@ function App() {
   }
 
   if (!user) {
-    return <SignInScreen signIn={signIn} />;
+    return <SignInScreen signIn={handleSignIn} />;
   }
 
   return (
@@ -87,7 +108,13 @@ function App() {
         </div>
       </header>
 
-      <ChangePasswordDialog open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} changePassword={changePassword} />
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={handleChangePasswordClose}
+        changePassword={changePassword}
+        initialCurrentPassword={forcedPasswordChange ? SHARED_TEMP_PASSWORD : undefined}
+        forced={forcedPasswordChange}
+      />
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
         <nav className="px-8 pt-2">

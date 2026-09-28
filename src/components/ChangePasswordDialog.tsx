@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,15 +9,24 @@ interface Props {
   open: boolean;
   onClose: () => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  /** Pre-fills "Current password" -- used for the forced det756 flow so the person only has to type their new password once. */
+  initialCurrentPassword?: string;
+  /** True for the forced det756-login flow: hides Cancel and blocks the X/Escape/backdrop dismissal, so the shared temp password can't just be kept by clicking away. */
+  forced?: boolean;
 }
 
-export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
+export function ChangePasswordDialog({ open, onClose, changePassword, initialCurrentPassword, forced }: Props) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
   const [done, setDone] = useState(false);
+
+  // Re-seed every time the dialog opens, not just on first mount -- it stays mounted across opens.
+  useEffect(() => {
+    if (open) setCurrentPassword(initialCurrentPassword ?? "");
+  }, [open, initialCurrentPassword]);
 
   const reset = () => {
     setCurrentPassword("");
@@ -59,14 +68,18 @@ export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-sm">
+    <Dialog open={open} onOpenChange={(o) => !forced && !o && handleClose()}>
+      <DialogContent className="max-w-sm" hideCloseButton={forced}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <KeyRound className="h-4 w-4 text-primary" />
             Change password
           </DialogTitle>
-          <DialogDescription>Enter your current password and a new one.</DialogDescription>
+          <DialogDescription>
+            {forced
+              ? "You're signed in with the shared temporary password. Set your own password to continue."
+              : "Enter your current password and a new one."}
+          </DialogDescription>
         </DialogHeader>
 
         {done ? (
@@ -122,9 +135,11 @@ export function ChangePasswordDialog({ open, onClose, changePassword }: Props) {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <DialogFooter>
-              <Button type="button" variant="secondary" onClick={handleClose}>
-                Cancel
-              </Button>
+              {!forced && (
+                <Button type="button" variant="secondary" onClick={handleClose}>
+                  Cancel
+                </Button>
+              )}
               <Button type="submit" disabled={saving}>
                 {saving ? "Saving..." : "Change password"}
               </Button>

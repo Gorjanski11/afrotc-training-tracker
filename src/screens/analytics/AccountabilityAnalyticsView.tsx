@@ -70,7 +70,7 @@ function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; 
 export function CadetBucketStats({ label, tally, fixedTotal }: { label: string; tally: BucketTally; fixedTotal: number }) {
   // Present/Total is against the fixed semester total (Section 2), not "however many sessions have happened so far".
   const presentCount = tally.statusCounts.P + tally.statusCounts.AE;
-  const absencesLeft = absencesRemainingForGoodStanding(tally, fixedTotal);
+  const absencesLeft = absencesRemainingForGoodStanding(tally);
   return (
     <div className="rounded-md border border-input p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -88,7 +88,7 @@ export function CadetBucketStats({ label, tally, fixedTotal }: { label: string; 
         </div>
         <div>
           <div className="text-lg font-semibold tabular-nums">{absencesLeft}</div>
-          <div className="text-[11px] text-muted-foreground">Absences left (Good)</div>
+          <div className="text-[11px] text-muted-foreground">Absences left</div>
         </div>
       </div>
       <div className="mt-2 text-center text-[11px] text-muted-foreground">

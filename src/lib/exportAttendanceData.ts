@@ -1,6 +1,6 @@
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding } from "../domain/attendance";
 import { formatCadetName } from "../domain/nameUtils";
-import { ATTENDANCE_STATUS_LABELS, SEMESTER_PMT_TOTALS } from "../domain/constants";
+import { ATTENDANCE_STATUS_LABELS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
 import type { Attendance, PmtEvent, Cadet } from "../domain/types";
 
@@ -110,11 +110,11 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
         ptCount: summary.pt.countedEvents === 0 ? "" : `${ptPresent}/${summary.pt.countedEvents}`,
         ptPct: pctText(summary.pt.percent),
         ptStanding: summary.pt.standing ?? "",
-        ptAbsencesLeft: absencesRemainingForGoodStanding(summary.pt, SEMESTER_PMT_TOTALS.PT),
+        ptAbsencesLeft: absencesRemainingForGoodStanding(summary.pt),
         llabCount: summary.llabFm.countedEvents === 0 ? "" : `${llabPresent}/${summary.llabFm.countedEvents}`,
         llabPct: pctText(summary.llabFm.percent),
         llabStanding: summary.llabFm.standing ?? "",
-        llabAbsencesLeft: absencesRemainingForGoodStanding(summary.llabFm, SEMESTER_PMT_TOTALS.LLAB_FM),
+        llabAbsencesLeft: absencesRemainingForGoodStanding(summary.llabFm),
         combinedPct: pctText(combined),
       };
     }),

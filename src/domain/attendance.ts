@@ -1,4 +1,4 @@
-import { ATTENDANCE_WEIGHT, SEMESTER_PMT_TOTALS, STANDING_THRESHOLDS, bucketForEventType, standingForPercent, type AttendanceStatus, type Standing } from "./constants";
+import { ATTENDANCE_WEIGHT, PERMITTED_ABSENCES_PER_SEMESTER, SEMESTER_PMT_TOTALS, bucketForEventType, standingForPercent, type AttendanceStatus, type Standing } from "./constants";
 import type { Attendance, PmtEvent } from "./types";
 
 export interface BucketTally {
@@ -69,15 +69,15 @@ export function computeCadetAttendanceSummary(
 }
 
 /**
- * How many more unexcused Absences (weight 0, i.e. +1 shortfall each) this bucket could take on top
- * of what's already recorded before the percent would drop below the "Good" standing threshold
- * (85%). 0 means the cadet is already at or below the line, so even one more unexcused absence
- * keeps/pushes them out of Good.
+ * How many more unexcused Absences (weight 0, i.e. +1 shortfall each) this bucket could take before
+ * using up the flat PERMITTED_ABSENCES_PER_SEMESTER budget -- a flat policy number (5), independent
+ * of the Good/Warning/Hard Limit percentage standing thresholds. An AE (Approved Excuse) costs
+ * nothing here, same as a plain Present (both weight 1 in ATTENDANCE_WEIGHT), and a Late costs half
+ * an absence. 0 means the budget is already used up.
  */
-export function absencesRemainingForGoodStanding(tally: BucketTally, fixedTotal: number): number {
+export function absencesRemainingForGoodStanding(tally: BucketTally): number {
   const currentShortfall = tally.countedEvents - tally.weightedSum;
-  const allowableShortfall = fixedTotal * (1 - STANDING_THRESHOLDS.good);
-  return Math.max(0, Math.floor(allowableShortfall - currentShortfall));
+  return Math.max(0, Math.floor(PERMITTED_ABSENCES_PER_SEMESTER - currentShortfall));
 }
 
 /**

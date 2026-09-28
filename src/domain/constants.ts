@@ -144,6 +144,15 @@ export function standingForPercent(percent: number | undefined): Standing | unde
 export const SEMESTER_PMT_TOTALS: Record<"PT" | "LLAB_FM", number> = { PT: 27, LLAB_FM: 28 };
 
 /**
+ * Flat semester absence budget per bucket (PT and LLAB/FM/D&C each get their own 5), independent of
+ * the Good/Warning/Hard Limit percentage standing thresholds above -- a flat policy number, not
+ * derived from STANDING_THRESHOLDS.good. Drives only the "Absences left" stat tile. An AE (Approved
+ * Excuse) costs nothing against this budget, same as a plain Present, since ATTENDANCE_WEIGHT gives
+ * both a weight of 1.
+ */
+export const PERMITTED_ABSENCES_PER_SEMESTER = 5;
+
+/**
  * One-time transition marker: PT/LLAB/FM/D&C attendance before this semester was tracked on a
  * different platform, and its Absent records were bulk-imported here with no memos (cadre will
  * backfill the real memo history manually later). A PMT dated before this never auto-assigns an

@@ -57,6 +57,9 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
         isCwl,
         position: position.trim() === "" ? undefined : position.trim(),
         statusChangedDate: statusChanged ? new Date().toISOString().slice(0, 10) : existingCadet?.statusChangedDate,
+        // A brand-new roster entry implies a brand-new account on the shared default password --
+        // omitted entirely on edit so it's never overwritten back to true/false either way.
+        ...(existingCadet ? {} : { mustChangePassword: true }),
       });
       onClose();
     } catch (e) {

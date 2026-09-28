@@ -84,6 +84,7 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
     try {
       await reauthenticate(adminPassword);
       await resetOtherPassword(target.email, newPassword);
+      await updateCadetFields(target.id, { mustChangePassword: true });
       setJustReset({ name: formatCadetName(target), password: newPassword });
       setCopied(false);
       closeDialog();

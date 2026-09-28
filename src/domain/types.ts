@@ -39,6 +39,15 @@ export interface Cadet {
   position: string | undefined;
   /** Manual-entry date (ISO) -- needed for "recently deactivated" flagging since Active/Inactive alone can't show recency. */
   statusChangedDate: string | undefined;
+  /**
+   * True whenever an admin (not the cadet themselves) most recently set this person's password --
+   * initial account provisioning (defaults true on a brand-new roster entry) or a forgotten-password
+   * reset from Settings > Account Manager. Forces the Change Password dialog open on their next
+   * sign-in, undismissable until they set their own. Cleared the moment they successfully change it
+   * themselves (App.tsx). Undefined for pre-existing roster entries from before this flag existed --
+   * treated as false, never retroactively forced.
+   */
+  mustChangePassword: boolean | undefined;
 }
 
 /**

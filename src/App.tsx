@@ -23,8 +23,10 @@ type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDa
 
 /**
  * Every new account is created by an admin with this same shared password (go-around for Firebase
- * having no native "must change password on first login" flag) -- signing in with it exactly forces
- * the Change Password dialog open, pre-filled, and undismissable until a real password is set.
+ * having no native "must change password on first login" flag). Signing in with it exactly always
+ * forces the Change Password dialog; the more durable `Cadet.mustChangePassword` flag (set on
+ * creation and on any admin-driven reset, cleared on a successful self-service change) also forces
+ * it even when an admin reset someone to a different one-off password instead of this shared one.
  */
 const SHARED_TEMP_PASSWORD = "det756";
 
@@ -48,11 +50,19 @@ function App() {
   const { user, authLoading, signIn, signOut, changePassword } = useAuth();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
+  const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
 
   const handleSignIn = async (email: string, password: string) => {
     await signIn(email, password);
-    if (password === SHARED_TEMP_PASSWORD) {
+    const normalized = email.trim().toLowerCase();
+    const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
+    // Either signal forces it: the literal shared password (covers anyone not yet backfilled with
+    // the flag), or mustChangePassword itself (survives an admin resetting them to some OTHER
+    // password too, e.g. a forgotten-password recovery reset from Account Manager). Either way,
+    // prefill with whatever password was just typed -- it's guaranteed correct since sign-in succeeded.
+    if (password === SHARED_TEMP_PASSWORD || me?.mustChangePassword === true) {
+      setPendingCurrentPassword(password);
       setForcedPasswordChange(true);
       setChangePasswordOpen(true);
     }
@@ -61,6 +71,17 @@ function App() {
   const handleChangePasswordClose = () => {
     setChangePasswordOpen(false);
     setForcedPasswordChange(false);
+    setPendingCurrentPassword(undefined);
+  };
+
+  /** Clears mustChangePassword the moment the signed-in person successfully sets their OWN password -- only an admin setting it on their behalf (CadetFormDialog/AccountManagerScreen) ever sets it back to true. */
+  const handleChangePassword = async (currentPassword: string, newPassword: string) => {
+    await changePassword(currentPassword, newPassword);
+    const normalized = user?.email?.trim().toLowerCase();
+    const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
+    if (me?.mustChangePassword) {
+      await cadetsState.updateCadetFields(me.id, { mustChangePassword: false });
+    }
   };
 
   const tabAccess = resolveTabAccess(user?.email, cadetsState.cadets);
@@ -111,8 +132,8 @@ function App() {
       <ChangePasswordDialog
         open={changePasswordOpen}
         onClose={handleChangePasswordClose}
-        changePassword={changePassword}
-        initialCurrentPassword={forcedPasswordChange ? SHARED_TEMP_PASSWORD : undefined}
+        changePassword={handleChangePassword}
+        initialCurrentPassword={forcedPasswordChange ? pendingCurrentPassword : undefined}
         forced={forcedPasswordChange}
       />
 

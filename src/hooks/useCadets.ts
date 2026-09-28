@@ -19,6 +19,8 @@ export interface CadetInput {
   isCwl: boolean;
   position: string | undefined;
   statusChangedDate: string | undefined;
+  /** Optional -- omitted on most saves (Cadet Form's edit path) so updateDoc leaves whatever's already there untouched instead of overwriting it with undefined/null. */
+  mustChangePassword?: boolean;
 }
 
 const COLLECTION = "cadets";
@@ -39,6 +41,7 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
     isCwl: (data.isCwl as boolean | undefined) ?? false,
     position: (data.position as string | null | undefined) ?? undefined,
     statusChangedDate: (data.statusChangedDate as string | null | undefined) ?? undefined,
+    mustChangePassword: (data.mustChangePassword as boolean | undefined) ?? undefined,
   };
 }
 
@@ -72,7 +75,7 @@ export function useCadets() {
     async (input: CadetInput) => {
       const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id: ref.id, ...input } satisfies Cadet;
+      return { id: ref.id, ...input, mustChangePassword: input.mustChangePassword } satisfies Cadet;
     },
     [refetch]
   );
@@ -81,7 +84,7 @@ export function useCadets() {
     async (id: string, input: CadetInput) => {
       await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id, ...input } satisfies Cadet;
+      return { id, ...input, mustChangePassword: input.mustChangePassword } satisfies Cadet;
     },
     [refetch]
   );

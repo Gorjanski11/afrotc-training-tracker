@@ -11,8 +11,8 @@ interface Props {
   userEmail: string | null | undefined;
 }
 
-/** Section 13 -- every GMC cadet's own tab, scoped to just themselves via email lookup (same pattern Memo Submission already uses). */
-export function GmcDashboardApp({ userEmail }: Props) {
+/** Same as GmcDashboardApp, for every POC cadet -- peers are grouped by Group instead of Flight, since POC has no Flight field. */
+export function PocDashboardApp({ userEmail }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -25,8 +25,8 @@ export function GmcDashboardApp({ userEmail }: Props) {
   const normalized = userEmail?.trim().toLowerCase();
   const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
   const peers = useMemo(
-    () => cadetsState.cadets.filter((p) => p.status === "Active" && !p.isCadre && p.flight === me?.flight),
-    [cadetsState.cadets, me?.flight]
+    () => cadetsState.cadets.filter((p) => p.status === "Active" && !p.isCadre && p.group === me?.group),
+    [cadetsState.cadets, me?.group]
   );
 
   if (dataLoading) {
@@ -57,7 +57,7 @@ export function GmcDashboardApp({ userEmail }: Props) {
       <SelfServiceDashboardScreen
         cadet={me}
         peers={peers}
-        peerLabel="Flight combined %"
+        peerLabel="Group combined %"
         events={eventsState.events}
         attendance={attendanceState.attendance}
         absenceMemos={absenceState.memos}

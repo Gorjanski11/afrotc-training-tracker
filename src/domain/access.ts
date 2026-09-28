@@ -29,6 +29,8 @@ export interface TabAccess {
    * Flight Commander gets it on top of their existing access.
    */
   gmcDashboard: boolean;
+  /** Same as `gmcDashboard`, but for every POC-class cadet -- the two are mutually exclusive. */
+  pocDashboard: boolean;
 }
 
 const ALL_ACCESS: TabAccess = {
@@ -39,6 +41,7 @@ const ALL_ACCESS: TabAccess = {
   memoSubmission: true,
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
+  pocDashboard: false,
 };
 const TO_FULL_ONLY: TabAccess = {
   trainingObjectives: "full",
@@ -48,6 +51,7 @@ const TO_FULL_ONLY: TabAccess = {
   memoSubmission: true,
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
+  pocDashboard: false,
 };
 const MEMO_DEVIATION_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -57,6 +61,7 @@ const MEMO_DEVIATION_ONLY: TabAccess = {
   memoSubmission: true,
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
+  pocDashboard: false,
 };
 const CADET_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -66,17 +71,36 @@ const CADET_ONLY: TabAccess = {
   memoSubmission: true,
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
+  pocDashboard: false,
 };
 CADET_ONLY.memoReview = false;
 
 /** A POC Group Commander -- TO's POC-only, Accountability + TO's scoped to their own group. */
 function pocGroupAccess(group: Group): TabAccess {
-  return { trainingObjectives: "poc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "group", group }, gmcDashboard: false };
+  return {
+    trainingObjectives: "poc",
+    accountability: true,
+    memoReview: true,
+    memoReviewAbsence: false,
+    memoSubmission: true,
+    unitScope: { kind: "group", group },
+    gmcDashboard: false,
+    pocDashboard: false,
+  };
 }
 
 /** A GMC Flight Commander -- TO's GMC-only, Accountability + TO's scoped to their own flight. */
 function gmcFlightAccess(flight: Flight): TabAccess {
-  return { trainingObjectives: "gmc", accountability: true, memoReview: true, memoReviewAbsence: false, memoSubmission: true, unitScope: { kind: "flight", flight }, gmcDashboard: false };
+  return {
+    trainingObjectives: "gmc",
+    accountability: true,
+    memoReview: true,
+    memoReviewAbsence: false,
+    memoSubmission: true,
+    unitScope: { kind: "flight", flight },
+    gmcDashboard: false,
+    pocDashboard: false,
+  };
 }
 
 /** Montalvo Nieves -- GMC-wide (all 4 flights), not scoped to a single flight. */
@@ -88,6 +112,7 @@ const GMC_WIDE_ACCESS: TabAccess = {
   memoSubmission: true,
   unitScope: { kind: "gmc" },
   gmcDashboard: false,
+  pocDashboard: false,
 };
 
 /**
@@ -124,16 +149,17 @@ const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
 /**
  * Resolves what a signed-in person can see. Cadre (roster `isCadre` flag) get full access
  * automatically even without being individually listed above; everyone else not listed gets
- * Memo Submission only. `gmcDashboard` (Section 13) is resolved as an independent extra step on
- * top of whichever tier above applies -- every GMC-class cadet gets it, regardless of tier.
+ * Memo Submission only. `gmcDashboard`/`pocDashboard` (Section 13) are resolved as an independent
+ * extra step on top of whichever tier above applies -- every GMC or POC cadet gets their own
+ * dashboard, regardless of tier.
  */
 export function resolveTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {
   const base = resolveBaseTabAccess(email, roster);
   if (!email) return base;
   const normalized = email.trim().toLowerCase();
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
-  const gmcDashboard = match !== undefined && deriveClass(match.asClass, match.isCadre) === "GMC";
-  return { ...base, gmcDashboard };
+  const cohort = match ? deriveClass(match.asClass, match.isCadre) : undefined;
+  return { ...base, gmcDashboard: cohort === "GMC", pocDashboard: cohort === "POC" };
 }
 
 function resolveBaseTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {

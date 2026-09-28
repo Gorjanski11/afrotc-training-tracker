@@ -17,8 +17,9 @@ import { MemoSubmissionApp } from "./apps/MemoSubmissionApp";
 import { AnalyticsApp } from "./apps/AnalyticsApp";
 import { SettingsApp } from "./apps/SettingsApp";
 import { GmcDashboardApp } from "./apps/GmcDashboardApp";
+import { PocDashboardApp } from "./apps/PocDashboardApp";
 
-type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "gmcDashboard" | "memoReview" | "analytics" | "settings";
+type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDashboard" | "memoReview" | "analytics" | "settings";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -47,7 +48,7 @@ function App() {
   const visibleTabs: HubTab[] = [
     ...(tabAccess.accountability ? (["accountability"] as const) : []),
     ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
-    ...(tabAccess.gmcDashboard ? (["gmcDashboard"] as const) : []),
+    ...(tabAccess.gmcDashboard || tabAccess.pocDashboard ? (["myDashboard"] as const) : []),
     "memoSubmission",
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
@@ -103,8 +104,8 @@ function App() {
                 TO's
               </TabsTrigger>
             )}
-            {tabAccess.gmcDashboard && (
-              <TabsTrigger value="gmcDashboard">
+            {(tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
+              <TabsTrigger value="myDashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 My Dashboard
               </TabsTrigger>
@@ -150,10 +151,14 @@ function App() {
                 </AnimatedPanel>
               </TabsContent>
             )}
-            {activeTab === "gmcDashboard" && tabAccess.gmcDashboard && (
-              <TabsContent value="gmcDashboard" className="h-full" forceMount>
+            {activeTab === "myDashboard" && (tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
+              <TabsContent value="myDashboard" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
+                  {tabAccess.gmcDashboard ? (
+                    <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
+                  ) : (
+                    <PocDashboardApp key="pocDashboard" userEmail={user.email} />
+                  )}
                 </AnimatedPanel>
               </TabsContent>
             )}

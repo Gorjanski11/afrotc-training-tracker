@@ -138,6 +138,7 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead>Class</TableHead>
               <TableHead>AS Class</TableHead>
               <TableHead>Dev Level</TableHead>
               <TableHead>Flight</TableHead>
@@ -162,6 +163,9 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
                       CWL
                     </Badge>
                   )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{cls}</Badge>
                 </TableCell>
                 <TableCell>{person.asClass ?? "—"}</TableCell>
                 <TableCell>{person.devLevel ?? "—"}</TableCell>
@@ -197,7 +201,7 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={13} className="text-center text-muted-foreground">
+                <TableCell colSpan={14} className="text-center text-muted-foreground">
                   No one matches this filter.
                 </TableCell>
               </TableRow>

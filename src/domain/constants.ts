@@ -105,20 +105,30 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
 /**
  * Weight per status for percentage math. An Approved Excuse (AE) counts exactly like a Present --
  * the absence is still recorded and shown as "Approved Excuse" everywhere in the UI, but it never
- * costs the cadet toward standing/percent once accepted. PE (still pending review) stays
- * `undefined` -- excluded entirely from both the numerator and denominator until it's resolved one
- * way or the other, so an in-review excuse doesn't yet count for or against the cadet.
+ * costs the cadet toward standing/percent once accepted. PE (still pending review) counts as an
+ * unexcused Absent (weight 0) until it resolves -- "you are absent until excused" -- and flips to
+ * AE's weight of 1 the moment the memo is Accepted, or stays at 0 if Rejected.
  */
 export const ATTENDANCE_WEIGHT: Record<AttendanceStatus, number | undefined> = {
   P: 1,
   L: 0.5,
   A: 0,
   AE: 1,
-  PE: undefined,
+  PE: 0,
 };
 
 export const ABSENCE_REASONS = ["Academics", "Medical", "Personal", "Work/Job", "Other"] as const;
 export type AbsenceReason = (typeof ABSENCE_REASONS)[number];
+
+export const DEVIATION_REASONS = [
+  "Grooming & Appearance",
+  "Uniform Discrepancy",
+  "Misconduct",
+  "Customs & Courtesies",
+  "Missed Deadline",
+  "Other",
+] as const;
+export type DeviationReason = (typeof DEVIATION_REASONS)[number];
 
 /** Percentage bucket for threshold purposes: PT stands alone, LLAB+FM+D&C are combined (D&C is a type of LLAB session). "OTHER" is unused today -- kept for any future PMT type that shouldn't count toward either threshold. */
 export type AttendanceBucket = "PT" | "LLAB_FM" | "OTHER";
@@ -132,14 +142,15 @@ export function bucketForEventType(eventType: PmtEventType): AttendanceBucket {
 export type Standing = "Good" | "Warning" | "Hard Limit";
 
 /**
- * Standing is now derived directly from the flat absence budget (PERMITTED_ABSENCES_PER_SEMESTER,
- * below), not a percentage threshold: "Hard Limit" once the budget is used up (0 or fewer left),
- * "Warning" with exactly one absence left (one more unexcused absence away from Hard Limit), "Good"
- * otherwise. An AE (Approved Excuse) never costs anything against the budget -- same weight as a
- * plain Present -- so it can never push a cadet into Warning/Hard Limit on its own.
+ * Standing is derived directly from the flat absence budget (PERMITTED_ABSENCES_PER_SEMESTER,
+ * below), not a percentage threshold: "Hard Limit" once a cadet has gone a full absence past the
+ * budget (-1 or fewer left -- exactly at 0 left, budget used up but not yet exceeded, still reads
+ * "Good"), "Warning" with exactly one absence left (one more unexcused absence away from Hard
+ * Limit), "Good" otherwise. An AE (Approved Excuse) never costs anything against the budget -- same
+ * weight as a plain Present -- so it can never push a cadet into Warning/Hard Limit on its own.
  */
 export function standingForAbsencesLeft(absencesLeft: number): Standing {
-  if (absencesLeft <= 0) return "Hard Limit";
+  if (absencesLeft <= -1) return "Hard Limit";
   if (absencesLeft === 1) return "Warning";
   return "Good";
 }

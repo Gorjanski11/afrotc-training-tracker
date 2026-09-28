@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
@@ -24,10 +23,6 @@ export function GmcDashboardApp({ userEmail }: Props) {
 
   const normalized = userEmail?.trim().toLowerCase();
   const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
-  const peers = useMemo(
-    () => cadetsState.cadets.filter((p) => p.status === "Active" && !p.isCadre && p.flight === me?.flight),
-    [cadetsState.cadets, me?.flight]
-  );
 
   if (dataLoading) {
     return (
@@ -56,8 +51,6 @@ export function GmcDashboardApp({ userEmail }: Props) {
     <div className="h-full overflow-y-auto p-3 sm:p-6">
       <SelfServiceDashboardScreen
         cadet={me}
-        peers={peers}
-        peerLabel="Flight combined %"
         events={eventsState.events}
         attendance={attendanceState.attendance}
         absenceMemos={absenceState.memos}

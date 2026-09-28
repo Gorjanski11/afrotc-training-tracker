@@ -129,5 +129,26 @@ export function useAbsenceMemoAssignments() {
     [refs, refetch]
   );
 
-  return { refs, loading, error, refetch, assignAbsenceMemo, retractAssignment, linkPreSubmittedAttendance };
+  /**
+   * A cadet who pre-submitted a future memo (still "Pending", unlinked -- see
+   * `linkPreSubmittedAttendance`) turns out to have actually attended (marked Present/Late for the
+   * real thing) -- the excuse is no longer needed, so discard the now-unnecessary memo rather than
+   * leaving it dangling in the review queue with an empty attendanceIds slot (Section F). Only ever
+   * targets a single-PMT pre-submission, same restriction `retractAssignment` uses -- a multi-PMT
+   * memo (e.g. covering both a LLAB and a PT in one submission) needs a human to sort out which part
+   * is now moot, so it's left alone.
+   */
+  const discardOrphanedPreSubmission = useCallback(
+    async (cadetId: string, pmtEventId: string) => {
+      const target = refs.find(
+        (m) => m.cadetId === cadetId && m.status === "Pending" && m.pmtEventIds.length === 1 && m.pmtEventIds[0] === pmtEventId && !m.attendanceIds[0]
+      );
+      if (!target) return;
+      await deleteDoc(doc(db, COLLECTION, target.id));
+      await refetch(true);
+    },
+    [refs, refetch]
+  );
+
+  return { refs, loading, error, refetch, assignAbsenceMemo, retractAssignment, linkPreSubmittedAttendance, discardOrphanedPreSubmission };
 }

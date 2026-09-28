@@ -173,7 +173,7 @@ export function MemorandumTemplatesScreen({ templates, saveTemplate }: Props) {
     <div>
       <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">
         <Mail className="h-5 w-5 text-primary" />
-        Memorandum Templates
+        Auto-email Templates
       </h2>
       <p className="mb-4 text-sm text-muted-foreground">
         Templates for the automated emails sent by the Absence/Deviation Memo lifecycle. Editing here takes effect immediately -- no redeploy needed.

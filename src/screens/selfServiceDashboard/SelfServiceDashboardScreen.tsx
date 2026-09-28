@@ -15,10 +15,6 @@ import type { AbsenceMemo, Attendance, Cadet, DeviationMemo, PmtEvent } from "..
 
 interface Props {
   cadet: Cadet;
-  /** Active, non-Cadre cadets sharing this person's unit (Flight for GMC, Group for POC) -- caller decides which field groups them, this screen is cohort-agnostic. */
-  peers: Cadet[];
-  /** What to call the unit combined-% stat -- "Flight combined %" for GMC, "Group combined %" for POC. */
-  peerLabel: string;
   events: PmtEvent[];
   attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
@@ -58,16 +54,13 @@ const ABSENCE_ACTIONABLE = new Set(["Assigned", "Returned"]);
 const DEVIATION_ACTIONABLE = new Set(["Assigned", "Late", "Returned"]);
 
 /** Section 13 -- every GMC or POC cadet's personal, self-service dashboard (own numbers only, no filters needed). */
-export function SelfServiceDashboardScreen({ cadet, peers, peerLabel, events, attendance, absenceMemos, deviationMemos }: Props) {
+export function SelfServiceDashboardScreen({ cadet, events, attendance, absenceMemos, deviationMemos }: Props) {
   const [bucketChoice, setBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
   const summary = useMemo(() => computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
 
-  const cohortCombinedPercent = useMemo(() => {
-    const percents = peers.map((p) => computeCombinedPercent(p.id, attendance, pmtEventsById));
-    return percents.length === 0 ? undefined : percents.reduce((a, b) => a + b, 0) / percents.length;
-  }, [peers, attendance, pmtEventsById]);
+  const myCombinedPercent = useMemo(() => computeCombinedPercent(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
 
   const myAbsenceMemos = useMemo(() => absenceMemos.filter((m) => m.cadetId === cadet.id), [absenceMemos, cadet.id]);
   const myDeviationMemos = useMemo(() => deviationMemos.filter((m) => m.cadetId === cadet.id), [deviationMemos, cadet.id]);
@@ -116,7 +109,7 @@ export function SelfServiceDashboardScreen({ cadet, peers, peerLabel, events, at
           tone={missingMemosCount > 0 ? "critical" : undefined}
           index={2}
         />
-        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label={peerLabel} value={pct(cohortCombinedPercent)} index={3} />
+        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Combined %" value={pct(myCombinedPercent)} index={3} />
       </div>
 
       <Card className="mb-6">

@@ -195,13 +195,33 @@ export function isFullAccess(email: string | null | undefined, roster: Cadet[]):
   return resolveBaseTabAccess(email, roster) === ALL_ACCESS;
 }
 
-/** Cadre or Cortes Garay specifically -- deliberately narrower than `isFullAccess` (Saltiel/Mo Velez are full-access but NOT authorized to reset someone else's password). Gates Settings' Manage Passwords screen; the Cloud Function independently re-checks this same rule server-side. */
+/** Cadre, Cortes Garay, or CWL (Saltiel/Mo Velez) -- gates Settings' Manage Passwords screen and the New Semester feature. The Cloud Function independently re-checks this same rule server-side. */
 export function isCadreOrCortesGaray(email: string | null | undefined, roster: Cadet[]): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  if (normalized === "jorge.cortes4@upr.edu") return true;
+  if (normalized === "jorge.cortes4@upr.edu" || normalized === "francisco.saltiel@upr.edu" || normalized === "jossie.mo@upr.edu") return true;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
   return match?.isCadre === true;
+}
+
+/**
+ * Anyone allowed into Settings' Account Manager: the full-access tier (Cadre/Cortes Garay/CWL, who
+ * see and can reset everyone), plus every unit-scoped commander (POC Group Commander, GMC Flight
+ * Commander) who can view and reset only their own unit's cadets. Unlike `isCadreOrCortesGaray`,
+ * this does not imply reset rights by itself -- pair with `canResetPasswordsFor` below.
+ */
+export function canManageAccounts(email: string | null | undefined, roster: Cadet[]): boolean {
+  if (isFullAccess(email, roster)) return true;
+  const access = resolveBaseTabAccess(email, roster);
+  return access.unitScope.kind !== "all";
+}
+
+/** Everyone `canManageAccounts` covers can also reset passwords -- scoped to their own unit via `TabAccess.unitScope`, full roster for the full-access tier. Cloud Function re-checks server-side (isCadreOrCortesGaray or roster-scoped equivalent). */
+export function canResetPasswordsFor(email: string | null | undefined, roster: Cadet[], target: Cadet): boolean {
+  if (isCadreOrCortesGaray(email, roster)) return true;
+  const access = resolveBaseTabAccess(email, roster);
+  if (access.unitScope.kind === "all") return false; // full-access-but-not-reset tier (none exist today, but keep the distinction)
+  return applyUnitScope(access.unitScope, roster).some((p) => p.id === target.id);
 }
 
 /** Cortes Garay alone -- narrower even than `isCadreOrCortesGaray`. Gates Data Management's PDF delete and the whole New Semester screen (it can wipe/recreate the entire roster, calendar, and cadet logins). The createCadetAccounts/disableCadetAccounts Cloud Functions independently re-check this same rule server-side. */
@@ -210,10 +230,42 @@ export function isCortesGaray(email: string | null | undefined): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// Event add/edit -- restricted to 4 named staff positions + Cadre (Section A5)
+// ---------------------------------------------------------------------------
+
+/** OG Commander (Delgado), DO (Ferrer), ETO (Huertas), SAE (Cortes Garay) -- everyone else with Settings access sees Events read-only. */
+const EVENT_EDIT_OVERRIDE_EMAILS = new Set([
+  "lorean.delgado@upr.edu", // Delgado Ortiz, Lorean (OG Commander)
+  "sebastian.ferrer@upr.edu", // Ferrer Aponte, Sebastian (DO)
+  "angel.huertas2@upr.edu", // Huertas Pabón, Angel (ETO)
+  "jorge.cortes4@upr.edu", // Cortes Garay (SAE)
+]);
+
+/** Can add/edit/delete PMT and Extra Events. Everyone else with Settings access still views the calendar read-only. */
+export function canEditEvents(email: string | null | undefined, roster: Cadet[]): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  if (EVENT_EDIT_OVERRIDE_EMAILS.has(normalized)) return true;
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  return match?.isCadre === true;
+}
+
+// ---------------------------------------------------------------------------
+// AS-class instructor visibility (Section G) -- Capt Jackson (AS100), Lt Laboy (AS200), TSgt
+// Reynoso (AS300), and Capt Deaton (AS400) are all named Cadre already (ACCESS_BY_EMAIL above),
+// and every Cadre-flagged person -- named or not, via the resolveBaseTabAccess roster fallback --
+// already resolves to ALL_ACCESS, which includes memoReviewAbsence. So every AS-class instructor
+// already sees every absence memo, including memos for AS classes they don't personally teach --
+// no extra per-instructor scoping is needed here. Accept/reject is a UI/process convention (only
+// Cortes Garay actually decides) rather than a code-enforced restriction, matching how the rest of
+// this app already treats Cadre as a single trusted tier.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 // Section 7 -- Deviation Memo assign/review permission matrix
 // ---------------------------------------------------------------------------
 
-export type DeviationAssignScope = "everyone" | "everyone-except-cadre" | "any-gmc" | { flight: Flight };
+export type DeviationAssignScope = "everyone" | "everyone-except-cadre" | "any-gmc" | { flight: Flight } | { group: Group };
 
 export interface DeviationAssignRule {
   canAssign: boolean;
@@ -223,7 +275,8 @@ export interface DeviationAssignRule {
 }
 
 const RULE_EVERYONE: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: false };
-const RULE_EVERYONE_EXCEPT_CADRE: DeviationAssignRule = { canAssign: true, assignScope: "everyone-except-cadre", reviewOwnOnly: true };
+/** CWL -- assign to anyone like Cortes Garay/Cadre, but (per the user) only reviews what they personally assigned, not everyone's. */
+const RULE_EVERYONE_OWN_REVIEW: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: true };
 const RULE_ANY_GMC: DeviationAssignRule = { canAssign: true, assignScope: "any-gmc", reviewOwnOnly: true };
 const RULE_CANNOT_ASSIGN: DeviationAssignRule = { canAssign: false, assignScope: "any-gmc", reviewOwnOnly: true };
 
@@ -231,14 +284,28 @@ function flightRule(flight: Flight): DeviationAssignRule {
   return { canAssign: true, assignScope: { flight }, reviewOwnOnly: true };
 }
 
+/** A POC Group Commander -- can assign to POC (and any GMC holding a staff position) in their own group only, and reviews only what they assigned. */
+function groupRule(group: Group): DeviationAssignRule {
+  return { canAssign: true, assignScope: { group }, reviewOwnOnly: true };
+}
+
 /**
- * Per-email overrides, checked before the roster-driven fallback below -- several people share a
- * roster attribute (e.g. Montalvo and Santiago are both TRG-group) but need different assign
- * scopes, the same precedence convention `resolveTabAccess` already uses for ALL_ACCESS/isCadre.
+ * Per-email overrides, checked before the roster-driven Cadre fallback below -- the only rule left
+ * to a fallback is Cadre (canAssign to everyone, full review); every named commander below is an
+ * explicit entry, matching the "only Group Commanders, Cortes Garay, CWL, and Cadre can target POC"
+ * rule -- Flight Commanders stay GMC-only within their own flight.
  */
 const DEVIATION_ASSIGN_OVERRIDES: Record<string, DeviationAssignRule> = {
   "jorge.cortes4@upr.edu": RULE_EVERYONE,
-  "sebastian.montalvo3@upr.edu": RULE_ANY_GMC, // Montalvo -- TRG-group by roster, but scoped to GMC only
+  "francisco.saltiel@upr.edu": RULE_EVERYONE_OWN_REVIEW, // Saltiel Lima, Francisco (CWL)
+  "jossie.mo@upr.edu": RULE_EVERYONE_OWN_REVIEW, // Mo Velez, Jossie (CWL)
+
+  "john.santiago12@upr.edu": groupRule("TRG"), // Santiago Ruiz, John (TRG Group Commander)
+  "lorean.delgado@upr.edu": groupRule("OG"), // Delgado Ortiz, Lorean (OG Group Commander)
+  "hector.belen@upr.edu": groupRule("MSG"), // Belen Caraballo, Hector (MSG Group Commander)
+  "edgardo.puente.afrotc@upr.edu": groupRule("WSG"), // Puente Bonilla, Edgardo (WSG Group Commander)
+
+  "sebastian.montalvo3@upr.edu": RULE_ANY_GMC, // Montalvo -- TRG-group by roster, but scoped to GMC only (CTO, not a Group Commander)
   "alexis.rodriguez53@upr.edu": flightRule("P"),
   "fabiola.merle@upr.edu": flightRule("M"),
   "julian.vivas@upr.edu": flightRule("N"),
@@ -248,9 +315,8 @@ const DEVIATION_ASSIGN_OVERRIDES: Record<string, DeviationAssignRule> = {
 
 /**
  * Who can assign a Deviation Memo, to whom, and whether they only ever review their own. Explicit
- * per-email overrides first, then a roster-driven fallback (Cadre -> everyone/full-review; anyone
- * else in the TRG group -> everyone-except-cadre/own-review-only, covering Santiago as the TRG
- * Group Commander plus any other TRG-group cadet); everyone else cannot assign at all.
+ * per-email overrides first, then Cadre (roster `isCadre`) get everyone/full-review automatically;
+ * everyone else cannot assign at all.
  */
 export function resolveDeviationAssignRule(email: string | null | undefined, roster: Cadet[]): DeviationAssignRule {
   if (!email) return RULE_CANNOT_ASSIGN;
@@ -259,7 +325,6 @@ export function resolveDeviationAssignRule(email: string | null | undefined, ros
   if (override) return override;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
   if (match?.isCadre === true) return RULE_EVERYONE;
-  if (match?.group === "TRG") return RULE_EVERYONE_EXCEPT_CADRE;
   return RULE_CANNOT_ASSIGN;
 }
 
@@ -268,7 +333,8 @@ export function cadetsInAssignScope(scope: DeviationAssignScope, roster: Cadet[]
   if (scope === "everyone") return excludeCadre(roster); // a Deviation Memo target is always a cadet, never Cadre (Section 4)
   if (scope === "everyone-except-cadre") return roster.filter((p) => !p.isCadre);
   if (scope === "any-gmc") return roster.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
-  return roster.filter((p) => p.flight === scope.flight);
+  if ("flight" in scope) return roster.filter((p) => p.flight === scope.flight);
+  return roster.filter((p) => p.group === scope.group);
 }
 
 /** Every roster member currently authorized to assign a Deviation Memo -- populates the "Assigned by" combobox. */

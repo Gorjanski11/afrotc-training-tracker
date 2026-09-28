@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,7 @@ interface Props {
   assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => Promise<void>;
   retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string) => Promise<void>;
   linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string) => Promise<boolean>;
+  discardOrphanedPreSubmission: (cadetId: string, pmtEventId: string) => Promise<void>;
   /** Set by the Dashboard's "Missed Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
   initialPmtEventId?: string;
   /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
@@ -46,11 +47,15 @@ export function AttendanceScreen({
   assignAbsenceMemo,
   retractAbsenceMemoAssignment,
   linkPreSubmittedAttendance,
+  discardOrphanedPreSubmission,
   initialPmtEventId,
   unitScope,
 }: Props) {
-  const hideGroupFilter = unitScope.kind === "group";
-  const hideFlightFilter = unitScope.kind === "flight";
+  // A scoped commander's roster only ever has one Group or one Flight value in it -- hide BOTH
+  // selects, not just the one matching their own scope kind, since the other one would only ever
+  // show meaningless empty-or-single-value options for their already-narrowed roster (Section A2).
+  const hideGroupFilter = unitScope.kind !== "all";
+  const hideFlightFilter = unitScope.kind !== "all";
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 
@@ -60,14 +65,36 @@ export function AttendanceScreen({
     () => [...new Set(events.map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined))].sort((a, b) => b - a),
     [events]
   );
-  const [twFilter, setTwFilter] = useState<number | undefined>(sortedEvents[0]?.trainingWeek);
+
+  // Default PMT (Section I): the most recent PMT at/before now that has zero attendance records yet
+  // -- the one a commander almost certainly opened this screen to fill in. Falls back to the single
+  // most recent PMT overall once every past PMT already has attendance recorded.
+  const defaultEvent = useMemo(() => {
+    const now = Date.now();
+    const recordedIds = new Set(attendance.map((a) => a.pmtEventId));
+    const pastUnrecorded = sortedEvents.find((e) => new Date(e.eventDate).getTime() <= now && !recordedIds.has(e.id));
+    return pastUnrecorded ?? sortedEvents[0];
+  }, [sortedEvents, attendance]);
+
+  const [twFilter, setTwFilter] = useState<number | undefined>(defaultEvent?.trainingWeek);
 
   const weekEvents = useMemo(
     () => (twFilter === undefined ? sortedEvents : sortedEvents.filter((e) => e.trainingWeek === twFilter)),
     [sortedEvents, twFilter]
   );
 
-  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(weekEvents[0]?.id);
+  const [selectedEventId, setSelectedEventId] = useState<string | undefined>(defaultEvent?.id);
+
+  // After a save completes, the `attendance` prop updates once the parent hook refetches -- jump
+  // to whatever's now the default (the next PMT still missing attendance) at that point, rather than
+  // leaving the commander stuck on the PMT they just finished.
+  const awaitingPostSaveDefaultRef = useRef(false);
+  useEffect(() => {
+    if (!awaitingPostSaveDefaultRef.current) return;
+    awaitingPostSaveDefaultRef.current = false;
+    setTwFilter(defaultEvent?.trainingWeek);
+    setSelectedEventId(defaultEvent?.id);
+  }, [attendance, defaultEvent]);
   const [pending, setPending] = useState<
     Record<string, { status: AttendanceStatus; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
   >({});
@@ -212,9 +239,13 @@ export function AttendanceScreen({
           // A mistaken Absent entry corrected to something else before the cadet ever submitted a
           // memo for it -- retract the auto-assignment so it doesn't sit there needing action.
           await retractAbsenceMemoAssignment(cadetId, selectedEventId);
+          // The cadet actually showed up (Present/Late/etc.) despite having pre-submitted a future
+          // memo for this PMT -- the excuse is no longer needed (Section F).
+          await discardOrphanedPreSubmission(cadetId, selectedEventId);
         }
       }
       setPending({});
+      awaitingPostSaveDefaultRef.current = true;
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save one or more entries.");
     } finally {

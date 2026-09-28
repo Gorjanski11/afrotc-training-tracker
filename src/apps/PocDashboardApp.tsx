@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
@@ -11,7 +10,7 @@ interface Props {
   userEmail: string | null | undefined;
 }
 
-/** Same as GmcDashboardApp, for every POC cadet -- peers are grouped by Group instead of Flight, since POC has no Flight field. */
+/** Same as GmcDashboardApp, for every POC cadet. */
 export function PocDashboardApp({ userEmail }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
@@ -24,10 +23,6 @@ export function PocDashboardApp({ userEmail }: Props) {
 
   const normalized = userEmail?.trim().toLowerCase();
   const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
-  const peers = useMemo(
-    () => cadetsState.cadets.filter((p) => p.status === "Active" && !p.isCadre && p.group === me?.group),
-    [cadetsState.cadets, me?.group]
-  );
 
   if (dataLoading) {
     return (
@@ -56,8 +51,6 @@ export function PocDashboardApp({ userEmail }: Props) {
     <div className="h-full overflow-y-auto p-3 sm:p-6">
       <SelfServiceDashboardScreen
         cadet={me}
-        peers={peers}
-        peerLabel="Group combined %"
         events={eventsState.events}
         attendance={attendanceState.attendance}
         absenceMemos={absenceState.memos}

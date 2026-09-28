@@ -12,7 +12,7 @@ import { ClipboardList, ExternalLink, UserPlus, Pencil } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
-import { DEVIATION_MEMO_STATUSES, endOfDay, type DeviationMemoStatus } from "../../domain/constants";
+import { DEVIATION_MEMO_STATUSES, DEVIATION_REASONS, endOfDay, type DeviationMemoStatus, type DeviationReason } from "../../domain/constants";
 import { cadetsInAssignScope, getAuthorizedDeviationAssigners, getCcEligiblePeople, resolveDeviationAssignRule } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
 import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
@@ -46,6 +46,10 @@ function isOverdue(memo: DeviationMemo): boolean {
   return (memo.status === "Assigned" || memo.status === "Late") && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
 }
 
+function reasonDisplay(memo: DeviationMemo): string {
+  return memo.reason === "Other" && memo.reasonOther ? `Other: ${memo.reasonOther}` : memo.reason;
+}
+
 /** Section 9 -- single view (no more Assign/Submissions-&-Review tabs): Submitted, then Awaiting submission, then Processed, top to bottom. Assign lives in a popup instead of its own tab. */
 export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, userEmail: userEmailRaw }: Props) {
   const userEmail = userEmailRaw ?? "";
@@ -61,7 +65,9 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
   const [assignedByEmail, setAssignedByEmail] = useState(me?.email ?? "");
   const [assignedByName, setAssignedByName] = useState(me ? formatCadetName(me) : "");
   const [cc, setCc] = useState<PersonRef[]>([]);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState<DeviationReason | "">("");
+  const [reasonOther, setReasonOther] = useState("");
+  const [purpose, setPurpose] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState<string | undefined>();
@@ -107,13 +113,17 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
   const resetAssignForm = () => {
     setCadetId("");
     setReason("");
+    setReasonOther("");
+    setPurpose("");
     setDueDate("");
     setCc([]);
   };
 
+  const assignValid = !!cadetId && !!reason && (reason !== "Other" || !!reasonOther.trim()) && !!purpose.trim() && !!assignedByEmail;
+
   const handleAssign = async () => {
     const person = roster.find((p) => p.id === cadetId);
-    if (!person || !reason.trim() || !assignedByEmail) return;
+    if (!person || !assignValid) return;
     setAssigning(true);
     setAssignError(undefined);
     try {
@@ -123,7 +133,10 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
         assignedBy: assignedByName,
         assignedByEmail,
         cc,
-        reason: reason.trim(),
+        reason,
+        reasonOther: reason === "Other" ? reasonOther.trim() : undefined,
+        purpose: purpose.trim(),
+        relatedPmtEventId: undefined,
         dateAssigned: new Date().toISOString(),
         dueDate: dueDate ? endOfDay(dueDate).toISOString() : undefined,
         status: "Assigned",
@@ -235,7 +248,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                   <TableRow key={m.id}>
                     <TableCell>{m.submittedAt ? new Date(m.submittedAt).toLocaleDateString() : "—"}</TableCell>
                     <TableCell>{m.cadetName}</TableCell>
-                    <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
+                    <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
                     <TableCell>
                       {m.pdfUrl ? (
                         <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
@@ -292,7 +305,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                 {assigned.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>{m.cadetName}</TableCell>
-                    <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
+                    <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
                       {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
@@ -396,8 +409,26 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
               <CadetCombobox cadets={assignTargets} value={cadetId} onChange={setCadetId} className="w-full" />
             </div>
             <div className="space-y-1.5">
-              <Label>Reason</Label>
-              <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="What the deviation was" />
+              <Label>Reason (the observation made)</Label>
+              <Select value={reason} onValueChange={(v) => setReason(v as DeviationReason)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEVIATION_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {reason === "Other" && (
+                <Input value={reasonOther} onChange={(e) => setReasonOther(e.target.value)} placeholder="Describe the reason" className="mt-1.5" />
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label>Purpose</Label>
+              <Textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} placeholder="What do you want this memorandum to explain or address?" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -418,7 +449,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>CC (can view, not review -- POC or Cadre only)</Label>
+              <Label>CC</Label>
               <PersonMultiCombobox people={ccEligible} value={cc} onChange={setCc} />
             </div>
             {assignError && <p className="text-sm text-destructive">{assignError}</p>}
@@ -427,7 +458,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
             <Button variant="secondary" onClick={() => setAssignDialogOpen(false)} disabled={assigning}>
               Cancel
             </Button>
-            <Button onClick={handleAssign} disabled={assigning || !cadetId || !reason.trim() || !assignedByEmail}>
+            <Button onClick={handleAssign} disabled={assigning || !assignValid}>
               {assigning ? "Assigning..." : "Assign"}
             </Button>
           </DialogFooter>
@@ -444,8 +475,13 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
               <div className="grid gap-4">
                 <div className="text-sm text-muted-foreground">
                   <div>
-                    <strong>Reason:</strong> {reviewing.reason}
+                    <strong>Reason:</strong> {reasonDisplay(reviewing)}
                   </div>
+                  {reviewing.purpose && (
+                    <div>
+                      <strong>Purpose:</strong> {reviewing.purpose}
+                    </div>
+                  )}
                   {reviewing.pdfUrl && (
                     <a href={reviewing.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
                       <ExternalLink className="h-3 w-3" />

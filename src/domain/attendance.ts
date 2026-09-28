@@ -74,11 +74,12 @@ export function computeCadetAttendanceSummary(
  * using up the flat PERMITTED_ABSENCES_PER_SEMESTER budget (5) -- drives both the "Absences left"
  * stat tile and, via standingForAbsencesLeft, the Good/Warning/Hard Limit standing itself. An AE
  * (Approved Excuse) costs nothing here, same as a plain Present (both weight 1 in ATTENDANCE_WEIGHT),
- * and a Late costs half an absence. 0 means the budget is already used up (Hard Limit).
+ * and a Late costs half an absence. Deliberately unclamped -- can go negative once a cadet is over
+ * budget, since Hard Limit itself only fires at -1 (standingForAbsencesLeft), one full absence past 0.
  */
 export function absencesRemainingForGoodStanding(tally: BucketTally): number {
   const currentShortfall = tally.countedEvents - tally.weightedSum;
-  return Math.max(0, Math.floor(PERMITTED_ABSENCES_PER_SEMESTER - currentShortfall));
+  return Math.floor(PERMITTED_ABSENCES_PER_SEMESTER - currentShortfall);
 }
 
 /**

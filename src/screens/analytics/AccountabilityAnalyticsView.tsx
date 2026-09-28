@@ -5,9 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays, Download } from "lucide-react";
+import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
@@ -27,7 +26,6 @@ import {
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { Stepper } from "../../components/analytics/Stepper";
-import { exportAttendanceData } from "../../lib/exportAttendanceData";
 import type { UnitScope } from "../../domain/access";
 import type { Attendance, PmtEvent, Cadet, AbsenceMemo } from "../../domain/types";
 
@@ -208,8 +206,11 @@ function CombinedClickableDot({
 }
 
 export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope }: Props) {
-  const hideGroupFilter = unitScope.kind === "group";
-  const hideFlightFilter = unitScope.kind === "flight";
+  // A scoped commander (Flight/Group) only ever gets the Cadet filter -- both Flight and Group
+  // selects hide, not just the one matching their own scope kind (Section A3).
+  const hideGroupFilter = unitScope.kind !== "all";
+  const hideFlightFilter = unitScope.kind !== "all";
+  const hideClassFilter = unitScope.kind !== "all";
 
   // Master filters (Cadet/Flight/Group/Class) -- exclusive, "last one picked wins". PMT type is
   // NOT part of this group anymore (Section 6a) -- the trend chart has its own view toggle and the
@@ -220,7 +221,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const [masterClass, setMasterClass] = useState<ClassFilter | "All">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
   const [axis, setAxis] = useState<UnitAxis>("flight");
-  const [exporting, setExporting] = useState(false);
   // A day can have both a PT and a LLAB/FM/D&C session -- the Combined trend view merges them into
   // one point (Section: combined-day drill-down), so the drill-down needs to be able to reference
   // both at once instead of a single eventId.
@@ -478,15 +478,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     return map;
   }, [attendance]);
 
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportAttendanceData(roster, events, attendance);
-    } finally {
-      setExporting(false);
-    }
-  };
-
   // One PMT's drill-down content -- rendered once per event when a Combined-view day has both a PT
   // and a LLAB/FM/D&C session, so both show in the same dialog. Clicking a cadet's name here closes
   // the dialog and switches the whole page to that cadet's individual analytics (Section: cadet
@@ -575,10 +566,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           <BarChart2 className="h-5 w-5 text-primary" />
           Accountability Analytics
         </h2>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-          <Download className="h-4 w-4" />
-          {exporting ? "Exporting..." : "Export to Excel"}
-        </Button>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
@@ -613,19 +600,21 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             </SelectContent>
           </Select>
         )}
-        <Select value={masterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Class" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">POC + GMC</SelectItem>
-            {CLASS_OPTIONS.map((c) => (
-              <SelectItem key={c} value={c}>
-                {c}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideClassFilter && (
+          <Select value={masterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Class" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">POC + GMC</SelectItem>
+              {CLASS_OPTIONS.map((c) => (
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -910,19 +899,21 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                   </SelectContent>
                 </Select>
               )}
-              <Select value={tableClass} onValueChange={(v) => setTableExclusiveFilter("class", v)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Class" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">POC + GMC</SelectItem>
-                  {CLASS_OPTIONS.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {!hideClassFilter && (
+                <Select value={tableClass} onValueChange={(v) => setTableExclusiveFilter("class", v)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">POC + GMC</SelectItem>
+                    {CLASS_OPTIONS.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <Select value={tableStanding} onValueChange={(v) => setTableStanding(v as Standing | "All")}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Standing" />

@@ -25,6 +25,8 @@ interface Props {
   createExtraEvent: (input: ExtraEventInput) => Promise<ExtraEvent>;
   updateExtraEvent: (id: string, input: ExtraEventInput) => Promise<void>;
   deleteExtraEvent: (id: string) => Promise<void>;
+  /** OG Commander, DO, ETO, SAE, and Cadre only (Section A5) -- everyone else with Settings access views read-only. */
+  canEdit: boolean;
 }
 
 type Tab = "pmt" | "extra" | "calendar";
@@ -60,6 +62,7 @@ export function EventsScreen({
   createExtraEvent,
   updateExtraEvent,
   deleteExtraEvent,
+  canEdit,
 }: Props) {
   const [tab, setTab] = useState<Tab>("pmt");
   const [pmtFormOpen, setPmtFormOpen] = useState(false);
@@ -127,17 +130,19 @@ export function EventsScreen({
 
       {tab === "pmt" ? (
         <>
-          <div className="mb-4 flex justify-end">
-            <Button
-              onClick={() => {
-                setEditingPmt(undefined);
-                setPmtFormOpen(true);
-              }}
-            >
-              <Plus />
-              Add PMT
-            </Button>
-          </div>
+          {canEdit && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                onClick={() => {
+                  setEditingPmt(undefined);
+                  setPmtFormOpen(true);
+                }}
+              >
+                <Plus />
+                Add PMT
+              </Button>
+            </div>
+          )}
           <div className="overflow-x-auto">
           <Table aria-label="PMT events">
             <TableHeader>
@@ -170,19 +175,23 @@ export function EventsScreen({
                       <Button variant="ghost" size="icon" onClick={() => setViewingPmt(event)}>
                         <Eye className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingPmt(event);
-                          setPmtFormOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeletingPmt(event)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      {canEdit && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditingPmt(event);
+                              setPmtFormOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => setDeletingPmt(event)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -200,17 +209,19 @@ export function EventsScreen({
         </>
       ) : tab === "extra" ? (
         <>
-          <div className="mb-4 flex justify-end">
-            <Button
-              onClick={() => {
-                setEditingExtra(undefined);
-                setExtraFormOpen(true);
-              }}
-            >
-              <Plus />
-              Add Extra Event
-            </Button>
-          </div>
+          {canEdit && (
+            <div className="mb-4 flex justify-end">
+              <Button
+                onClick={() => {
+                  setEditingExtra(undefined);
+                  setExtraFormOpen(true);
+                }}
+              >
+                <Plus />
+                Add Extra Event
+              </Button>
+            </div>
+          )}
           <div className="overflow-x-auto">
           <Table aria-label="Extra events">
             <TableHeader>
@@ -232,21 +243,23 @@ export function EventsScreen({
                   </TableCell>
                   <TableCell>{event.location || "—"}</TableCell>
                   <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setEditingExtra(event);
-                          setExtraFormOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setDeletingExtra(event)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
+                    {canEdit && (
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingExtra(event);
+                            setExtraFormOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setDeletingExtra(event)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -297,6 +310,7 @@ export function EventsScreen({
                         isSameDay(day, new Date()) && "ring-1 ring-inset ring-primary"
                       )}
                       onClick={() => {
+                        if (!canEdit) return;
                         setEditingPmt(undefined);
                         setPmtFormOpen(true);
                       }}
@@ -312,6 +326,7 @@ export function EventsScreen({
                             label={`Extra · ${e.title}`}
                             type="extra"
                             onClick={() => {
+                              if (!canEdit) return;
                               setEditingExtra(e);
                               setExtraFormOpen(true);
                             }}
@@ -345,6 +360,7 @@ export function EventsScreen({
           onClose={() => setViewingPmt(undefined)}
           event={viewingPmt}
           catalog={catalog}
+          readOnly={!canEdit}
           onEdit={() => {
             setEditingPmt(viewingPmt);
             setViewingPmt(undefined);

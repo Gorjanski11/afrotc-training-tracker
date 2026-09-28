@@ -14,7 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCadreOrCortesGaray } from "../domain/access";
+import { isFullAccess, isCadreOrCortesGaray, canManageAccounts, canEditEvents, resolveTabAccess } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
@@ -51,6 +51,9 @@ export function SettingsApp({ userEmail }: Props) {
   const { reauthenticate, resetOtherPassword, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
+  const accountManagerAccess = canManageAccounts(userEmail, cadetsState.cadets);
+  const eventEditAccess = canEditEvents(userEmail, cadetsState.cadets);
+  const unitScope = resolveTabAccess(userEmail, cadetsState.cadets).unitScope;
   const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
   const [section, setSection] = useState<Section>("roster");
 
@@ -88,11 +91,11 @@ export function SettingsApp({ userEmail }: Props) {
     emailTemplatesState.error;
 
   const navItems: { value: Section; label: string; icon: typeof UserCog }[] = [
-    ...(fullAccess ? [{ value: "accounts" as const, label: "Account Manager", icon: UserCog }] : []),
+    ...(accountManagerAccess ? [{ value: "accounts" as const, label: "Account Manager", icon: UserCog }] : []),
     { value: "roster", label: "Roster", icon: Users },
     { value: "events", label: "Events", icon: CalendarDays },
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
-    { value: "templates", label: "Memorandum Templates", icon: Mail },
+    ...(fullAccess ? [{ value: "templates" as const, label: "Auto-email Templates", icon: Mail }] : []),
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
     ...(newSemesterAccess ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
   ];
@@ -126,7 +129,7 @@ export function SettingsApp({ userEmail }: Props) {
           </div>
         ) : (
           <AnimatedPanel>
-            {activeSection === "accounts" && fullAccess && (
+            {activeSection === "accounts" && accountManagerAccess && (
               <AccountManagerScreen
                 roster={cadetsState.cadets}
                 updateCadetFields={cadetsState.updateCadetFields}
@@ -148,6 +151,7 @@ export function SettingsApp({ userEmail }: Props) {
                   await completionsState.deleteCompletionsForCadet(id);
                   await cadetsState.deleteCadet(id);
                 }}
+                unitScope={unitScope}
               />
             )}
             {activeSection === "events" && (
@@ -161,10 +165,11 @@ export function SettingsApp({ userEmail }: Props) {
                 createExtraEvent={extraEventsState.createExtraEvent}
                 updateExtraEvent={extraEventsState.updateExtraEvent}
                 deleteExtraEvent={extraEventsState.deleteExtraEvent}
+                canEdit={eventEditAccess}
               />
             )}
             {activeSection === "links" && fullAccess && <QuickLinksScreen />}
-            {activeSection === "templates" && (
+            {activeSection === "templates" && fullAccess && (
               <MemorandumTemplatesScreen templates={emailTemplatesState.templates} saveTemplate={emailTemplatesState.saveTemplate} />
             )}
             {activeSection === "data" && fullAccess && (

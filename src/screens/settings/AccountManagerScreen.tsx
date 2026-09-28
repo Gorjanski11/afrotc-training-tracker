@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { UserCog, KeyRound, Copy, Check, Dices } from "lucide-react";
-import { resolveTabAccess, isCadreOrCortesGaray } from "../../domain/access";
+import { resolveTabAccess, isFullAccess, canManageAccounts, applyUnitScope } from "../../domain/access";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { Cadet } from "../../domain/types";
 import type { CadetInput } from "../../hooks/useCadets";
@@ -37,16 +37,20 @@ function generatePassword(): string {
 }
 
 /**
- * Section 6.1 -- gated to the whole ALL_ACCESS tier. Since there's no client-side way to enumerate
- * raw Firebase Auth accounts without the Admin SDK, "managing accounts" here means the roster-driven
- * part of access (email/isCadre/position/group/flight, which `resolveTabAccess`'s fallback reads)
- * plus a transparent view of what each person currently resolves to. Password reset lives here too
- * (merged from its own tab) but is gated narrower -- only Cadre/Cortes Garay ever see the button,
- * even though Saltiel/Mo Velez (also ALL_ACCESS) can see everything else on this screen.
+ * Section 6.1 -- gated to `canManageAccounts` (the ALL_ACCESS tier, who see and reset everyone, plus
+ * every unit-scoped commander, who see and reset only their own group/flight). Since there's no
+ * client-side way to enumerate raw Firebase Auth accounts without the Admin SDK, "managing accounts"
+ * here means the roster-driven part of access (email/isCadre/position/group/flight, which
+ * `resolveTabAccess`'s fallback reads) plus a transparent view of what each person currently
+ * resolves to -- roster-editing fields (rank/cadre/position) stay full-access-only; a scoped
+ * commander only ever sees Name/Email/Reset password for their own unit.
  */
 export function AccountManagerScreen({ roster, updateCadetFields, userEmail, reauthenticate, resetOtherPassword }: Props) {
   const [search, setSearch] = useState("");
-  const canResetPasswords = isCadreOrCortesGaray(userEmail, roster);
+  const fullAccess = isFullAccess(userEmail, roster);
+  const canResetPasswords = canManageAccounts(userEmail, roster);
+  const unitScope = resolveTabAccess(userEmail, roster).unitScope;
+  const scopedRoster = useMemo(() => (fullAccess ? roster : applyUnitScope(unitScope, roster)), [fullAccess, unitScope, roster]);
 
   const [target, setTarget] = useState<Cadet | undefined>();
   const [newPassword, setNewPassword] = useState("");
@@ -58,10 +62,10 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return roster
+    return scopedRoster
       .filter((p) => query === "" || p.name.toLowerCase().includes(query) || (p.email ?? "").toLowerCase().includes(query))
       .sort((a, b) => compareByLastName(a.name, b.name));
-  }, [roster, search]);
+  }, [scopedRoster, search]);
 
   const openFor = (cadet: Cadet) => {
     setTarget(cadet);
@@ -140,10 +144,10 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>Cadre</TableHead>
-                  <TableHead>Position</TableHead>
-                  <TableHead>Resolved access</TableHead>
+                  {fullAccess && <TableHead>C/Rank</TableHead>}
+                  {fullAccess && <TableHead>Cadre</TableHead>}
+                  {fullAccess && <TableHead>Position</TableHead>}
+                  {fullAccess && <TableHead>Resolved access</TableHead>}
                   {canResetPasswords && <TableHead />}
                 </TableRow>
               </TableHeader>
@@ -152,42 +156,46 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                   <TableRow key={p.id}>
                     <TableCell className="whitespace-nowrap">{formatCadetName(p)}</TableCell>
                     <TableCell className="whitespace-nowrap">{p.email ?? "—"}</TableCell>
-                    <TableCell>
-                      {p.isCadre ? (
-                        <span className="text-muted-foreground">—</span>
-                      ) : (
+                    {fullAccess && (
+                      <TableCell>
+                        {p.isCadre ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <Input
+                            defaultValue={p.rank ?? ""}
+                            placeholder="e.g. 2d Lt"
+                            className="h-8 w-28"
+                            onBlur={(e) => {
+                              const value = e.target.value.trim();
+                              if (value !== (p.rank ?? "")) updateCadetFields(p.id, { rank: value === "" ? undefined : value });
+                            }}
+                          />
+                        )}
+                      </TableCell>
+                    )}
+                    {fullAccess && (
+                      <TableCell>
+                        <input type="checkbox" checked={p.isCadre} onChange={(e) => updateCadetFields(p.id, { isCadre: e.target.checked })} />
+                      </TableCell>
+                    )}
+                    {fullAccess && (
+                      <TableCell>
                         <Input
-                          defaultValue={p.rank ?? ""}
-                          placeholder="e.g. 2d Lt"
-                          className="h-8 w-28"
+                          defaultValue={p.position ?? ""}
+                          placeholder="Optional"
+                          className="h-8 w-40"
                           onBlur={(e) => {
                             const value = e.target.value.trim();
-                            if (value !== (p.rank ?? "")) updateCadetFields(p.id, { rank: value === "" ? undefined : value });
+                            if (value !== (p.position ?? "")) updateCadetFields(p.id, { position: value === "" ? undefined : value });
                           }}
                         />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={p.isCadre}
-                        onChange={(e) => updateCadetFields(p.id, { isCadre: e.target.checked })}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        defaultValue={p.position ?? ""}
-                        placeholder="Optional"
-                        className="h-8 w-40"
-                        onBlur={(e) => {
-                          const value = e.target.value.trim();
-                          if (value !== (p.position ?? "")) updateCadetFields(p.id, { position: value === "" ? undefined : value });
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{accessLabel(p, roster)}</Badge>
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {fullAccess && (
+                      <TableCell>
+                        <Badge variant="outline">{accessLabel(p, roster)}</Badge>
+                      </TableCell>
+                    )}
                     {canResetPasswords && (
                       <TableCell>
                         {p.email && (
@@ -202,7 +210,7 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={canResetPasswords ? 7 : 6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={(fullAccess ? 6 : 2) + (canResetPasswords ? 1 : 0)} className="text-center text-muted-foreground">
                       No one matches this search.
                     </TableCell>
                   </TableRow>

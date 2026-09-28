@@ -112,6 +112,7 @@ export function AccountabilityApp({ unitScope }: Props) {
                     assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}
                     retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
                     linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
+                    discardOrphanedPreSubmission={absenceMemoAssignmentsState.discardOrphanedPreSubmission}
                     initialPmtEventId={targetPmtEventId}
                     unitScope={unitScope}
                   />

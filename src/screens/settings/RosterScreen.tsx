@@ -9,6 +9,7 @@ import { deriveClass, isCwlMember, FLIGHTS, GROUPS, type Flight, type Group, typ
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { computeCadetProgress } from "../../domain/progress";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
+import { applyUnitScope, type UnitScope } from "../../domain/access";
 import { CadetFormDialog } from "../../components/CadetFormDialog";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -23,6 +24,8 @@ interface Props {
   createCadet: (input: CadetInput) => Promise<Cadet>;
   updateCadet: (id: string, input: CadetInput) => Promise<Cadet>;
   deleteCadet: (cadetId: string) => Promise<void>;
+  /** A Flight/Group Commander only sees and looks up cadets in their own unit here (Section A4) -- no Add/Edit/Delete. */
+  unitScope: UnitScope;
 }
 
 function StandingBadge({ standing }: { standing: Standing | undefined }) {
@@ -37,7 +40,9 @@ function StandingBadge({ standing }: { standing: Standing | undefined }) {
  * one edit dialog. Deliberately shows everyone including Cadre -- this is the "account database"
  * view (Section 4's one exception to Cadre being non-trackable everywhere else).
  */
-export function RosterScreen({ roster, events, attendance, catalog, completions, createCadet, updateCadet, deleteCadet }: Props) {
+export function RosterScreen({ roster, events, attendance, catalog, completions, createCadet, updateCadet, deleteCadet, unitScope }: Props) {
+  const scoped = unitScope.kind !== "all";
+  const scopedRoster = useMemo(() => applyUnitScope(unitScope, roster), [unitScope, roster]);
   const [search, setSearch] = useState("");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
   const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
@@ -67,10 +72,10 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return roster
+    return scopedRoster
       .filter((p) => query === "" || p.name.toLowerCase().includes(query))
-      .filter((p) => flightFilter === "All" || p.flight === flightFilter)
-      .filter((p) => groupFilter === "All" || p.group === groupFilter)
+      .filter((p) => scoped || flightFilter === "All" || p.flight === flightFilter)
+      .filter((p) => scoped || groupFilter === "All" || p.group === groupFilter)
       .map((person) => ({
         person,
         cls: deriveClass(person.asClass, person.isCadre),
@@ -78,7 +83,7 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
         summary: computeCadetAttendanceSummary(person.id, attendance, pmtEventsById),
       }))
       .sort((a, b) => compareByLastName(a.person.name, b.person.name));
-  }, [roster, search, flightFilter, groupFilter, catalog, completionsByCadet, events, attendance, pmtEventsById]);
+  }, [scopedRoster, scoped, search, flightFilter, groupFilter, catalog, completionsByCadet, events, attendance, pmtEventsById]);
 
   const deletingCompletionCount = deletingCadet ? (completionsByCadet.get(deletingCadet.id) ?? []).length : 0;
 
@@ -89,15 +94,17 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
           <Users className="h-5 w-5 text-primary" />
           Roster
         </h2>
-        <Button
-          onClick={() => {
-            setEditingCadet(undefined);
-            setFormOpen(true);
-          }}
-        >
-          <Plus />
-          Add Cadet
-        </Button>
+        {!scoped && (
+          <Button
+            onClick={() => {
+              setEditingCadet(undefined);
+              setFormOpen(true);
+            }}
+          >
+            <Plus />
+            Add Cadet
+          </Button>
+        )}
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
@@ -105,32 +112,36 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Look up a cadet by name..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
-        <Select value={flightFilter} onValueChange={handleFlightChange}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Flight" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All flights</SelectItem>
-            {FLIGHTS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f} Flight
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={groupFilter} onValueChange={handleGroupChange}>
-          <SelectTrigger className="w-36">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All groups</SelectItem>
-            {GROUPS.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!scoped && (
+          <Select value={flightFilter} onValueChange={handleFlightChange}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!scoped && (
+          <Select value={groupFilter} onValueChange={handleGroupChange}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="overflow-x-auto">
@@ -181,21 +192,23 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
                 <TableCell>{cls === "Cadre" ? "—" : summary.llabFm.percent === undefined ? "—" : `${Math.round(summary.llabFm.percent * 100)}%`}</TableCell>
                 <TableCell>{cls === "Cadre" ? "—" : <StandingBadge standing={summary.llabFm.standing} />}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditingCadet(person);
-                        setFormOpen(true);
-                      }}
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeletingCadet(person)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
+                  {!scoped && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => {
+                          setEditingCadet(person);
+                          setFormOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => setDeletingCadet(person)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

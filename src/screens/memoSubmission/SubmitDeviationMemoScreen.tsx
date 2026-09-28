@@ -26,6 +26,10 @@ function isOverdue(memo: DeviationMemo): boolean {
   return memo.status === "Assigned" && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
 }
 
+function reasonDisplay(memo: DeviationMemo): string {
+  return memo.reason === "Other" && memo.reasonOther ? `Other: ${memo.reasonOther}` : memo.reason;
+}
+
 export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
   const cadetId = cadet.id;
   const [submittingId, setSubmittingId] = useState<string | undefined>();
@@ -107,7 +111,10 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
               <TableBody>
                 {myAssigned.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell className="max-w-sm">{m.reason}</TableCell>
+                    <TableCell className="max-w-sm">
+                      <div>{reasonDisplay(m)}</div>
+                      {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
+                    </TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
                       {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
@@ -167,7 +174,8 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
             <CardContent className="space-y-3 pt-2">
               {myReturned.map((m) => (
                 <div key={m.id} className="rounded-md border border-input p-3">
-                  <div className="mb-1 text-sm font-medium">{m.reason}</div>
+                  <div className="mb-1 text-sm font-medium">{reasonDisplay(m)}</div>
+                  {m.purpose && <p className="mb-1 text-sm text-muted-foreground">{m.purpose}</p>}
                   {m.reviewNotes && <p className="mb-2 text-sm text-muted-foreground">Cadre notes: {m.reviewNotes}</p>}
                   {submittingId === m.id ? (
                     <div className="flex items-center gap-2">
@@ -220,7 +228,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                 <TableBody>
                   {mySubmitted.map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell className="max-w-sm">{m.reason}</TableCell>
+                      <TableCell className="max-w-sm">{reasonDisplay(m)}</TableCell>
                       <TableCell>{m.status}</TableCell>
                       <TableCell>{m.submittedAt ? new Date(m.submittedAt).toLocaleDateString() : "—"}</TableCell>
                     </TableRow>

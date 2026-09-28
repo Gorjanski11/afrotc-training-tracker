@@ -13,9 +13,11 @@ interface Props {
   catalog: TrainingObjective[];
   onEdit: () => void;
   onDelete: () => Promise<void>;
+  /** Hides Edit/Delete for anyone without event-edit rights (Section A5) -- view-only. */
+  readOnly?: boolean;
 }
 
-export function EventDetailDialog({ open, onClose, event, catalog, onEdit, onDelete }: Props) {
+export function EventDetailDialog({ open, onClose, event, catalog, onEdit, onDelete, readOnly }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const objectives = event.objectiveIds.map((id) => catalog.find((o) => o.id === id)).filter((o): o is TrainingObjective => !!o);
 
@@ -85,10 +87,14 @@ export function EventDetailDialog({ open, onClose, event, catalog, onEdit, onDel
             <Button variant="secondary" onClick={onClose}>
               Close
             </Button>
-            <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>
-              <Trash2 /> Delete
-            </Button>
-            <Button onClick={onEdit}>Edit</Button>
+            {!readOnly && (
+              <>
+                <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>
+                  <Trash2 /> Delete
+                </Button>
+                <Button onClick={onEdit}>Edit</Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

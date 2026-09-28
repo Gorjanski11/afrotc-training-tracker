@@ -53,8 +53,8 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
     () => excludeInactive(excludeCadre(applyUnitScope(unitScope, cadetsState.cadets))),
     [unitScope, cadetsState.cadets]
   );
-  // Memorandums Analytics is deliberately NOT unit-scoped (a commander sees every memo, not just their own unit's), but Cadre still never appear in its cadet lookup.
-  const memoRoster = useMemo(() => excludeCadre(cadetsState.cadets), [cadetsState.cadets]);
+  // Memorandums Analytics is now unit-scoped too (Section A3 -- a Flight/Group Commander only sees their own unit's memos, same as Accountability/TO's), Cadre still never appear in its cadet lookup.
+  const memoRoster = useMemo(() => excludeCadre(applyUnitScope(unitScope, cadetsState.cadets)), [unitScope, cadetsState.cadets]);
 
   const toCadets = useMemo(() => {
     if (trainingObjectivesAccess === "poc") return scopedCadets.filter((c) => c.devLevel && (POC_DEV_LEVELS as readonly string[]).includes(c.devLevel));
@@ -139,6 +139,7 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
                       completions={completionsState.completions}
                       pmtEvents={eventsState.events}
                       availableDevLevels={availableDevLevels}
+                      unitScope={unitScope}
                     />
                   </AnimatedPanel>
                 </TabsContent>
@@ -155,6 +156,7 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
                       showAbsence={memoReviewAbsenceAccess}
                       updateAbsenceMemo={absenceState.updateMemo}
                       updateDeviationMemo={deviationState.updateMemo}
+                      unitScope={unitScope}
                     />
                   </AnimatedPanel>
                 </TabsContent>

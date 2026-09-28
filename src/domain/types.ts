@@ -247,8 +247,18 @@ export interface DeviationMemo {
   assignedByEmail: string | undefined;
   /** People CC'd on this memo -- can view it but, per policy, cannot review it (only the assigner can). */
   cc: PersonRef[];
-  /** What the deviation was (e.g. uniform, grooming, punctuality) -- free text, no fixed catalog. */
+  /**
+   * The observation made -- one of DEVIATION_REASONS (constants.ts), or the literal fixed sentence
+   * the 72-hour auto-escalation writes (an intentional exception to the dropdown, not stored as a
+   * strict union so that system-generated text never fights the human-assign-time UI constraint).
+   */
   reason: string;
+  /** Populated only when `reason === "Other"` -- what the assigner typed in the "Other" free-text box. */
+  reasonOther: string | undefined;
+  /** What the assigning POC wants explained/addressed in this memorandum -- required at assign time. */
+  purpose: string;
+  /** The PMT this deviation memo traces back to, when it was auto-generated from a missed absence-memo deadline (undefined for a manually-assigned memo with no PMT tie). */
+  relatedPmtEventId: string | undefined;
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;

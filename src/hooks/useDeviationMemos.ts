@@ -14,6 +14,9 @@ export interface DeviationMemoInput {
   assignedByEmail: string | undefined;
   cc: PersonRef[];
   reason: string;
+  reasonOther: string | undefined;
+  purpose: string;
+  relatedPmtEventId: string | undefined;
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;
@@ -34,6 +37,9 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     assignedByEmail: (data.assignedByEmail as string | null | undefined) ?? undefined,
     cc: (data.cc as PersonRef[] | null | undefined) ?? [],
     reason: (data.reason as string) ?? "",
+    reasonOther: (data.reasonOther as string | null | undefined) ?? undefined,
+    purpose: (data.purpose as string) ?? "",
+    relatedPmtEventId: (data.relatedPmtEventId as string | null | undefined) ?? undefined,
     dateAssigned: (data.dateAssigned as string) ?? "",
     dueDate: (data.dueDate as string | null | undefined) ?? undefined,
     status: ((data.status as DeviationMemoStatus) ?? "Assigned") as DeviationMemoStatus,

@@ -13,6 +13,7 @@ import { CadetBucketStats } from "./AccountabilityAnalyticsView";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 import type { AbsenceMemoStatus, DeviationMemoStatus } from "../../domain/constants";
+import type { UnitScope } from "../../domain/access";
 import type { AbsenceMemo, Attendance, DeviationMemo, Cadet, PmtEvent } from "../../domain/types";
 
 interface Props {
@@ -25,6 +26,8 @@ interface Props {
   showAbsence: boolean;
   updateAbsenceMemo: (id: string, input: Partial<AbsenceMemoInput>) => Promise<void>;
   updateDeviationMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
+  /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
+  unitScope?: UnitScope;
 }
 
 type ViewMode = "all" | "absence" | "deviation";
@@ -59,7 +62,8 @@ function PdfLink({ url, name }: { url: string | undefined; name: string | undefi
   );
 }
 
-export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo }: Props) {
+export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, unitScope }: Props) {
+  const hideUnitFilters = unitScope !== undefined && unitScope.kind !== "all";
   const [mode, setMode] = useState<ViewMode>("all");
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [flight, setFlight] = useState<Flight | "All">("All");
@@ -121,32 +125,36 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={roster} value={cadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
-        <Select value={flight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Flight" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All flights</SelectItem>
-            {FLIGHTS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f} Flight
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={group} onValueChange={(v) => setExclusiveFilter("group", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All groups</SelectItem>
-            {GROUPS.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideUnitFilters && (
+          <Select value={flight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!hideUnitFilters && (
+          <Select value={group} onValueChange={(v) => setExclusiveFilter("group", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {selectedCadetSummary && (
@@ -287,7 +295,7 @@ function DeviationTable({ memos }: { memos: DeviationMemo[] }) {
           <TableRow key={m.id}>
             <TableCell>{shortDate(m.dateAssigned)}</TableCell>
             <TableCell>{m.cadetName}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
+            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
             <TableCell>{m.assignedBy}</TableCell>
             <TableCell>
               <Badge variant={statusVariant(m.status)}>{m.status}</Badge>

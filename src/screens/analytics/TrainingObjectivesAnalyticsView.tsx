@@ -6,13 +6,13 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap, Download } from "lucide-react";
+import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group } from "../../domain/constants";
 import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
 import { formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
-import { exportTrainingData } from "../../lib/exportTrainingData";
+import type { UnitScope } from "../../domain/access";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
@@ -22,6 +22,8 @@ interface Props {
   pmtEvents: PmtEvent[];
   /** Restricts the Class filter's options too -- a POC- or GMC-only commander shouldn't see the other cohort's dev levels as choices, since they can't see those cadets anyway. Defaults to every dev level (full access). */
   availableDevLevels?: readonly DevLevel[];
+  /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
+  unitScope?: UnitScope;
 }
 
 function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
@@ -53,7 +55,8 @@ const COHORT_OPTIONS = ["POC", "GMC"] as const;
 type CohortFilter = (typeof COHORT_OPTIONS)[number];
 
 /** Section 6b -- same Cadet/Flight/Group exclusive-filter bar as Accountability Analytics, plus this screen's own Class (Dev Level) and PLO filters, all of which now feed every chart below. */
-export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS }: Props) {
+export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS, unitScope }: Props) {
+  const hideUnitFilters = unitScope !== undefined && unitScope.kind !== "all";
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
   const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
   const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
@@ -85,7 +88,6 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
     [availableDevLevels]
   );
   const [cadetTableView, setCadetTableView] = useState(false);
-  const [exporting, setExporting] = useState(false);
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     setMasterCadetId(which === "cadet" ? value : ALL_CADETS);
@@ -119,15 +121,6 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
 
   const cadetChartHeight = Math.max(200, byCadet.length * 28);
 
-  const handleExport = async () => {
-    setExporting(true);
-    try {
-      await exportTrainingData(cadets, catalog, completions, pmtEvents);
-    } finally {
-      setExporting(false);
-    }
-  };
-
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -135,40 +128,40 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
           <GraduationCap className="h-5 w-5 text-primary" />
           Training Objectives Analytics
         </h2>
-        <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-          <Download className="h-4 w-4" />
-          {exporting ? "Exporting..." : "Export to Excel"}
-        </Button>
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={cadets} value={masterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
-        <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Flight" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All flights</SelectItem>
-            {FLIGHTS.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f} Flight
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All groups</SelectItem>
-            {GROUPS.map((g) => (
-              <SelectItem key={g} value={g}>
-                {g}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideUnitFilters && (
+          <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!hideUnitFilters && (
+          <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {availableCohorts.length > 1 && (
           <Select value={cohortFilter} onValueChange={handleCohortChange}>
             <SelectTrigger className="w-40">

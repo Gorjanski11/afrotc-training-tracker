@@ -46,9 +46,9 @@ function App() {
   const hasAnalyticsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none" || tabAccess.memoReview;
   const hasSettingsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none";
   const visibleTabs: HubTab[] = [
+    ...(tabAccess.gmcDashboard || tabAccess.pocDashboard ? (["myDashboard"] as const) : []),
     ...(tabAccess.accountability ? (["accountability"] as const) : []),
     ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
-    ...(tabAccess.gmcDashboard || tabAccess.pocDashboard ? (["myDashboard"] as const) : []),
     "memoSubmission",
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
@@ -92,6 +92,12 @@ function App() {
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
         <nav className="px-8 pt-2">
           <TabsList>
+            {(tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
+              <TabsTrigger value="myDashboard">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                My Dashboard
+              </TabsTrigger>
+            )}
             {tabAccess.accountability && (
               <TabsTrigger value="accountability">
                 <ClipboardCheck className="h-3.5 w-3.5" />
@@ -102,12 +108,6 @@ function App() {
               <TabsTrigger value="trainingObjectives">
                 <GraduationCap className="h-3.5 w-3.5" />
                 TO's
-              </TabsTrigger>
-            )}
-            {(tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
-              <TabsTrigger value="myDashboard">
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                My Dashboard
               </TabsTrigger>
             )}
             <TabsTrigger value="memoSubmission">

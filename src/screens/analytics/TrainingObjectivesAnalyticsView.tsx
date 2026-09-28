@@ -309,6 +309,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
           {byCadet.length === 0 ? (
             <p className="text-sm text-muted-foreground">No cadets match this filter.</p>
           ) : cadetTableView ? (
+            <div className="overflow-x-auto">
             <Table aria-label="Completion by cadet">
               <TableHeader>
                 <TableRow>
@@ -337,6 +338,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={cadetChartHeight}>
               <BarChart data={byCadetChartData} layout="vertical" margin={chartMargin}>

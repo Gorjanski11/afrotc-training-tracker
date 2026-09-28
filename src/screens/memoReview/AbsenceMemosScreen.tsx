@@ -129,6 +129,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
       </div>
 
       <div className="space-y-6">
+        <div className="overflow-x-auto">
         <Table aria-label="Pending absence memos">
           <TableHeader>
             <TableRow>
@@ -178,12 +179,14 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
             )}
           </TableBody>
         </Table>
+        </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Decided</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
+            <div className="overflow-x-auto">
             <Table aria-label="Decided absence memos">
               <TableHeader>
                 <TableRow>
@@ -237,6 +240,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

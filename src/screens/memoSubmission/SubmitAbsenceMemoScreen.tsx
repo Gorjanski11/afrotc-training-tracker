@@ -430,7 +430,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                       Remove
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>AS Class</Label>
                       <Select value={asClass} onValueChange={(v) => setAsClass(v as AbsenceAsClass | typeof NONE)}>
@@ -569,7 +569,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                       Remove
                     </Button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>AS Class</Label>
                       <Select value={futureAsClass} onValueChange={(v) => setFutureAsClass(v as AbsenceAsClass | typeof NONE)}>

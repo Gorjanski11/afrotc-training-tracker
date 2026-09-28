@@ -143,8 +143,8 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
         />
       </div>
 
-      <div className="mb-4 flex items-center gap-4">
-        <div className="relative w-64">
+      <div className="mb-4 flex flex-wrap items-center gap-4">
+        <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Look up a cadet by name..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -196,6 +196,7 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
         </span>
       </div>
 
+      <div className="overflow-x-auto">
       <Table aria-label="Cadet roster">
         <TableHeader>
           <TableRow>
@@ -247,6 +248,7 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }

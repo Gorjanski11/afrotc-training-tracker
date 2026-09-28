@@ -128,6 +128,7 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
                   return (
                     <div key={subArea.subArea} className="mb-4">
                       <h4 className="mb-1 text-sm font-medium text-muted-foreground">{subArea.subArea}</h4>
+                      <div className="overflow-x-auto">
                       <Table aria-label={`Training Objectives for ${subArea.subArea}`}>
                         <TableHeader>
                           <TableRow>
@@ -217,6 +218,7 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
                           })}
                         </TableBody>
                       </Table>
+                      </div>
                     </div>
                   );
                 })}

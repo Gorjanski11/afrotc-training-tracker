@@ -174,6 +174,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onStatusChange: (row: CombinedMemoRow, status: string) => void }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No memorandums match this filter.</p>;
   return (
+    <div className="overflow-x-auto">
     <Table aria-label="All memorandums">
       <TableHeader>
         <TableRow>
@@ -220,12 +221,14 @@ function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onSt
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }
 
 function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No absence memorandums match this filter.</p>;
   return (
+    <div className="overflow-x-auto">
     <Table aria-label="Absence memorandums">
       <TableHeader>
         <TableRow>
@@ -259,12 +262,14 @@ function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }
 
 function DeviationTable({ memos }: { memos: DeviationMemo[] }) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No deviation memorandums match this filter.</p>;
   return (
+    <div className="overflow-x-auto">
     <Table aria-label="Deviation memorandums">
       <TableHeader>
         <TableRow>
@@ -295,5 +300,6 @@ function DeviationTable({ memos }: { memos: DeviationMemo[] }) {
         ))}
       </TableBody>
     </Table>
+    </div>
   );
 }

@@ -193,6 +193,7 @@ export function SelfServiceDashboardScreen({ cadet, peers, peerLabel, events, at
           {memoHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground">No memorandums on file.</p>
           ) : (
+            <div className="overflow-x-auto">
             <Table aria-label="My memorandum history">
               <TableHeader>
                 <TableRow>
@@ -215,6 +216,7 @@ export function SelfServiceDashboardScreen({ cadet, peers, peerLabel, events, at
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -155,6 +155,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
           {!pdfs ? (
             <p className="text-sm text-muted-foreground">Click "Load PDFs" to list everything in storage.</p>
           ) : (
+            <div className="overflow-x-auto">
             <Table aria-label="Stored memo PDFs">
               <TableHeader>
                 <TableRow>
@@ -202,6 +203,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

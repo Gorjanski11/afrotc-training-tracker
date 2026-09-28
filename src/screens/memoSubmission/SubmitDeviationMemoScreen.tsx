@@ -94,6 +94,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
             <CardTitle>Assigned to you -- needs submission</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
+            <div className="overflow-x-auto">
             <Table aria-label="My assigned deviation memos">
               <TableHeader>
                 <TableRow>
@@ -152,6 +153,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                 )}
               </TableBody>
             </Table>
+            </div>
             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
           </CardContent>
         </Card>
@@ -206,6 +208,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
               <CardTitle>Already submitted</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
+              <div className="overflow-x-auto">
               <Table aria-label="My submitted deviation memos">
                 <TableHeader>
                   <TableRow>
@@ -224,6 +227,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
           </Card>
         )}

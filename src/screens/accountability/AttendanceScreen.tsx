@@ -310,6 +310,7 @@ export function AttendanceScreen({
       ) : groupFilter === "All" && flightFilter === "All" ? (
         <p className="text-sm text-muted-foreground">Pick a Group or a Flight above to load the roster.</p>
       ) : (
+        <div className="overflow-x-auto">
         <Table aria-label="Post-Accountability entry">
           <TableHeader>
             <TableRow>
@@ -386,6 +387,7 @@ export function AttendanceScreen({
             )}
           </TableBody>
         </Table>
+        </div>
       )}
     </div>
   );

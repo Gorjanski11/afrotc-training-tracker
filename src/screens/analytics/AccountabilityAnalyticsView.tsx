@@ -523,6 +523,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             <p className="text-muted-foreground">No absences or lates recorded for this session.</p>
           ) : (
             <div className="max-h-96 overflow-y-auto rounded-md border border-input">
+              <div className="overflow-x-auto">
               <Table aria-label={`Cadets who missed ${event.title}`}>
                 <TableHeader>
                   <TableRow>
@@ -559,6 +560,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </div>

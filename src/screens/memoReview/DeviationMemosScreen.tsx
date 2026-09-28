@@ -219,6 +219,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
             <CardDescription>Awaiting your review.</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
+            <div className="overflow-x-auto">
             <Table aria-label="Submitted deviation memos">
               <TableHeader>
                 <TableRow>
@@ -265,6 +266,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -274,6 +276,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
             <CardDescription>Read-only here -- the cadet submits their PDF from the Memo Submission tab.</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
+            <div className="overflow-x-auto">
             <Table aria-label="Assigned deviation memos">
               <TableHeader>
                 <TableRow>
@@ -316,6 +319,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -324,6 +328,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
             <CardTitle>Processed</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
+            <div className="overflow-x-auto">
             <Table aria-label="Processed deviation memos">
               <TableHeader>
                 <TableRow>
@@ -374,6 +379,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                 )}
               </TableBody>
             </Table>
+            </div>
           </CardContent>
         </Card>
       </div>

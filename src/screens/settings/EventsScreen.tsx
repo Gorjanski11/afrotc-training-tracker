@@ -138,6 +138,7 @@ export function EventsScreen({
               Add PMT
             </Button>
           </div>
+          <div className="overflow-x-auto">
           <Table aria-label="PMT events">
             <TableHeader>
               <TableRow>
@@ -195,6 +196,7 @@ export function EventsScreen({
               )}
             </TableBody>
           </Table>
+          </div>
         </>
       ) : tab === "extra" ? (
         <>
@@ -209,6 +211,7 @@ export function EventsScreen({
               Add Extra Event
             </Button>
           </div>
+          <div className="overflow-x-auto">
           <Table aria-label="Extra events">
             <TableHeader>
               <TableRow>
@@ -256,6 +259,7 @@ export function EventsScreen({
               )}
             </TableBody>
           </Table>
+          </div>
         </>
       ) : (
         <div>

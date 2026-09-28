@@ -46,20 +46,20 @@ export function MemoSubmissionApp({ userEmail }: Props) {
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-8 pt-2">
+        <nav className="px-3 pt-2 sm:px-8">
           <TabsList>
             <TabsTrigger value="absence">
               <FileText className="h-3.5 w-3.5" />
-              Absence Memo
+              <span className="hidden sm:inline">Absence Memo</span>
             </TabsTrigger>
             <TabsTrigger value="deviation">
               <ClipboardList className="h-3.5 w-3.5" />
-              Deviation Memo
+              <span className="hidden sm:inline">Deviation Memo</span>
             </TabsTrigger>
           </TabsList>
         </nav>
 
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6">
           {dataLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />

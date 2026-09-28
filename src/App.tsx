@@ -4,9 +4,10 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard } from "lucide-react";
+import { LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard, Monitor, Smartphone } from "lucide-react";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
+import { useViewMode } from "./hooks/useViewMode";
 import { resolveTabAccess } from "./domain/access";
 import { SignInScreen } from "./components/SignInScreen";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
@@ -52,6 +53,7 @@ function App() {
   const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
+  const { mode: viewMode, toggle: toggleViewMode } = useViewMode();
 
   const handleSignIn = async (email: string, password: string) => {
     await signIn(email, password);
@@ -113,13 +115,16 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex items-center justify-between border-b border-input bg-background px-8 py-3">
-        <div className="flex items-center gap-3">
-          <img src={`${import.meta.env.BASE_URL}det756-logo.webp`} alt="AFROTC Det 756" className="h-9 w-9 rounded-full object-cover" />
-          <h1 className="text-xl font-semibold">Borinkeneers Det 756</h1>
+      <header className="flex items-center justify-between gap-2 border-b border-input bg-background px-3 py-3 sm:px-8">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <img src={`${import.meta.env.BASE_URL}det756-logo.webp`} alt="AFROTC Det 756" className="h-8 w-8 shrink-0 rounded-full object-cover sm:h-9 sm:w-9" />
+          <h1 className="truncate text-base font-semibold sm:text-xl">Borinkeneers Det 756</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">{user.email}</span>
+        <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+          <span className="hidden truncate text-sm text-muted-foreground md:inline">{user.email}</span>
+          <Button variant="ghost" size="icon" onClick={toggleViewMode} aria-label={viewMode === "desktop" ? "Switch to mobile view" : "Switch to desktop view"}>
+            {viewMode === "desktop" ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+          </Button>
           <Button variant="ghost" size="icon" onClick={() => setChangePasswordOpen(true)} aria-label="Change password">
             <KeyRound className="h-4 w-4" />
           </Button>
@@ -138,46 +143,46 @@ function App() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-8 pt-2">
+        <nav className="px-3 pt-2 sm:px-8">
           <TabsList>
             {(tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
               <TabsTrigger value="myDashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                My Dashboard
+                <span className="hidden sm:inline">My Dashboard</span>
               </TabsTrigger>
             )}
             {tabAccess.accountability && (
               <TabsTrigger value="accountability">
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                Accountability
+                <span className="hidden sm:inline">Accountability</span>
               </TabsTrigger>
             )}
             {tabAccess.trainingObjectives !== "none" && (
               <TabsTrigger value="trainingObjectives">
                 <GraduationCap className="h-3.5 w-3.5" />
-                TO's
+                <span className="hidden sm:inline">TO's</span>
               </TabsTrigger>
             )}
             <TabsTrigger value="memoSubmission">
               <Send className="h-3.5 w-3.5" />
-              Memo Submission
+              <span className="hidden sm:inline">Memo Submission</span>
             </TabsTrigger>
             {tabAccess.memoReview && (
               <TabsTrigger value="memoReview">
                 <FileText className="h-3.5 w-3.5" />
-                Memo Review
+                <span className="hidden sm:inline">Memo Review</span>
               </TabsTrigger>
             )}
             {hasAnalyticsAccess && (
               <TabsTrigger value="analytics">
                 <BarChart2 className="h-3.5 w-3.5" />
-                Analytics
+                <span className="hidden sm:inline">Analytics</span>
               </TabsTrigger>
             )}
             {hasSettingsAccess && (
               <TabsTrigger value="settings">
                 <Settings className="h-3.5 w-3.5" />
-                Settings
+                <span className="hidden sm:inline">Settings</span>
               </TabsTrigger>
             )}
           </TabsList>

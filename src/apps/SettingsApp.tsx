@@ -99,13 +99,13 @@ export function SettingsApp({ userEmail }: Props) {
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
   return (
-    <div className="flex h-full">
-      <nav className="w-56 shrink-0 space-y-1 overflow-y-auto border-r border-input p-4">
+    <div className="flex h-full flex-col sm:flex-row">
+      <nav className="flex shrink-0 gap-1 overflow-x-auto border-b border-input p-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:w-56 sm:flex-col sm:gap-0 sm:space-y-1 sm:overflow-y-auto sm:border-b-0 sm:border-r sm:p-4 [&::-webkit-scrollbar]:hidden">
         {navItems.map((item) => (
           <Button
             key={item.value}
             variant={activeSection === item.value ? "secondary" : "ghost"}
-            className={cn("w-full justify-start gap-2")}
+            className={cn("shrink-0 justify-start gap-2 sm:w-full")}
             onClick={() => setSection(item.value)}
           >
             <item.icon className="h-4 w-4" />
@@ -114,7 +114,7 @@ export function SettingsApp({ userEmail }: Props) {
         ))}
       </nav>
 
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-3 sm:p-6">
         {dataLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-10 w-72" />

@@ -31,7 +31,7 @@ export function GmcDashboardApp({ userEmail }: Props) {
 
   if (dataLoading) {
     return (
-      <div className="space-y-4 p-6">
+      <div className="space-y-4 p-3 sm:p-6">
         <Skeleton className="h-10 w-72" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -53,7 +53,7 @@ export function GmcDashboardApp({ userEmail }: Props) {
   }
 
   return (
-    <div className="overflow-auto p-6">
+    <div className="overflow-auto p-3 sm:p-6">
       <SelfServiceDashboardScreen
         cadet={me}
         peers={peers}

@@ -77,30 +77,30 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-8 pt-2">
+        <nav className="px-3 pt-2 sm:px-8">
           <TabsList>
             {accountabilityAccess && (
               <TabsTrigger value="accountability">
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                Accountability
+                <span className="hidden sm:inline">Accountability</span>
               </TabsTrigger>
             )}
             {trainingObjectivesAccess !== "none" && (
               <TabsTrigger value="trainingObjectives">
                 <GraduationCap className="h-3.5 w-3.5" />
-                Training Objectives
+                <span className="hidden sm:inline">Training Objectives</span>
               </TabsTrigger>
             )}
             {memoReviewAccess && (
               <TabsTrigger value="memorandums">
                 <FileText className="h-3.5 w-3.5" />
-                Memorandums
+                <span className="hidden sm:inline">Memorandums</span>
               </TabsTrigger>
             )}
           </TabsList>
         </nav>
 
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6">
           {dataLoading ? (
             <div className="space-y-4">
               <div className="flex gap-4">

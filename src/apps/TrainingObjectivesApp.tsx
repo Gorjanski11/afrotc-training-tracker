@@ -93,7 +93,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   return (
     <div className="flex h-full flex-col">
       {(topLevel !== "home" || !singleCohort) && (
-        <div className="flex items-center gap-3 border-b border-input bg-background px-8 py-2">
+        <div className="flex items-center gap-3 border-b border-input bg-background px-3 py-2 sm:px-8">
           {topLevel !== "home" && !singleCohort && (
             <Button variant="ghost" size="icon" onClick={goHome} aria-label="Back to Home">
               <ArrowLeft className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
       )}
 
       {dataLoading ? (
-        <div className="space-y-4 p-6">
+        <div className="space-y-4 p-3 sm:p-6">
           <div className="flex gap-4">
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -121,33 +121,33 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
           <span className="text-destructive">{loadError}</span>
         </div>
       ) : topLevel === "home" ? (
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6">
           <HomeScreen onEnterPoc={() => enterCohort("poc")} onEnterGmc={() => enterCohort("gmc")} />
         </main>
       ) : (
         <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-          <nav className="px-8">
+          <nav className="px-3 sm:px-8">
             <TabsList>
               <TabsTrigger value="dashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                Dashboard
+                <span className="hidden sm:inline">Dashboard</span>
               </TabsTrigger>
               <TabsTrigger value="cadet" disabled={!selectedCadetId}>
                 <UserRound className="h-3.5 w-3.5" />
-                Cadet Detail
+                <span className="hidden sm:inline">Cadet Detail</span>
               </TabsTrigger>
               <TabsTrigger value="reference">
                 <BookOpen className="h-3.5 w-3.5" />
-                Reference Library
+                <span className="hidden sm:inline">Reference Library</span>
               </TabsTrigger>
               <TabsTrigger value="quicklog">
                 <ListChecks className="h-3.5 w-3.5" />
-                Quick Log
+                <span className="hidden sm:inline">Quick Log</span>
               </TabsTrigger>
             </TabsList>
           </nav>
 
-          <main className="flex-1 overflow-auto p-6">
+          <main className="flex-1 overflow-auto p-3 sm:p-6">
             <TabsContent value="dashboard">
               <AnimatedPanel>
                 <DashboardScreen

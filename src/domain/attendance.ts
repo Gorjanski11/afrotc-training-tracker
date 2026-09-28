@@ -1,4 +1,4 @@
-import { ATTENDANCE_WEIGHT, PERMITTED_ABSENCES_PER_SEMESTER, SEMESTER_PMT_TOTALS, bucketForEventType, standingForPercent, type AttendanceStatus, type Standing } from "./constants";
+import { ATTENDANCE_WEIGHT, PERMITTED_ABSENCES_PER_SEMESTER, SEMESTER_PMT_TOTALS, bucketForEventType, standingForAbsencesLeft, type AttendanceStatus, type Standing } from "./constants";
 import type { Attendance, PmtEvent } from "./types";
 
 export interface BucketTally {
@@ -23,12 +23,13 @@ function emptyTally(): BucketTally {
 }
 
 /**
- * Percent (0-1 scale, matching `standingForPercent`'s thresholds) against a fixed semester total
- * (Section 1): unrecorded/future PMTs are assumed fine until proven otherwise, so only recorded
- * *shortfalls* -- sum of (1 - weight) over every recorded event -- count against the fixed total.
- * `shortfall = countedEvents - weightedSum` since every weight is at most 1. Undefined `fixedTotal`
- * (the "other" bucket, permanently unused now that D&C folds into LLAB_FM) keeps the old dynamic
- * average with no standing threshold.
+ * Percent (0-1 scale, informational only now) against a fixed semester total (Section 1):
+ * unrecorded/future PMTs are assumed fine until proven otherwise, so only recorded *shortfalls* --
+ * sum of (1 - weight) over every recorded event -- count against the fixed total.
+ * `shortfall = countedEvents - weightedSum` since every weight is at most 1. Standing itself is
+ * derived from the flat absence budget (absencesRemainingForGoodStanding/standingForAbsencesLeft),
+ * not from this percent. Undefined `fixedTotal` (the "other" bucket, permanently unused now that
+ * D&C folds into LLAB_FM) keeps the old dynamic average with no standing threshold.
  */
 function finalize(t: BucketTally, fixedTotal: number | undefined): BucketTally {
   if (fixedTotal === undefined) {
@@ -37,7 +38,7 @@ function finalize(t: BucketTally, fixedTotal: number | undefined): BucketTally {
   }
   const shortfall = t.countedEvents - t.weightedSum;
   const percent = Math.max(0, (fixedTotal - shortfall) / fixedTotal);
-  return { ...t, percent, standing: standingForPercent(percent) };
+  return { ...t, percent, standing: standingForAbsencesLeft(absencesRemainingForGoodStanding(t)) };
 }
 
 /** One cadet's attendance summary across every bucket. Pass the full attendance/pmtEvents lists -- filters to `cadetId` internally. */
@@ -70,10 +71,10 @@ export function computeCadetAttendanceSummary(
 
 /**
  * How many more unexcused Absences (weight 0, i.e. +1 shortfall each) this bucket could take before
- * using up the flat PERMITTED_ABSENCES_PER_SEMESTER budget -- a flat policy number (5), independent
- * of the Good/Warning/Hard Limit percentage standing thresholds. An AE (Approved Excuse) costs
- * nothing here, same as a plain Present (both weight 1 in ATTENDANCE_WEIGHT), and a Late costs half
- * an absence. 0 means the budget is already used up.
+ * using up the flat PERMITTED_ABSENCES_PER_SEMESTER budget (5) -- drives both the "Absences left"
+ * stat tile and, via standingForAbsencesLeft, the Good/Warning/Hard Limit standing itself. An AE
+ * (Approved Excuse) costs nothing here, same as a plain Present (both weight 1 in ATTENDANCE_WEIGHT),
+ * and a Late costs half an absence. 0 means the budget is already used up (Hard Limit).
  */
 export function absencesRemainingForGoodStanding(tally: BucketTally): number {
   const currentShortfall = tally.countedEvents - tally.weightedSum;

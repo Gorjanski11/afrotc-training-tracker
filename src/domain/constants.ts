@@ -131,24 +131,27 @@ export function bucketForEventType(eventType: PmtEventType): AttendanceBucket {
 
 export type Standing = "Good" | "Warning" | "Hard Limit";
 
-export const STANDING_THRESHOLDS = { good: 0.85, warning: 0.8 } as const;
-
-export function standingForPercent(percent: number | undefined): Standing | undefined {
-  if (percent === undefined) return undefined;
-  if (percent >= STANDING_THRESHOLDS.good) return "Good";
-  if (percent >= STANDING_THRESHOLDS.warning) return "Warning";
-  return "Hard Limit";
+/**
+ * Standing is now derived directly from the flat absence budget (PERMITTED_ABSENCES_PER_SEMESTER,
+ * below), not a percentage threshold: "Hard Limit" once the budget is used up (0 or fewer left),
+ * "Warning" with exactly one absence left (one more unexcused absence away from Hard Limit), "Good"
+ * otherwise. An AE (Approved Excuse) never costs anything against the budget -- same weight as a
+ * plain Present -- so it can never push a cadet into Warning/Hard Limit on its own.
+ */
+export function standingForAbsencesLeft(absencesLeft: number): Standing {
+  if (absencesLeft <= 0) return "Hard Limit";
+  if (absencesLeft === 1) return "Warning";
+  return "Good";
 }
 
 /** Fixed semester totals for the attendance % denominator (Section 1 of the plan) -- update these each semester. D&C occurrences count toward LLAB_FM since D&C is a type of LLAB session. */
 export const SEMESTER_PMT_TOTALS: Record<"PT" | "LLAB_FM", number> = { PT: 27, LLAB_FM: 28 };
 
 /**
- * Flat semester absence budget per bucket (PT and LLAB/FM/D&C each get their own 5), independent of
- * the Good/Warning/Hard Limit percentage standing thresholds above -- a flat policy number, not
- * derived from STANDING_THRESHOLDS.good. Drives only the "Absences left" stat tile. An AE (Approved
- * Excuse) costs nothing against this budget, same as a plain Present, since ATTENDANCE_WEIGHT gives
- * both a weight of 1.
+ * Flat semester absence budget per bucket (PT and LLAB/FM/D&C each get their own 5) -- drives both
+ * the "Absences left" stat tile and the Good/Warning/Hard Limit standing itself (see
+ * standingForAbsencesLeft above). An AE (Approved Excuse) costs nothing against this budget, same as
+ * a plain Present, since ATTENDANCE_WEIGHT gives both a weight of 1.
  */
 export const PERMITTED_ABSENCES_PER_SEMESTER = 5;
 

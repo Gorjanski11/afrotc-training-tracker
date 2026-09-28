@@ -53,7 +53,7 @@ export function PocDashboardApp({ userEmail }: Props) {
   }
 
   return (
-    <div className="overflow-auto p-3 sm:p-6">
+    <div className="h-full overflow-y-auto p-3 sm:p-6">
       <SelfServiceDashboardScreen
         cadet={me}
         peers={peers}

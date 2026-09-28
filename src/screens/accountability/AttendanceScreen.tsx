@@ -336,6 +336,11 @@ export function AttendanceScreen({
                           variant="outline"
                           className={cn(
                             "h-7 w-11 text-[11px]",
+                            // AE/PE are never manually picked -- they're automatic side-effects of the
+                            // memo review lifecycle (Accepted -> AE, Pending -> PE), never something
+                            // cadre clicks here. Hidden below sm to save room on the phone grid; still
+                            // available at sm+ (and in Desktop view) for the rare manual correction.
+                            (status === "AE" || status === "PE") && "hidden sm:inline-flex",
                             value.status === status && statusActiveClass(status),
                             isDirty && "ring-2 ring-primary"
                           )}

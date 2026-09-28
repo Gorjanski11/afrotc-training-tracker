@@ -14,6 +14,12 @@ import { auth, functions } from "../lib/firebase";
 const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
 const ACTIVITY_EVENTS = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"] as const;
 
+export interface AccountOpResult {
+  email: string;
+  success: boolean;
+  note?: string;
+}
+
 /**
  * Hub login (Email/Password). Accounts are created individually by an admin in the Firebase
  * Console -- there is no public sign-up screen, so having any account at all just proves identity;
@@ -93,5 +99,31 @@ export function useAuth() {
     await call({ targetEmail, newPassword });
   }, []);
 
-  return { user, authLoading, signIn, signOut: signOutUser, changePassword, reauthenticate, resetOtherPassword };
+  /** New Semester (Cortes Garay only) -- provisions a fresh det756-password login for every brand-new cadet. */
+  const createCadetAccounts = useCallback(async (emails: string[]): Promise<AccountOpResult[]> => {
+    if (emails.length === 0) return [];
+    const call = httpsCallable<{ emails: string[] }, { results: AccountOpResult[] }>(functions, "createCadetAccounts");
+    const res = await call({ emails });
+    return res.data.results;
+  }, []);
+
+  /** New Semester (Cortes Garay only) -- disables (never deletes) the login for every cadet removed from the roster. */
+  const disableCadetAccounts = useCallback(async (emails: string[]): Promise<AccountOpResult[]> => {
+    if (emails.length === 0) return [];
+    const call = httpsCallable<{ emails: string[] }, { results: AccountOpResult[] }>(functions, "disableCadetAccounts");
+    const res = await call({ emails });
+    return res.data.results;
+  }, []);
+
+  return {
+    user,
+    authLoading,
+    signIn,
+    signOut: signOutUser,
+    changePassword,
+    reauthenticate,
+    resetOtherPassword,
+    createCadetAccounts,
+    disableCadetAccounts,
+  };
 }

@@ -14,7 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess } from "../domain/access";
+import { isFullAccess, isCortesGaray } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
@@ -48,10 +48,23 @@ export function SettingsApp({ userEmail }: Props) {
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
   const emailTemplatesState = useEmailTemplates();
-  const { reauthenticate, resetOtherPassword } = useAuth();
+  const { reauthenticate, resetOtherPassword, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
+  const cortesGaray = isCortesGaray(userEmail);
   const [section, setSection] = useState<Section>("roster");
+
+  const refetchAll = async () => {
+    await Promise.all([
+      cadetsState.refetch(),
+      eventsState.refetch(),
+      extraEventsState.refetch(),
+      attendanceState.refetch(),
+      completionsState.refetch(),
+      absenceState.refetch(),
+      deviationState.refetch(),
+    ]);
+  };
 
   const dataLoading =
     cadetsState.loading ||
@@ -81,7 +94,7 @@ export function SettingsApp({ userEmail }: Props) {
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
     { value: "templates", label: "Memorandum Templates", icon: Mail },
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
-    { value: "newSemester", label: "New Semester", icon: CalendarPlus },
+    ...(cortesGaray ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
   ];
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
@@ -167,7 +180,27 @@ export function SettingsApp({ userEmail }: Props) {
                 reauthenticate={reauthenticate}
               />
             )}
-            {activeSection === "newSemester" && <NewSemesterScreen />}
+            {activeSection === "newSemester" && cortesGaray && (
+              <NewSemesterScreen
+                roster={cadetsState.cadets}
+                events={eventsState.events}
+                attendance={attendanceState.attendance}
+                catalog={catalogState.catalog}
+                completions={completionsState.completions}
+                absenceMemos={absenceState.memos}
+                deviationMemos={deviationState.memos}
+                userEmail={userEmail}
+                reauthenticate={reauthenticate}
+                createCadet={cadetsState.createCadet}
+                updateCadet={cadetsState.updateCadet}
+                updateCadetFields={cadetsState.updateCadetFields}
+                deleteCadet={cadetsState.deleteCadet}
+                createEvent={eventsState.createEvent}
+                createCadetAccounts={createCadetAccounts}
+                disableCadetAccounts={disableCadetAccounts}
+                refetchAll={refetchAll}
+              />
+            )}
           </AnimatedPanel>
         )}
       </main>

@@ -204,6 +204,11 @@ export function isCadreOrCortesGaray(email: string | null | undefined, roster: C
   return match?.isCadre === true;
 }
 
+/** Cortes Garay alone -- narrower even than `isCadreOrCortesGaray`. Gates Data Management's PDF delete and the whole New Semester screen (it can wipe/recreate the entire roster, calendar, and cadet logins). The createCadetAccounts/disableCadetAccounts Cloud Functions independently re-check this same rule server-side. */
+export function isCortesGaray(email: string | null | undefined): boolean {
+  return (email ?? "").trim().toLowerCase() === "jorge.cortes4@upr.edu";
+}
+
 // ---------------------------------------------------------------------------
 // Section 7 -- Deviation Memo assign/review permission matrix
 // ---------------------------------------------------------------------------

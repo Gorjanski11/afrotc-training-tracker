@@ -11,6 +11,7 @@ import { buildTrainingSheets } from "../../lib/exportTrainingData";
 import { buildMemoSheets } from "../../lib/exportMemoData";
 import { downloadWorkbook, todayForFilename } from "../../lib/exportWorkbook";
 import { listAllMemoPdfs, deleteMemoPdf, type StoredMemoPdf } from "../../lib/storage";
+import { isCortesGaray } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
 import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
 
@@ -26,8 +27,6 @@ interface Props {
   reauthenticate: (password: string) => Promise<void>;
 }
 
-const CORTES_GARAY_EMAIL = "jorge.cortes4@upr.edu";
-
 type ExportCategory = "accountability" | "trainingObjectives" | "memorandums";
 const CATEGORIES: { value: ExportCategory; label: string }[] = [
   { value: "accountability", label: "Accountability" },
@@ -40,7 +39,7 @@ function formatSize(bytes: number): string {
 }
 
 export function DataManagementScreen({ roster, events, attendance, catalog, completions, absenceMemos, deviationMemos, userEmail, reauthenticate }: Props) {
-  const canDelete = (userEmail ?? "").trim().toLowerCase() === CORTES_GARAY_EMAIL;
+  const canDelete = isCortesGaray(userEmail);
   const rosterById = new Map(roster.map((p) => [p.id, p]));
 
   const [selected, setSelected] = useState<Set<ExportCategory>>(new Set(["accountability", "trainingObjectives", "memorandums"]));

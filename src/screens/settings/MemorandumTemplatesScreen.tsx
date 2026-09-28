@@ -57,6 +57,20 @@ const TEMPLATE_DEFS: TemplateDef[] = [
       "<strong>This is an automated message, DO NOT reply to this email.</strong>",
   },
   {
+    id: "absence-final-warning",
+    label: "Absence final warning (4th absence)",
+    trigger: "Sent the moment an Absence Memo is rejected and that rejection brings the cadet down to exactly 1 remaining absence (of the flat 5-per-semester budget) in that PMT bucket -- not sent when merely marked Absent, since that can still be excused.",
+    placeholders: ["greeting", "cadetName", "bucketLabel", "pmtSessionLabel", "commanderTitle"],
+    defaultSubject: "Attendance Warning -- 1 absence remaining",
+    defaultBody:
+      "{{greeting}}, {{cadetName}},<br><br>" +
+      "Your Absence Memorandum for {{pmtSessionLabel}} was rejected. This was your 4th unexcused absence for {{bucketLabel}} this semester -- " +
+      "you have <strong>1 absence remaining</strong> before you drop to Hard Limit standing.<br><br>" +
+      "Please make sure to attend every remaining {{bucketLabel}} session, or submit a valid excuse in advance if something comes up.<br><br>" +
+      "For any questions and concerns contact your {{commanderTitle}}.<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
     id: "deviation-assigned",
     label: "Deviation Memo assigned",
     trigger: "Sent the instant a cadre member assigns a Deviation Memo to a cadet.",

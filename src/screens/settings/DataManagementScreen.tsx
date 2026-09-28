@@ -50,10 +50,23 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
   const [loadingPdfs, setLoadingPdfs] = useState(false);
   const [pdfError, setPdfError] = useState<string | undefined>();
 
-  const [deleteTarget, setDeleteTarget] = useState<StoredMemoPdf | undefined>();
+  const [deleteTargets, setDeleteTargets] = useState<StoredMemoPdf[] | undefined>();
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState<string | undefined>();
   const [deleting, setDeleting] = useState(false);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+
+  const toggleSelected = (path: string) => {
+    setSelectedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  };
+  const toggleSelectAll = () => {
+    setSelectedPaths((prev) => (prev.size === (pdfs?.length ?? 0) ? new Set() : new Set(pdfs?.map((p) => p.path) ?? [])));
+  };
 
   const toggleCategory = (category: ExportCategory) => {
     setSelected((prev) => {
@@ -94,14 +107,20 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
   };
 
   const handleDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTargets || deleteTargets.length === 0) return;
     setDeleting(true);
     setDeleteError(undefined);
     try {
       await reauthenticate(deletePassword);
-      await deleteMemoPdf(deleteTarget.path);
-      setPdfs((prev) => prev?.filter((p) => p.path !== deleteTarget.path));
-      setDeleteTarget(undefined);
+      for (const target of deleteTargets) await deleteMemoPdf(target.path);
+      const deletedPaths = new Set(deleteTargets.map((t) => t.path));
+      setPdfs((prev) => prev?.filter((p) => !deletedPaths.has(p.path)));
+      setSelectedPaths((prev) => {
+        const next = new Set(prev);
+        for (const path of deletedPaths) next.delete(path);
+        return next;
+      });
+      setDeleteTargets(undefined);
       setDeletePassword("");
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : "Failed to delete -- check your password.");
@@ -145,10 +164,18 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
             <CardTitle>Submitted PDFs</CardTitle>
             <CardDescription>Every Absence/Deviation Memo PDF in storage -- download or free up space by deleting old ones.</CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={loadPdfs} disabled={loadingPdfs}>
-            <RefreshCw className="h-3.5 w-3.5" />
-            {loadingPdfs ? "Loading..." : pdfs ? "Refresh" : "Load PDFs"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {canDelete && pdfs && selectedPaths.size > 0 && (
+              <Button variant="destructive" size="sm" onClick={() => setDeleteTargets(pdfs.filter((p) => selectedPaths.has(p.path)))}>
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete selected ({selectedPaths.size})
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={loadPdfs} disabled={loadingPdfs}>
+              <RefreshCw className="h-3.5 w-3.5" />
+              {loadingPdfs ? "Loading..." : pdfs ? "Refresh" : "Load PDFs"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="pt-2">
           {pdfError && <p className="mb-2 text-sm text-destructive">{pdfError}</p>}
@@ -159,6 +186,16 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
             <Table aria-label="Stored memo PDFs">
               <TableHeader>
                 <TableRow>
+                  {canDelete && (
+                    <TableHead className="w-8">
+                      <input
+                        type="checkbox"
+                        checked={pdfs.length > 0 && selectedPaths.size === pdfs.length}
+                        onChange={toggleSelectAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
+                  )}
                   <TableHead>Cadet</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>File</TableHead>
@@ -170,6 +207,11 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
               <TableBody>
                 {pdfs.map((p) => (
                   <TableRow key={p.path}>
+                    {canDelete && (
+                      <TableCell>
+                        <input type="checkbox" checked={selectedPaths.has(p.path)} onChange={() => toggleSelected(p.path)} aria-label={`Select ${p.fileName}`} />
+                      </TableCell>
+                    )}
                     <TableCell>
                       {(() => {
                         const person = rosterById.get(p.cadetId);
@@ -187,7 +229,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
                     <TableCell>{new Date(p.uploadedAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       {canDelete && (
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(p)} aria-label="Delete">
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteTargets([p])} aria-label="Delete">
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </Button>
                       )}
@@ -196,7 +238,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
                 ))}
                 {pdfs.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={canDelete ? 7 : 6} className="text-center text-muted-foreground">
                       No PDFs found.
                     </TableCell>
                   </TableRow>
@@ -209,10 +251,10 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
       </Card>
 
       <Dialog
-        open={!!deleteTarget}
+        open={!!deleteTargets}
         onOpenChange={(o) => {
           if (!o) {
-            setDeleteTarget(undefined);
+            setDeleteTargets(undefined);
             setDeletePassword("");
             setDeleteError(undefined);
           }
@@ -220,7 +262,9 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Delete {deleteTarget?.fileName}?</DialogTitle>
+            <DialogTitle>
+              {deleteTargets?.length === 1 ? `Delete ${deleteTargets[0].fileName}?` : `Delete ${deleteTargets?.length ?? 0} PDFs?`}
+            </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">This cannot be undone. Enter your password to confirm.</p>
           <div className="grid gap-1.5">
@@ -229,7 +273,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
           </div>
           {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setDeleteTarget(undefined)} disabled={deleting}>
+            <Button variant="secondary" onClick={() => setDeleteTargets(undefined)} disabled={deleting}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting || !deletePassword}>

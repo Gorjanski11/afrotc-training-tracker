@@ -1,5 +1,5 @@
-import type { DevLevel } from "./constants";
-import { computeCadetProgress, getObjectiveStatus, isOverdue, shouldFlagCadet } from "./progress";
+import { PROFICIENCY_RANK, type DevLevel, type ProficiencyCode } from "./constants";
+import { computeCadetProgress, getObjectiveStatus, isOverdue, meetsRequirement, shouldFlagCadet } from "./progress";
 import { compareByLastName } from "./nameUtils";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "./types";
 
@@ -86,6 +86,31 @@ export function computeCompletionByCadet(cadets: Cadet[], catalog: TrainingObjec
       };
     })
     .sort((a, b) => compareByLastName(a.name, b.name));
+}
+
+export interface CrosstabCell {
+  code: ProficiencyCode;
+  /** True when the best completion logged doesn't (yet) satisfy the objective's required proficiency -- rendered in yellow with a "P - " prefix (Section D). */
+  partial: boolean;
+}
+
+/**
+ * One cadet's cell in the "Completed TO's by Cadet" crosstab (Section D) -- undefined for a blank
+ * cell, either because this objective isn't evaluated at the cadet's dev level at all, or because
+ * nothing has been logged against it yet. Prefers a completion that actually satisfies the
+ * requirement (a genuine, non-partial pass at or above the required code) over a merely
+ * higher-ranked one that doesn't -- e.g. a cadet with both a qualifying P1 pass and a later,
+ * higher-ranked but still-Partial P2 shows the P1 pass, not "P - P2".
+ */
+export function crosstabCellFor(objective: TrainingObjective, devLevel: DevLevel, cadetCompletions: Completion[]): CrosstabCell | undefined {
+  const required = objective.proficiencyByLevel[devLevel];
+  if (required === "") return undefined;
+  const relevant = cadetCompletions.filter((c) => c.objectiveId === objective.id);
+  if (relevant.length === 0) return undefined;
+  const passing = relevant.filter((c) => meetsRequirement(c, required));
+  const pool = passing.length > 0 ? passing : relevant;
+  const best = pool.reduce((a, b) => (PROFICIENCY_RANK[b.proficiencyAchieved] > PROFICIENCY_RANK[a.proficiencyAchieved] ? b : a));
+  return { code: best.proficiencyAchieved, partial: passing.length === 0 };
 }
 
 export function computeCompletionByPlo(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): PloCompletionRow[] {

@@ -42,6 +42,17 @@ export const PROFICIENCY_RANK: Record<ProficiencyCode, number> = {
   P3: 5,
 };
 
+/** Ka/Kb are Knowledge-level tasks, P1/P2/P3 are Performance-level tasks -- never interchangeable even though they share one ordinal scale. */
+function proficiencyFamily(code: ProficiencyCode): "K" | "P" {
+  return code.startsWith("K") ? "K" : "P";
+}
+
+/** Every code in the same family as `required`, ranked at or above it -- e.g. required "Kb" -> ["Kb"]; required "P1" -> ["P1","P2","P3"]. Used to build the Pass proficiency picker's options (Section C). */
+export function proficiencyOptionsAtOrAbove(required: ProficiencyCode): ProficiencyCode[] {
+  const family = proficiencyFamily(required);
+  return PROFICIENCY_CODES.filter((code) => proficiencyFamily(code) === family && PROFICIENCY_RANK[code] >= PROFICIENCY_RANK[required]);
+}
+
 // PMT (Practical Military Training) session types tracked on the Calendar tab. This calendar is
 // shared with the separate Accountability site (same pmtEvents collection, same Firebase project)
 // -- "PT" exists for pure physical-training sessions that Accountability tracks attendance for.
@@ -57,6 +68,15 @@ export const PLO_SECTIONS = [
   "Strategic-Minded Officer",
 ] as const;
 export type PloSection = (typeof PLO_SECTIONS)[number];
+
+/** Short column-header prefix per PLO for the "Completed TO's by Cadet" crosstab (Section D), e.g. "WF 1.2". */
+export const PLO_SHORT_CODE: Record<PloSection, string> = {
+  "Leader of Character": "LC",
+  "Disciplined Professional": "DP",
+  "Effective Communicator": "EC",
+  Warfighter: "WF",
+  "Strategic-Minded Officer": "SMO",
+};
 
 // ---------------------------------------------------------------------------
 // Ported from afrotc-accountability-tracker/src/domain/constants.ts and

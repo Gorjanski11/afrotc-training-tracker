@@ -3,12 +3,12 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Save, ListChecks } from "lucide-react";
+import { Search, Save, ListChecks, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue, meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, proficiencyOptionsAtOrAbove, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
@@ -562,23 +562,60 @@ export function QuickLogScreen({
                       </TableCell>
                     );
                   }
+                  const passOptions = proficiencyOptionsAtOrAbove(requiredCode);
                   return (
                     <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
                       <div className="flex flex-col items-center gap-1">
-                        <div className="flex gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className={cn(
-                              "h-6 px-2 text-[11px]",
-                              isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
-                              isDirty && "ring-2 ring-primary"
-                            )}
-                            onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isPass ? NONE : requiredCode)}
-                          >
-                            Pass
-                          </Button>
+                        <div className="flex items-center gap-1">
+                          {passOptions.length > 1 ? (
+                            <>
+                              <Select
+                                value={isPass ? value : ""}
+                                onValueChange={(v) => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, v)}
+                              >
+                                <SelectTrigger
+                                  className={cn(
+                                    "h-6 w-16 px-2 text-[11px]",
+                                    isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
+                                    isDirty && "ring-2 ring-primary"
+                                  )}
+                                >
+                                  <SelectValue placeholder="Pass" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {passOptions.map((code) => (
+                                    <SelectItem key={code} value={code}>
+                                      {code}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {isPass && (
+                                <button
+                                  type="button"
+                                  title="Clear"
+                                  className="text-muted-foreground hover:text-foreground"
+                                  onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, NONE)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className={cn(
+                                "h-6 px-2 text-[11px]",
+                                isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
+                                isDirty && "ring-2 ring-primary"
+                              )}
+                              onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isPass ? NONE : requiredCode)}
+                            >
+                              Pass
+                            </Button>
+                          )}
                           {isMultiOccurrence && occurrence && (
                             <Button
                               type="button"

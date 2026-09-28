@@ -4,13 +4,13 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { AlertTriangle, Table2, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
+import { AlertTriangle, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLO_SECTIONS, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group } from "../../domain/constants";
-import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
-import { formatCadetName } from "../../domain/nameUtils";
+import { PLO_SECTIONS, PLO_SHORT_CODE, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group, type PloSection } from "../../domain/constants";
+import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, crosstabCellFor, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
+import { groupByPlo } from "../../domain/objectiveGrouping";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import type { UnitScope } from "../../domain/access";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -87,7 +87,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
       }),
     [availableDevLevels]
   );
-  const [cadetTableView, setCadetTableView] = useState(false);
+  const [cadetView, setCadetView] = useState<"crosstab" | "table" | "chart">("crosstab");
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     setMasterCadetId(which === "cadet" ? value : ALL_CADETS);
@@ -120,6 +120,30 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
   const overdue = useMemo(() => computeOverdueObjectives(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
 
   const cadetChartHeight = Math.max(200, byCadet.length * 28);
+
+  // Section D: "Completed TO's by Cadet" crosstab -- PLO-grouped columns (spanning header), one row
+  // per cadet, sorted the same way as the other cadet views.
+  const crosstabPloGroups = useMemo(
+    () =>
+      groupByPlo(filteredCatalog)
+        .map((section) => ({
+          plo: section.plo,
+          shortCode: PLO_SHORT_CODE[section.plo as PloSection] ?? "",
+          objectives: section.subAreas.flatMap((sa) => sa.objectives),
+        }))
+        .filter((g) => g.objectives.length > 0),
+    [filteredCatalog]
+  );
+  const crosstabCadets = useMemo(() => [...filteredCadets].sort((a, b) => compareByLastName(a.name, b.name)), [filteredCadets]);
+  const crosstabCompletionsByCadet = useMemo(() => {
+    const map = new Map<string, Completion[]>();
+    for (const c of completions) {
+      const list = map.get(c.cadetId) ?? [];
+      list.push(c);
+      map.set(c.cadetId, list);
+    }
+    return map;
+  }, [completions]);
 
   return (
     <div>
@@ -291,17 +315,91 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
         <CardHeader className="mb-1 flex-row items-center justify-between space-y-0">
           <CardTitle>
             <BarChart3 className="h-4 w-4 text-primary" />
-            Completion % by cadet
+            {cadetView === "crosstab" ? "Completed TO's by Cadet" : "Completion % by cadet"}
           </CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setCadetTableView((v) => !v)}>
-            {cadetTableView ? <BarChart3 className="h-4 w-4" /> : <Table2 className="h-4 w-4" />}
-            {cadetTableView ? "Chart view" : "Table view"}
-          </Button>
+          <Select value={cadetView} onValueChange={(v) => setCadetView(v as typeof cadetView)}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="crosstab">Completed TO's by Cadet</SelectItem>
+              <SelectItem value="table">Table view</SelectItem>
+              <SelectItem value="chart">Chart view</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent className="pt-1">
-          {byCadet.length === 0 ? (
+          {cadetView === "crosstab" ? (
+            crosstabCadets.length === 0 || crosstabPloGroups.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No cadets or objectives match this filter.</p>
+            ) : (
+              <div className="max-h-[32rem] overflow-auto rounded-md border border-input">
+                <Table aria-label="Completed Training Objectives by cadet">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead rowSpan={2} className="sticky left-0 top-0 z-20 min-w-40 bg-background align-bottom">
+                        Cadet
+                      </TableHead>
+                      {crosstabPloGroups.map((group) => (
+                        <TableHead
+                          key={group.plo}
+                          colSpan={group.objectives.length}
+                          className="sticky top-0 z-10 border-l border-input bg-muted text-center"
+                        >
+                          {group.plo}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                    <TableRow>
+                      {crosstabPloGroups.flatMap((group) =>
+                        group.objectives.map((objective, i) => (
+                          <TableHead
+                            key={objective.id}
+                            className={cn("sticky top-8 z-10 min-w-16 bg-background text-center text-[11px]", i === 0 && "border-l border-input")}
+                          >
+                            <div className="font-medium">
+                              {group.shortCode} {objective.number}
+                            </div>
+                            <div className="truncate text-[10px] font-normal text-muted-foreground" title={objective.title}>
+                              {objective.title}
+                            </div>
+                          </TableHead>
+                        ))
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {crosstabCadets.map((cadet) => (
+                      <TableRow key={cadet.id}>
+                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background">{formatCadetName(cadet)}</TableCell>
+                        {crosstabPloGroups.flatMap((group) =>
+                          group.objectives.map((objective, i) => {
+                            const cell = cadet.devLevel
+                              ? crosstabCellFor(objective, cadet.devLevel, crosstabCompletionsByCadet.get(cadet.id) ?? [])
+                              : undefined;
+                            return (
+                              <TableCell
+                                key={objective.id}
+                                className={cn(
+                                  "text-center text-xs",
+                                  i === 0 && "border-l border-input",
+                                  cell?.partial && "bg-warning text-warning-foreground font-medium"
+                                )}
+                              >
+                                {cell ? (cell.partial ? `P - ${cell.code}` : cell.code) : ""}
+                              </TableCell>
+                            );
+                          })
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )
+          ) : byCadet.length === 0 ? (
             <p className="text-sm text-muted-foreground">No cadets match this filter.</p>
-          ) : cadetTableView ? (
+          ) : cadetView === "table" ? (
             <div className="overflow-x-auto">
             <Table aria-label="Completion by cadet">
               <TableHeader>

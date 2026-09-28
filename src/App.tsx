@@ -4,7 +4,22 @@ import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LogOut, KeyRound, GraduationCap, ClipboardCheck, FileText, Send, BarChart2, Settings, LayoutDashboard, Monitor, Smartphone } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import {
+  LogOut,
+  KeyRound,
+  GraduationCap,
+  ClipboardCheck,
+  FileText,
+  Send,
+  BarChart2,
+  Settings,
+  LayoutDashboard,
+  Monitor,
+  Smartphone,
+  ChevronDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { useViewMode } from "./hooks/useViewMode";
@@ -21,6 +36,17 @@ import { GmcDashboardApp } from "./apps/GmcDashboardApp";
 import { PocDashboardApp } from "./apps/PocDashboardApp";
 
 type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDashboard" | "memoReview" | "analytics" | "settings";
+
+/** Label + icon per tab, shared by the desktop TabsList and the phone dropdown (Section H) so the two never drift apart. */
+const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> = {
+  myDashboard: { label: "My Dashboard", icon: LayoutDashboard },
+  accountability: { label: "Accountability", icon: ClipboardCheck },
+  trainingObjectives: { label: "TO's", icon: GraduationCap },
+  memoSubmission: { label: "Memo Submission", icon: Send },
+  memoReview: { label: "Memo Review", icon: FileText },
+  analytics: { label: "Analytics", icon: BarChart2 },
+  settings: { label: "Settings", icon: Settings },
+};
 
 /**
  * Every new account is created by an admin with this same shared password (go-around for Firebase
@@ -100,6 +126,7 @@ function App() {
   ];
   const [tab, setTab] = useState<HubTab>(visibleTabs[0]);
   const activeTab = visibleTabs.includes(tab) ? tab : visibleTabs[0];
+  const [phoneNavOpen, setPhoneNavOpen] = useState(false);
 
   if (authLoading || cadetsState.loading) {
     return (
@@ -144,48 +171,57 @@ function App() {
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
         <nav className="px-3 pt-2 sm:px-8">
-          <TabsList>
-            {(tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
-              <TabsTrigger value="myDashboard">
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">My Dashboard</span>
-              </TabsTrigger>
-            )}
-            {tabAccess.accountability && (
-              <TabsTrigger value="accountability">
-                <ClipboardCheck className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Accountability</span>
-              </TabsTrigger>
-            )}
-            {tabAccess.trainingObjectives !== "none" && (
-              <TabsTrigger value="trainingObjectives">
-                <GraduationCap className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">TO's</span>
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="memoSubmission">
-              <Send className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Memo Submission</span>
-            </TabsTrigger>
-            {tabAccess.memoReview && (
-              <TabsTrigger value="memoReview">
-                <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Memo Review</span>
-              </TabsTrigger>
-            )}
-            {hasAnalyticsAccess && (
-              <TabsTrigger value="analytics">
-                <BarChart2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Analytics</span>
-              </TabsTrigger>
-            )}
-            {hasSettingsAccess && (
-              <TabsTrigger value="settings">
-                <Settings className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Settings</span>
-              </TabsTrigger>
-            )}
+          {/* sm+: the usual horizontal tab strip. Below sm: a single dropdown button instead (Section H) -- easier to tap than a scrolling row of icon-only tabs. */}
+          <TabsList className="hidden sm:flex">
+            {visibleTabs.map((t) => {
+              const { label, icon: Icon } = TAB_META[t];
+              return (
+                <TabsTrigger key={t} value={t}>
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{label}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
+
+          <Popover open={phoneNavOpen} onOpenChange={setPhoneNavOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="flex w-full items-center justify-between gap-2 sm:hidden">
+                <span className="flex items-center gap-2">
+                  {(() => {
+                    const Icon = TAB_META[activeTab].icon;
+                    return <Icon className="h-4 w-4" />;
+                  })()}
+                  {TAB_META[activeTab].label}
+                </span>
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[calc(100vw-1.5rem)] p-1">
+              <div className="flex flex-col">
+                {visibleTabs.map((t) => {
+                  const { label, icon: Icon } = TAB_META[t];
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-2 rounded-sm px-3 py-2.5 text-left text-sm hover:bg-accent",
+                        t === activeTab && "bg-accent font-medium"
+                      )}
+                      onClick={() => {
+                        setTab(t);
+                        setPhoneNavOpen(false);
+                      }}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         </nav>
 
         <main className="flex-1 overflow-hidden">

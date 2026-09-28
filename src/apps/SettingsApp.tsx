@@ -14,7 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCortesGaray } from "../domain/access";
+import { isFullAccess, isCadreOrCortesGaray } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
@@ -51,7 +51,7 @@ export function SettingsApp({ userEmail }: Props) {
   const { reauthenticate, resetOtherPassword, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
-  const cortesGaray = isCortesGaray(userEmail);
+  const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
   const [section, setSection] = useState<Section>("roster");
 
   const refetchAll = async () => {
@@ -94,7 +94,7 @@ export function SettingsApp({ userEmail }: Props) {
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
     { value: "templates", label: "Memorandum Templates", icon: Mail },
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
-    ...(cortesGaray ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
+    ...(newSemesterAccess ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
   ];
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
@@ -180,7 +180,7 @@ export function SettingsApp({ userEmail }: Props) {
                 reauthenticate={reauthenticate}
               />
             )}
-            {activeSection === "newSemester" && cortesGaray && (
+            {activeSection === "newSemester" && newSemesterAccess && (
               <NewSemesterScreen
                 roster={cadetsState.cadets}
                 events={eventsState.events}

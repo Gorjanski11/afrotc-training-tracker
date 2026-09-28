@@ -8,7 +8,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarPlus, Upload, Download, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { AS_CLASSES, DEV_LEVELS, FLIGHTS, GROUPS, PMT_EVENT_TYPES } from "../../domain/constants";
-import { isCortesGaray } from "../../domain/access";
+import { isCadreOrCortesGaray } from "../../domain/access";
 import {
   CADET_ROSTER_COLUMNS,
   CADRE_ROSTER_COLUMNS,
@@ -152,8 +152,8 @@ const ACTION_BADGE: Record<string, "success" | "warning" | "secondary" | "destru
 };
 
 /**
- * Section 6.3 -- gated to Cortes Garay alone (it can wipe/recreate the entire roster, calendar, and
- * every cadet's login access). Flow: upload 3 tab-delimited files -> editable review (diff against
+ * Section 6.3 -- gated to Cadre or Cortes Garay (it can wipe/recreate the entire roster, calendar,
+ * and every cadet's login access). Flow: upload 3 tab-delimited files -> editable review (diff against
  * the live roster, flagged problems highlighted, fixable inline) -> export everything as a backup
  * (Excel workbook + a zip of every memo PDF) with an explicit acknowledgement -> the actual wipe and
  * import, logged step by step.
@@ -177,7 +177,7 @@ export function NewSemesterScreen({
   disableCadetAccounts,
   refetchAll,
 }: Props) {
-  const authorized = isCortesGaray(userEmail);
+  const authorized = isCadreOrCortesGaray(userEmail, roster);
 
   const [step, setStep] = useState<Step>("upload");
   const [cadetFile, setCadetFile] = useState<File | undefined>();
@@ -207,7 +207,7 @@ export function NewSemesterScreen({
           New Semester
         </h2>
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Only Cortes Garay can run the New Semester reset.</CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">Only Cadre or Cortes Garay can run the New Semester reset.</CardContent>
         </Card>
       </div>
     );

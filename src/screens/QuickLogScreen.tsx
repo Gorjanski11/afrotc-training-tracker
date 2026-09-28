@@ -252,6 +252,15 @@ export function QuickLogScreen({
     return ids;
   }, [visibleCadets, columnEligibilityByCadet, occurrencesByObjective]);
 
+  const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
+
+  /** Single-occurrence objectives match by objectiveId alone (legacy completions may predate pmtEventId); multi-occurrence ones must match the specific occurrence too. */
+  const getExistingCompletion = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): Completion | undefined => {
+    const list = completionsByCadet.get(cadetId) ?? [];
+    if (isMultiOccurrence) return list.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
+    return list.find((c) => c.objectiveId === objectiveId);
+  };
+
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
     const qualifying = loggableObjectives
@@ -279,17 +288,32 @@ export function QuickLogScreen({
         result.push({ key: objective.id, objective, occurrence: occurrences[0], isMultiOccurrence: false });
       }
     }
-    return result;
-  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective]);
 
-  const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
+    if (columnScope !== "overdue") return result;
 
-  /** Single-occurrence objectives match by objectiveId alone (legacy completions may predate pmtEventId); multi-occurrence ones must match the specific occurrence too. */
-  const getExistingCompletion = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): Completion | undefined => {
-    const list = completionsByCadet.get(cadetId) ?? [];
-    if (isMultiOccurrence) return list.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
-    return list.find((c) => c.objectiveId === objectiveId);
-  };
+    // Once every cadet who still needs grading at a given occurrence has at least a Partial logged
+    // there, that column has nothing actionable left for right now -- hide it from the default view
+    // (a Partial never satisfies the objective outright, so it stays "due" overall and reappears
+    // in "everything on the schedule"/"show all", just not cluttering the default overdue grid).
+    return result.filter((col) => {
+      const { objective, occurrence, isMultiOccurrence } = col;
+      const pmtEventId = occurrence?.id;
+      const stillNeedsGrading = searchedCadets.filter((cadet) => {
+        if (!cadet.devLevel) return false;
+        const required = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel]);
+        if (!required) return false;
+        if (isMultiOccurrence) {
+          const occs = occurrencesByObjective.get(objective.id) ?? [];
+          const passedAnywhere = occs.some((occ) => meetsRequirement(getExistingCompletion(cadet.id, objective.id, occ.id, true), required));
+          return !passedAnywhere;
+        }
+        return !meetsRequirement(getExistingCompletion(cadet.id, objective.id, pmtEventId, false), required);
+      });
+      if (stillNeedsGrading.length === 0) return true; // nothing to hide against -- leave it, shouldn't normally happen here
+      const allPartial = stillNeedsGrading.every((cadet) => getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence)?.partial === true);
+      return !allPartial;
+    });
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective, searchedCadets, completionsByCadet]);
 
   const getCellValue = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): string => {
     const key = cellKey(cadetId, objectiveId, pmtEventId);

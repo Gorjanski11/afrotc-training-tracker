@@ -187,8 +187,18 @@ export function QuickLogScreen({
    * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
    * every objective id (graded or optional) that's applicable at this cadet's level at all --
    * used below to scope "on the schedule" to objectives that actually apply to someone visible.
+   *
+   * A multi-occurrence objective's overall status only reaches "missed" once EVERY occurrence has
+   * passed (see getObjectiveStatus) -- correct for the objective's real completion/percent math, but
+   * wrong for "should this column appear in Quick Log's default view right now": an objective spread
+   * across many PMTs all semester (e.g. a drill fundamental covered at a dozen D&C sessions) would
+   * otherwise never show up here until the very last of those has already happened, even though
+   * several earlier sessions already occurred and still need grading. So a not-yet-satisfied
+   * objective with at least one PAST occurrence also counts as overdue here, regardless of whether
+   * later occurrences remain.
    */
   const columnEligibilityByCadet = useMemo(() => {
+    const now = Date.now();
     const map = new Map<string, { overdue: Set<string>; applicable: Set<string> }>();
     for (const cadet of searchedCadets) {
       const overdue = new Set<string>();
@@ -200,7 +210,9 @@ export function QuickLogScreen({
           applicable.add(objective.id);
           if (objective.graded) {
             const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
-            if (isOverdue(info.status)) overdue.add(objective.id);
+            const hasUngradedPastOccurrence =
+              info.status !== "completed" && info.occurrences.some((occ) => new Date(occ.eventDate).getTime() <= now);
+            if (isOverdue(info.status) || hasUngradedPastOccurrence) overdue.add(objective.id);
           }
         }
       }

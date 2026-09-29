@@ -10,6 +10,7 @@ import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
+import { useAttendanceLink } from "../hooks/useAttendanceLink";
 import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS } from "../domain/constants";
 import { AccountabilityAnalyticsView } from "../screens/analytics/AccountabilityAnalyticsView";
@@ -43,6 +44,7 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
   const completionsState = useCompletions();
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
+  const attendanceLink = useAttendanceLink();
 
   const first: Screen = accountabilityAccess ? "accountability" : trainingObjectivesAccess !== "none" ? "trainingObjectives" : "memorandums";
   const [screen, setScreen] = useState<Screen>(first);
@@ -70,9 +72,17 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
     catalogState.loading ||
     completionsState.loading ||
     absenceState.loading ||
-    deviationState.loading;
+    deviationState.loading ||
+    attendanceLink.loading;
   const loadError =
-    cadetsState.error || eventsState.error || attendanceState.error || catalogState.error || completionsState.error || absenceState.error || deviationState.error;
+    cadetsState.error ||
+    eventsState.error ||
+    attendanceState.error ||
+    catalogState.error ||
+    completionsState.error ||
+    absenceState.error ||
+    deviationState.error ||
+    attendanceLink.error;
 
   return (
     <div className="flex h-full flex-col">
@@ -156,6 +166,7 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
                       showAbsence={memoReviewAbsenceAccess}
                       updateAbsenceMemo={absenceState.updateMemo}
                       updateDeviationMemo={deviationState.updateMemo}
+                      applyMemoDecision={attendanceLink.applyMemoDecision}
                       unitScope={unitScope}
                     />
                   </AnimatedPanel>

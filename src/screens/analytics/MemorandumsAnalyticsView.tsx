@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, FileDown, ArrowUpDown } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, FileDown, ArrowUpDown, Pencil } from "lucide-react";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
@@ -27,6 +31,8 @@ interface Props {
   showAbsence: boolean;
   updateAbsenceMemo: (id: string, input: Partial<AbsenceMemoInput>) => Promise<void>;
   updateDeviationMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
+  /** Flips PE attendance to AE/A when an edited Absence memo's status lands on Accepted/Rejected -- same side effect Memo Review's own edit already applies. */
+  applyMemoDecision: (cadetId: string, pmtEventIds: string[], newStatus: "AE" | "A") => Promise<number>;
   /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
   unitScope?: UnitScope;
 }
@@ -75,7 +81,19 @@ function cadetDisplayName(cadetId: string, cadetName: string, roster: Cadet[]): 
   return person ? formatCadetName(person) : cadetName;
 }
 
-export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, unitScope }: Props) {
+/** What the shared Edit dialog needs, normalized across Absence/Deviation's different field shapes -- `pmtEventIds`/`returnReason` only ever populated for an Absence target. */
+interface EditTarget {
+  kind: "Absence" | "Deviation";
+  id: string;
+  cadetId: string;
+  cadetName: string;
+  status: AbsenceMemoStatus | DeviationMemoStatus;
+  reviewNotes: string;
+  pmtEventIds: string[];
+  returnReason: string | undefined;
+}
+
+export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, applyMemoDecision, unitScope }: Props) {
   const hideUnitFilters = unitScope !== undefined && unitScope.kind !== "all";
   const [mode, setMode] = useState<ViewMode>("all");
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
@@ -120,9 +138,55 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
     [cadetId, attendance, pmtEventsById]
   );
 
-  const handleStatusChange = async (row: CombinedMemoRow, status: string) => {
-    if (row.kind === "Absence") await updateAbsenceMemo(row.id, { status: status as AbsenceMemoStatus, reviewedAt: new Date().toISOString() });
-    else await updateDeviationMemo(row.id, { status: status as DeviationMemoStatus, reviewedAt: new Date().toISOString() });
+  const absenceById = useMemo(() => new Map(visibleAbsenceMemos.map((m) => [m.id, m])), [visibleAbsenceMemos]);
+  const deviationById = useMemo(() => new Map(deviationMemos.map((m) => [m.id, m])), [deviationMemos]);
+
+  const [editing, setEditing] = useState<EditTarget | undefined>();
+  const [editStatus, setEditStatus] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const openEdit = (target: EditTarget) => {
+    setEditing(target);
+    setEditStatus(target.status);
+    setEditNotes(target.reviewNotes);
+  };
+  const openEditAbsence = (m: AbsenceMemo) =>
+    openEdit({ kind: "Absence", id: m.id, cadetId: m.cadetId, cadetName: m.cadetName, status: m.status, reviewNotes: m.reviewNotes, pmtEventIds: m.pmtEventIds, returnReason: m.returnReason });
+  const openEditDeviation = (m: DeviationMemo) =>
+    openEdit({ kind: "Deviation", id: m.id, cadetId: m.cadetId, cadetName: m.cadetName, status: m.status, reviewNotes: m.reviewNotes, pmtEventIds: [], returnReason: undefined });
+  const openEditRow = (row: CombinedMemoRow) => {
+    if (row.kind === "Absence") {
+      const m = absenceById.get(row.id);
+      if (m) openEditAbsence(m);
+    } else {
+      const m = deviationById.get(row.id);
+      if (m) openEditDeviation(m);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      if (editing.kind === "Absence") {
+        if ((editStatus === "Accepted" || editStatus === "Rejected") && editing.pmtEventIds.length > 0) {
+          await applyMemoDecision(editing.cadetId, editing.pmtEventIds, editStatus === "Accepted" ? "AE" : "A");
+        }
+        await updateAbsenceMemo(editing.id, {
+          status: editStatus as AbsenceMemoStatus,
+          reviewedAt: now,
+          reviewNotes: editNotes,
+          returnReason: editStatus === "Returned" ? editing.returnReason : undefined,
+        });
+      } else {
+        await updateDeviationMemo(editing.id, { status: editStatus as DeviationMemoStatus, reviewedAt: now, reviewNotes: editNotes });
+      }
+      setEditing(undefined);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -195,19 +259,68 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
       <Card>
         <CardContent className="pt-6">
           {mode === "all" ? (
-            <CombinedTable rows={combined} roster={roster} onStatusChange={handleStatusChange} />
+            <CombinedTable rows={combined} roster={roster} onEdit={openEditRow} />
           ) : mode === "absence" ? (
-            <AbsenceTable memos={filteredAbsence} roster={roster} pmtEventsById={pmtEventsById} />
+            <AbsenceTable memos={filteredAbsence} roster={roster} pmtEventsById={pmtEventsById} onEdit={openEditAbsence} />
           ) : (
-            <DeviationTable memos={filteredDeviation} roster={roster} />
+            <DeviationTable memos={filteredDeviation} roster={roster} onEdit={openEditDeviation} />
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(undefined)}>
+        <DialogContent className="max-w-md">
+          {editing && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Edit memorandum — {editing.cadetName}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Status</Label>
+                  <Select value={editStatus} onValueChange={setEditStatus}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(editing.kind === "Absence" ? ABSENCE_STATUS_OPTIONS : DEVIATION_STATUS_OPTIONS).map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Notes</Label>
+                  <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Optional -- why this was changed" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setEditing(undefined)} disabled={saving}>
+                  Cancel
+                </Button>
+                <Button disabled={saving} onClick={saveEdit}>
+                  {saving ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow[]; roster: Cadet[]; onStatusChange: (row: CombinedMemoRow, status: string) => void }) {
+function EditButton({ onClick }: { onClick: () => void }) {
+  return (
+    <Button size="sm" variant="ghost" title="Edit" onClick={onClick}>
+      <Pencil className="h-3.5 w-3.5" />
+    </Button>
+  );
+}
+
+function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; roster: Cadet[]; onEdit: (row: CombinedMemoRow) => void }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
@@ -222,6 +335,7 @@ function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
           <TableHead>Notes</TableHead>
+          <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -236,18 +350,7 @@ function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow
             <TableCell>{shortDate(row.submittedAt)}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
-                <Select value={row.status} onValueChange={(v) => onStatusChange(row, v)}>
-                  <SelectTrigger className="h-7 w-32 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(row.kind === "Absence" ? ABSENCE_STATUS_OPTIONS : DEVIATION_STATUS_OPTIONS).map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
                 <LateBadge lateSubmission={row.lateSubmission} />
               </span>
             </TableCell>
@@ -255,6 +358,9 @@ function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow
               <PdfButton url={row.pdfUrl} name={row.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{row.notes}</TableCell>
+            <TableCell>
+              <EditButton onClick={() => onEdit(row)} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -263,7 +369,17 @@ function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow
   );
 }
 
-function AbsenceTable({ memos, roster, pmtEventsById }: { memos: AbsenceMemo[]; roster: Cadet[]; pmtEventsById: Map<string, PmtEvent> }) {
+function AbsenceTable({
+  memos,
+  roster,
+  pmtEventsById,
+  onEdit,
+}: {
+  memos: AbsenceMemo[];
+  roster: Cadet[];
+  pmtEventsById: Map<string, PmtEvent>;
+  onEdit: (m: AbsenceMemo) => void;
+}) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No absence memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
@@ -279,6 +395,7 @@ function AbsenceTable({ memos, roster, pmtEventsById }: { memos: AbsenceMemo[]; 
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
           <TableHead>Notes</TableHead>
+          <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -300,6 +417,9 @@ function AbsenceTable({ memos, roster, pmtEventsById }: { memos: AbsenceMemo[]; 
               <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
+            <TableCell>
+              <EditButton onClick={() => onEdit(m)} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -308,7 +428,7 @@ function AbsenceTable({ memos, roster, pmtEventsById }: { memos: AbsenceMemo[]; 
   );
 }
 
-function DeviationTable({ memos, roster }: { memos: DeviationMemo[]; roster: Cadet[] }) {
+function DeviationTable({ memos, roster, onEdit }: { memos: DeviationMemo[]; roster: Cadet[]; onEdit: (m: DeviationMemo) => void }) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No deviation memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
@@ -324,6 +444,7 @@ function DeviationTable({ memos, roster }: { memos: DeviationMemo[]; roster: Cad
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
           <TableHead>Notes</TableHead>
+          <TableHead />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -342,6 +463,9 @@ function DeviationTable({ memos, roster }: { memos: DeviationMemo[]; roster: Cad
               <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
+            <TableCell>
+              <EditButton onClick={() => onEdit(m)} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

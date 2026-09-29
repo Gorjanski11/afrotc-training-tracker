@@ -53,6 +53,16 @@ export function proficiencyOptionsAtOrAbove(required: ProficiencyCode): Proficie
   return PROFICIENCY_CODES.filter((code) => proficiencyFamily(code) === family && PROFICIENCY_RANK[code] >= PROFICIENCY_RANK[required]);
 }
 
+/**
+ * Training Objectives that can only ever be demonstrated by physically attending -- an absence
+ * means the material was never covered for that cadet, not that they attempted and failed. Marking
+ * a cadet Absent for a PMT covering one of these auto-logs a `notCovered: true` completion instead
+ * of the usual Not Pass (see useAutoFailCompletions); never a manual Quick Log option.
+ * - "2-6.1": Drill fundamentals and drill of the flight/squadron.
+ * - "4-2.3": Base defense/UXO/IED/sUAS/active-shooter TTPs.
+ */
+export const PRESENCE_BASED_OBJECTIVE_IDS = new Set(["2-6.1", "4-2.3"]);
+
 // PMT (Practical Military Training) session types tracked on the Calendar tab. This calendar is
 // shared with the separate Accountability site (same pmtEvents collection, same Firebase project)
 // -- "PT" exists for pure physical-training sessions that Accountability tracks attendance for.

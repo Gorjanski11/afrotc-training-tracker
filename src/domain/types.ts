@@ -113,6 +113,15 @@ export interface Completion {
    * entered is -- only a plain Pass (partial: false) at or above the required proficiency counts.
    */
   partial: boolean;
+  /**
+   * Auto-set instead of a Not Pass when a cadet is marked Absent for a PMT covering one of the small
+   * set of "presence-based" objectives (see PRESENCE_BASED_OBJECTIVE_IDS) -- these can only be
+   * demonstrated by physically being there, so an absence means the material simply wasn't covered
+   * for that cadet, not that they attempted and failed. Never a manual Quick Log option; `proficiencyAchieved`
+   * on a notCovered completion is an inert placeholder and never satisfies a requirement (see
+   * meetsRequirement) or gets rendered -- every display site shows the literal "Not Covered" label instead.
+   */
+  notCovered: boolean;
 }
 
 export interface PmtEvent {

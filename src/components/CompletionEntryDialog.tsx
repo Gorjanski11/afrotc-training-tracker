@@ -127,6 +127,8 @@ export function CompletionEntryDialog({
           // entered, since it's the evaluator vouching only for this occurrence's own material, not
           // a definitive session pass. The plain Pass toggle and Cadet Detail's log dialog never set this.
           partial: !!allowMultiplePartial,
+          // Not Covered is never a manual entry -- only the absence auto-fail hook sets it.
+          notCovered: false,
         };
         if (existing) await updateCompletion(existing.id, input);
         else await createCompletion(input);

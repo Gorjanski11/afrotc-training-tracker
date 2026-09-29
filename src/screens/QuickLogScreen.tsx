@@ -368,6 +368,8 @@ export function QuickLogScreen({
           // The plain Pass toggle never produces a Partial entry -- even when overwriting a cell that
           // was previously logged as Partial, this clears that flag back to a definitive pass.
           partial: false,
+          // Not Covered is never a manual Quick Log option -- only the absence auto-fail hook sets it.
+          notCovered: false,
         };
         if (existing) {
           await updateCompletion(existing.id, input);

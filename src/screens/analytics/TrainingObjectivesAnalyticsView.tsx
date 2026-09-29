@@ -383,10 +383,11 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                 className={cn(
                                   "px-1 py-0.5 text-center text-[11px]",
                                   i === 0 && "border-l border-input",
+                                  cell?.notCovered && "text-muted-foreground italic",
                                   cell?.partial && "bg-warning text-warning-foreground font-medium"
                                 )}
                               >
-                                {cell ? (cell.partial ? `P-${cell.code}` : cell.code) : ""}
+                                {cell ? (cell.notCovered ? "Not Covered" : cell.partial ? `P-${cell.code}` : cell.code) : ""}
                               </TableCell>
                             );
                           })

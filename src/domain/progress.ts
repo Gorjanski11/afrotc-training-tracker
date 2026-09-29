@@ -48,11 +48,12 @@ export function completionForOccurrence(objectiveId: string, pmtEventId: string,
   return cadetCompletions.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
 }
 
-/** A Partial entry never satisfies a requirement, no matter which code was entered -- it only vouches for that occurrence's own material, not a definitive pass. */
+/** A Partial (or Not Covered) entry never satisfies a requirement, no matter which code was entered -- it only vouches for that occurrence's own material, not a definitive pass. */
 export function meetsRequirement(completion: Completion | undefined, required: string): boolean {
   return (
     !!completion &&
     !completion.partial &&
+    !completion.notCovered &&
     required !== "" &&
     PROFICIENCY_RANK[completion.proficiencyAchieved as ProficiencyCode] >= PROFICIENCY_RANK[required as ProficiencyCode]
   );

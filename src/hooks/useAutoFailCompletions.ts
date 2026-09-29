@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { addDoc, collection, doc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
-import { PROFICIENCY_CODES, PROFICIENCY_RANK, type ProficiencyCode } from "../domain/constants";
+import { PROFICIENCY_CODES, PROFICIENCY_RANK, PRESENCE_BASED_OBJECTIVE_IDS, type ProficiencyCode } from "../domain/constants";
 import { formatCadetName } from "../domain/nameUtils";
 import type { Cadet, PmtEvent, TrainingObjective } from "../domain/types";
 
@@ -30,6 +30,10 @@ function defaultNotPassCode(required: ProficiencyCode): ProficiencyCode {
  * logged for that cadet/objective/occurrence. Once set this way, nothing here ever auto-reverts it
  * -- not a later excuse (AE/PE), not a status correction away from "A" -- a human has to re-grade it
  * manually from Quick Log or Cadet Detail, same as any other completion.
+ *
+ * Exception: PRESENCE_BASED_OBJECTIVE_IDS (drill fundamentals, base-defense/UXO TTPs) can only ever
+ * be demonstrated by physically attending -- an absence there logs `notCovered: true` instead, since
+ * the material simply wasn't covered for that cadet, not that they attempted and failed.
  */
 export function useAutoFailCompletions() {
   const applyAbsenceNotPass = useCallback(async (cadet: Cadet, pmtEvent: PmtEvent, catalogById: Map<string, TrainingObjective>) => {
@@ -49,6 +53,7 @@ export function useAutoFailCompletions() {
       const requiredCell = objective.proficiencyByLevel[cadet.devLevel];
       if (!requiredCell) continue; // not applicable at this cadet's level
       const requiredCode = firstRequiredCode(requiredCell) ?? "P1";
+      const presenceBased = PRESENCE_BASED_OBJECTIVE_IDS.has(objectiveId);
       const notPassCode = defaultNotPassCode(requiredCode);
 
       const input = {
@@ -56,12 +61,15 @@ export function useAutoFailCompletions() {
         cadetName: formatCadetName(cadet),
         objectiveId,
         objectiveNumber: objective.number,
-        proficiencyAchieved: notPassCode,
+        // Inert placeholder when notCovered -- never rendered or ranked, every display site shows
+        // the literal "Not Covered" label instead (see meetsRequirement/crosstabCellFor).
+        proficiencyAchieved: presenceBased ? "Ka" : notPassCode,
         dateCompleted: new Date().toISOString().slice(0, 10),
         evaluator: AUTO_EVALUATOR,
-        notes: `Auto-logged: marked Absent for "${pmtEvent.title}".`,
+        notes: presenceBased ? `Not covered -- marked Absent for "${pmtEvent.title}".` : `Auto-logged: marked Absent for "${pmtEvent.title}".`,
         pmtEventId: pmtEvent.id,
         partial: false,
+        notCovered: presenceBased,
       };
 
       const key = `${objectiveId}:${pmtEvent.id}`;

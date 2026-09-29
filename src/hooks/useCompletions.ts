@@ -16,6 +16,7 @@ export interface CompletionInput {
   notes: string;
   pmtEventId: string | undefined;
   partial: boolean;
+  notCovered: boolean;
 }
 
 const COLLECTION = "completions";
@@ -33,6 +34,7 @@ function mapCompletion(id: string, data: Record<string, unknown>): Completion {
     notes: (data.notes as string) ?? "",
     pmtEventId: (data.pmtEventId as string | null | undefined) ?? undefined,
     partial: (data.partial as boolean | undefined) ?? false,
+    notCovered: (data.notCovered as boolean | undefined) ?? false,
   };
 }
 

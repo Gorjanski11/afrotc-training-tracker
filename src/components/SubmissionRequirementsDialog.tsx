@@ -9,10 +9,12 @@ interface Props {
   busy?: boolean;
   confirmLabel?: string;
   requirements: React.ReactNode;
+  /** Extra highlighted callout shown above the requirements list -- used by the "submit in advance" future-PMT flow to reiterate it's not for a past absence (Section: pre-submit confirmation). */
+  intro?: React.ReactNode;
 }
 
 /** Section 18 -- gates the actual submit behind an acknowledgment checkbox, shown for every memo submission (Absence and Deviation alike). Resets its own checkbox state each time it's reopened. */
-export function SubmissionRequirementsDialog({ open, onClose, onConfirm, busy, confirmLabel = "Confirm & Submit", requirements }: Props) {
+export function SubmissionRequirementsDialog({ open, onClose, onConfirm, busy, confirmLabel = "Confirm & Submit", requirements, intro }: Props) {
   const [acknowledged, setAcknowledged] = useState(false);
 
   const handleClose = () => {
@@ -26,6 +28,7 @@ export function SubmissionRequirementsDialog({ open, onClose, onConfirm, busy, c
         <DialogHeader>
           <DialogTitle>Before you submit</DialogTitle>
         </DialogHeader>
+        {intro && <div className="rounded-md border border-warning/50 bg-warning/10 p-3 text-sm text-warning-foreground">{intro}</div>}
         <div className="max-h-72 overflow-y-auto text-sm text-muted-foreground">{requirements}</div>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-1" checked={acknowledged} onChange={(e) => setAcknowledged(e.target.checked)} />

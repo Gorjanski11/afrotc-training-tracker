@@ -498,7 +498,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                 Know you'll miss an upcoming PMT?
               </CardTitle>
               <CardDescription>
-                Submit ahead of time for a PMT that hasn't happened yet. Cadre will still confirm the absence when it occurs.
+                This is only for a PMT that hasn't happened yet -- if you already missed one, use "New Absence Memo" above instead. Cadre will still
+                confirm the absence once that PMT actually occurs.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -695,6 +696,12 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         onClose={() => setFutureConfirmOpen(false)}
         busy={futureSubmitting}
         requirements={REQUIREMENTS_LIST}
+        intro={
+          <>
+            This is for a PMT that <strong>hasn't happened yet</strong> -- not for reporting an absence that already occurred. If you already missed
+            a PMT, cancel this and use the "New Absence Memo" form instead.
+          </>
+        }
         onConfirm={async () => {
           await handleFutureSubmit();
           setFutureConfirmOpen(false);

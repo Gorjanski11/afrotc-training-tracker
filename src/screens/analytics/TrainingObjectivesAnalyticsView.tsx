@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -8,10 +8,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { AlertTriangle, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, PLO_SHORT_CODE, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group, type PloSection } from "../../domain/constants";
-import { computeCohortSummary, computeCompletionByCadet, computeCompletionByPlo, computeOverdueObjectives, crosstabCellFor, type CadetCompletionRow, type PloCompletionRow } from "../../domain/analytics";
+import { computeCohortSummary, computeCompletionByPlo, computeOverdueObjectives, crosstabCellFor, type PloCompletionRow } from "../../domain/analytics";
 import { groupByPlo } from "../../domain/objectiveGrouping";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
+import { CadetObjectiveTimelineTable } from "../../components/CadetObjectiveTimelineTable";
+import { Stepper } from "../../components/analytics/Stepper";
 import type { UnitScope } from "../../domain/access";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
 
@@ -87,7 +89,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
       }),
     [availableDevLevels]
   );
-  const [cadetView, setCadetView] = useState<"crosstab" | "table" | "chart">("crosstab");
+  const [cadetView, setCadetView] = useState<"crosstab" | "timeline">("crosstab");
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     setMasterCadetId(which === "cadet" ? value : ALL_CADETS);
@@ -108,18 +110,8 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
   const filteredCatalog = useMemo(() => (ploFilter === "All" ? catalog : catalog.filter((o) => o.plo === ploFilter)), [catalog, ploFilter]);
 
   const summary = useMemo(() => computeCohortSummary(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
-  const byCadet = useMemo(() => computeCompletionByCadet(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
-  const cadetById = useMemo(() => new Map(cadets.map((c) => [c.id, c])), [cadets]);
-  // Display-only: the bar chart's Y-axis reads `name` straight off this array, so it needs the
-  // formatted name -- `byCadet` itself keeps the plain name since it's what compareByLastName sorts by.
-  const byCadetChartData = useMemo(
-    () => byCadet.map((row) => ({ ...row, name: (() => { const cadet = cadetById.get(row.cadetId); return cadet ? formatCadetName(cadet) : row.name; })() })),
-    [byCadet, cadetById]
-  );
   const byPlo = useMemo(() => computeCompletionByPlo(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
   const overdue = useMemo(() => computeOverdueObjectives(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
-
-  const cadetChartHeight = Math.max(200, byCadet.length * 28);
 
   // Section D: "Completed TO's by Cadet" crosstab -- PLO-grouped columns (spanning header), one row
   // per cadet, sorted the same way as the other cadet views.
@@ -144,6 +136,14 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
     }
     return map;
   }, [completions]);
+
+  // PMT Timeline view (Section: moved in from Cadet Detail) -- inherently single-cadet, so it only
+  // renders once the Cadet filter above narrows to exactly one person.
+  const timelineCadet = useMemo(() => (masterCadetId === ALL_CADETS ? undefined : cadets.find((c) => c.id === masterCadetId)), [masterCadetId, cadets]);
+  const timelineCompletions = useMemo(
+    () => (timelineCadet ? crosstabCompletionsByCadet.get(timelineCadet.id) ?? [] : []),
+    [timelineCadet, crosstabCompletionsByCadet]
+  );
 
   return (
     <div>
@@ -315,18 +315,16 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
         <CardHeader className="mb-1 flex-row items-center justify-between space-y-0">
           <CardTitle>
             <BarChart3 className="h-4 w-4 text-primary" />
-            {cadetView === "crosstab" ? "Completed TO's by Cadet" : "Completion % by cadet"}
+            {cadetView === "crosstab" ? "Completed TO's by Cadet" : "PMT Timeline"}
           </CardTitle>
-          <Select value={cadetView} onValueChange={(v) => setCadetView(v as typeof cadetView)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="crosstab">Completed TO's by Cadet</SelectItem>
-              <SelectItem value="table">Table view</SelectItem>
-              <SelectItem value="chart">Chart view</SelectItem>
-            </SelectContent>
-          </Select>
+          <Stepper
+            options={[
+              { value: "crosstab", label: "Completed TO's" },
+              { value: "timeline", label: "PMT Timeline" },
+            ]}
+            value={cadetView}
+            onChange={(v) => setCadetView(v as typeof cadetView)}
+          />
         </CardHeader>
         <CardContent className="pt-1">
           {cadetView === "crosstab" ? (
@@ -398,66 +396,18 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                 </Table>
               </div>
             )
-          ) : byCadet.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No cadets match this filter.</p>
-          ) : cadetView === "table" ? (
-            <div className="overflow-x-auto">
-            <Table aria-label="Completion by cadet">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Cadet</TableHead>
-                  <TableHead>Dev Level</TableHead>
-                  <TableHead>Completion</TableHead>
-                  <TableHead>Missed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {byCadet.map((row) => (
-                  <TableRow key={row.cadetId}>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
-                        {row.flagged && <AlertTriangle className="h-4 w-4 text-destructive" />}
-                        {(() => {
-                          const cadet = cadetById.get(row.cadetId);
-                          return cadet ? formatCadetName(cadet) : row.name;
-                        })()}
-                      </span>
-                    </TableCell>
-                    <TableCell>{row.devLevel ?? "—"}</TableCell>
-                    <TableCell>{row.percent}%</TableCell>
-                    <TableCell>{row.missedCount > 0 ? <span className="text-destructive">{row.missedCount}</span> : "—"}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </div>
+          ) : !timelineCadet ? (
+            <p className="text-sm text-muted-foreground">Select a single cadet above (Cadet filter) to view their PMT Timeline.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={cadetChartHeight}>
-              <BarChart data={byCadetChartData} layout="vertical" margin={chartMargin}>
-                <CartesianGrid horizontal={false} stroke="var(--chart-grid)" />
-                <XAxis type="number" domain={[0, 100]} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} unit="%" />
-                <YAxis type="category" dataKey="name" width={160} tick={{ fill: "var(--chart-ink-muted)", fontSize: 11 }} tickLine={false} axisLine={{ stroke: "var(--chart-axis)" }} />
-                <Tooltip
-                  cursor={{ fill: "var(--muted)" }}
-                  contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 12 }}
-                  formatter={(value, _name, item) => [`${value}% (${(item.payload as CadetCompletionRow).missedCount} missed)`, "Completion"]}
-                />
-                <Bar dataKey="percent" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                  {byCadet.map((row) => (
-                    <Cell key={row.cadetId} fill={row.flagged ? "var(--chart-critical)" : "var(--chart-series-1)"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <CadetObjectiveTimelineTable
+              cadet={timelineCadet}
+              objectives={filteredCatalog}
+              pmtEvents={pmtEvents}
+              cadetCompletions={timelineCompletions}
+              overdueOnly={false}
+              onOpenObjective={() => {}}
+            />
           )}
-          <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-series-1)" }} /> On track
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--chart-critical)" }} /> Flagged (has a missed objective)
-            </span>
-          </div>
         </CardContent>
       </Card>
     </div>

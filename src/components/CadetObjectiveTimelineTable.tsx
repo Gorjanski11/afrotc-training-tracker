@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { getObjectiveStatus, isOverdue, completionForOccurrence, meetsRequirement } from "../domain/progress";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { formatCadetName } from "../domain/nameUtils";
+import { PLO_SHORT_CODE, type PloSection } from "../domain/constants";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface Props {
@@ -23,6 +24,13 @@ type RowSort = "number" | "pmtDate";
 /** Date-only (no time) comparison so a completion logged the same calendar day as a PMT still counts as "done at that session". */
 function isOnOrAfterDay(completionDate: string, eventIso: string): boolean {
   return completionDate.slice(0, 10) >= eventIso.slice(0, 10);
+}
+
+const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** "3 Sep" -- day before month, no year, as compact as this column header gets. */
+function shortDayMonth(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
 export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cadetCompletions, overdueOnly, onOpenObjective }: Props) {
@@ -86,47 +94,48 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
       <Table aria-label={`Objective x PMT timeline for ${formatCadetName(cadet)}`}>
         <TableHeader>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 h-auto min-w-40 bg-background px-2 py-1">
-              <div className="flex items-center gap-1">
-                <span className="text-xs">Training Objective</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setRowSort(rowSort === "number" ? "pmtDate" : "number")}>
-                  <ArrowUpDown className="h-3 w-3" />
+            <TableHead className="sticky left-0 z-10 h-auto min-w-16 bg-background px-1 py-1">
+              <div className="flex items-center gap-0.5">
+                <span className="text-[10px]">TO</span>
+                <Button variant="ghost" size="icon" className="h-4 w-4" onClick={() => setRowSort(rowSort === "number" ? "pmtDate" : "number")}>
+                  <ArrowUpDown className="h-2.5 w-2.5" />
                 </Button>
-                <span className="text-[10px] font-normal text-muted-foreground">({rowSort === "number" ? "TO order" : "TO date"})</span>
               </div>
             </TableHead>
             {columns.map((event) => (
-              <TableHead key={event.id} className="h-auto min-w-20 px-1 py-1 text-center">
-                <div className="text-[10px] font-medium leading-tight">{event.title}</div>
-                <div className="text-[9px] leading-tight text-muted-foreground">{new Date(event.eventDate).toLocaleDateString()}</div>
+              <TableHead key={event.id} title={event.title} className="h-auto min-w-10 px-0.5 py-1 text-center">
+                <div className="text-[10px] font-medium leading-tight">{event.eventType}</div>
+                <div className="text-[9px] leading-tight text-muted-foreground">{shortDayMonth(event.eventDate)}</div>
               </TableHead>
             ))}
           </TableRow>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 h-auto bg-background px-2 py-0.5">
-              <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px]" onClick={() => setColumnSort(columnSort === "date" ? "event" : "date")}>
-                <ArrowUpDown className="h-3 w-3" />
-                Columns: {columnSort === "date" ? "by date" : "by event"}
+            <TableHead className="sticky left-0 z-10 h-auto bg-background px-1 py-0.5">
+              <Button variant="ghost" size="icon" className="h-4 w-4" title={`Columns: ${columnSort === "date" ? "by date" : "by event"}`} onClick={() => setColumnSort(columnSort === "date" ? "event" : "date")}>
+                <ArrowUpDown className="h-2.5 w-2.5" />
               </Button>
             </TableHead>
             {columns.map((event) => (
-              <TableHead key={event.id} className="h-auto px-1 py-0.5" />
+              <TableHead key={event.id} className="h-auto px-0.5 py-0.5" />
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
           {sortedRows.map(({ objective, info }) => {
             const requiredCode = objective.proficiencyByLevel[devLevel];
+            const shortCode = PLO_SHORT_CODE[objective.plo as PloSection] ?? "";
+            const rowTitle = `${objective.title} — Required: ${requiredCode}${!objective.graded ? " (optional, never overdue)" : ""}`;
             return (
               <TableRow key={objective.id}>
-                <TableCell className="sticky left-0 z-10 bg-background px-2 py-1">
-                  <button className="text-left text-primary hover:underline" onClick={() => onOpenObjective(objective)}>
-                    <span className="text-xs font-medium">{objective.number}</span> — <span className="text-[11px]">{objective.title}</span>
+                <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-1 py-0.5">
+                  <button
+                    type="button"
+                    title={rowTitle}
+                    className="text-left text-[11px] font-medium text-primary hover:underline"
+                    onClick={() => onOpenObjective(objective)}
+                  >
+                    {shortCode} {objective.number}
                   </button>
-                  <div className="text-[10px] text-muted-foreground">
-                    Required: {requiredCode}
-                    {!objective.graded && " (optional, never overdue)"}
-                  </div>
                 </TableCell>
                 {columns.map((event) => {
                   const covers = event.objectiveIds.includes(objective.id);
@@ -169,17 +178,18 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                                   : "bg-warning/15 text-warning-foreground"
                         )}
                         onClick={() => onOpenObjective(objective)}
+                        title={hasEntry && !notCovered && !satisfied ? "Partial" : undefined}
                       >
                         {notCovered
-                          ? "Not Covered"
+                          ? "N/Cov"
                           : hasEntry
-                            ? `✓ ${columnCompletion?.proficiencyAchieved}${!satisfied ? " (Partial)" : ""}`
+                            ? `✓${columnCompletion?.proficiencyAchieved}`
                             : optional
-                              ? "Optional"
+                              ? "Opt"
                               : !isPast
-                                ? "Upcoming"
+                                ? "—"
                                 : columnMissed
-                                  ? "Missed"
+                                  ? "Miss"
                                   : "Due"}
                       </button>
                     </TableCell>

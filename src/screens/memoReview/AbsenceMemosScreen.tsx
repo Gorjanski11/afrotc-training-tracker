@@ -5,18 +5,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { FileText, ExternalLink, Pencil } from "lucide-react";
+import { FileText, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
-import type { AbsenceMemo, PmtEvent } from "../../domain/types";
+import { canDeleteAbsenceMemo } from "../../domain/access";
+import type { AbsenceMemo, Cadet, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
 interface Props {
   events: PmtEvent[];
   memos: AbsenceMemo[];
+  roster: Cadet[];
   updateMemo: (id: string, input: Partial<AbsenceMemoInput>) => Promise<void>;
+  deleteMemo: (id: string) => Promise<void>;
   applyMemoDecision: (cadetId: string, pmtEventIds: string[], newStatus: "AE" | "A") => Promise<number>;
+  reauthenticate: (password: string) => Promise<void>;
+  userEmail: string | null | undefined;
 }
 
 function StatusBadge({ status }: { status: AbsenceMemoStatus }) {
@@ -36,7 +42,8 @@ function coverageSummary(m: AbsenceMemo, eventLabel: (id: string) => string): st
 const OFC_REVIEWER = "Capt Deaton";
 
 /** Submission now lives on the separate GMC/POC submission site -- this screen is cadre review only. */
-export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecision }: Props) {
+export function AbsenceMemosScreen({ events, memos, roster, updateMemo, deleteMemo, applyMemoDecision, reauthenticate, userEmail }: Props) {
+  const canDelete = canDeleteAbsenceMemo(userEmail, roster);
   const [reviewingId, setReviewingId] = useState<string | undefined>();
   const [reviewNotes, setReviewNotes] = useState("");
   const [returnReason, setReturnReason] = useState("");
@@ -123,6 +130,39 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   const reviewing = memos.find((m) => m.id === reviewingId);
   const overriding_ = memos.find((m) => m.id === overrideId);
 
+  // Permanently deletes an Absence Memo -- restricted to Cortes Garay/Cadre (narrower than who can
+  // review), plus a fresh password re-check right before the delete, since this can't be undone.
+  const [deleteId, setDeleteId] = useState<string | undefined>();
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | undefined>();
+  const deleting_ = memos.find((m) => m.id === deleteId);
+
+  const openDelete = (memo: AbsenceMemo) => {
+    setDeleteId(memo.id);
+    setDeletePassword("");
+    setDeleteError(undefined);
+  };
+  const closeDelete = () => {
+    setDeleteId(undefined);
+    setDeletePassword("");
+    setDeleteError(undefined);
+  };
+  const handleDelete = async () => {
+    if (!deleting_ || !deletePassword) return;
+    setDeleting(true);
+    setDeleteError(undefined);
+    try {
+      await reauthenticate(deletePassword);
+      await deleteMemo(deleting_.id);
+      closeDelete();
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : "Failed to delete -- check your password.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -172,6 +212,11 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                   <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
+                  {canDelete && (
+                    <Button size="sm" variant="ghost" title="Delete" onClick={() => openDelete(m)}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -230,9 +275,16 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
                     <TableCell>
-                      <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openOverride(m)} aria-label="Override status">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        {canDelete && (
+                          <Button size="sm" variant="ghost" title="Delete" onClick={() => openDelete(m)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -347,6 +399,32 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
               <DialogFooter>
                 <Button disabled={overriding} onClick={() => applyOverride(overriding_)}>
                   {overriding ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleting_} onOpenChange={(o) => !o && closeDelete()}>
+        <DialogContent className="max-w-sm">
+          {deleting_ && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Delete absence memo — {deleting_.cadetName}?</DialogTitle>
+                <DialogDescription>This permanently deletes it and cannot be undone. Enter your password to confirm.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-1.5">
+                <Label>Your password</Label>
+                <Input type="password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} autoComplete="current-password" />
+              </div>
+              {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+              <DialogFooter>
+                <Button variant="secondary" onClick={closeDelete} disabled={deleting}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={deleting || !deletePassword}>
+                  {deleting ? "Deleting..." : "Delete"}
                 </Button>
               </DialogFooter>
             </>

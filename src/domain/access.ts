@@ -229,6 +229,15 @@ export function isCortesGaray(email: string | null | undefined): boolean {
   return (email ?? "").trim().toLowerCase() === "jorge.cortes4@upr.edu";
 }
 
+/** Cortes Garay or Cadre (roster `isCadre` flag) only -- deliberately narrower than `isCadreOrCortesGaray` (excludes CWL). Gates the permanent Absence Memo delete action in Memo Review. */
+export function canDeleteAbsenceMemo(email: string | null | undefined, roster: Cadet[]): boolean {
+  if (isCortesGaray(email)) return true;
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized) return false;
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  return match?.isCadre === true;
+}
+
 // ---------------------------------------------------------------------------
 // Event add/edit -- restricted to 4 named staff positions + Cadre (Section A5)
 // ---------------------------------------------------------------------------

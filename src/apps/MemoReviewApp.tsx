@@ -103,8 +103,12 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
                     <AbsenceMemosScreen
                       events={eventsState.events}
                       memos={absenceState.memos}
+                      roster={cadetsState.cadets}
                       updateMemo={absenceState.updateMemo}
+                      deleteMemo={absenceState.deleteMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}
+                      reauthenticate={reauthenticate}
+                      userEmail={userEmail}
                     />
                   </AnimatedPanel>
                 </TabsContent>

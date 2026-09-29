@@ -68,19 +68,31 @@ export function AttendanceScreen({
     [events]
   );
 
-  // Default PMT (Section I): the EARLIEST past-or-current PMT that still has zero attendance
-  // records -- e.g. if Tuesday's PMT already has accountability entered, default to Thursday's
-  // next, not back to some later gap. Falls back to the single most recent PMT overall once every
-  // past PMT already has attendance recorded.
+  // The default view is always the current Training Week -- the latest TW that's already started
+  // (has at least one PMT on or before today), regardless of whether some older TW still has
+  // missing accountability (that's what the "Missed Accountability" dashboard card is for). Falls
+  // back to the earliest upcoming TW if the semester hasn't started yet.
+  const currentTW = useMemo(() => {
+    const now = Date.now();
+    const twNumbers = events.map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined);
+    if (twNumbers.length === 0) return undefined;
+    const pastTWs = events.filter((e) => new Date(e.eventDate).getTime() <= now).map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined);
+    return pastTWs.length > 0 ? Math.max(...pastTWs) : Math.min(...twNumbers);
+  }, [events]);
+
+  // Default PMT (Section I): within the current TW, the EARLIEST PMT that still has zero
+  // attendance records -- e.g. if Tuesday's PMT already has accountability entered, default to
+  // Thursday's next. Falls back to the current TW's own first PMT once everything in it is recorded.
   const defaultEvent = useMemo(() => {
     const now = Date.now();
     const recordedIds = new Set(attendance.map((a) => a.pmtEventId));
-    const ascendingPast = [...events].filter((e) => new Date(e.eventDate).getTime() <= now).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
-    const earliestUnrecorded = ascendingPast.find((e) => !recordedIds.has(e.id));
-    return earliestUnrecorded ?? sortedEvents[0];
-  }, [events, sortedEvents, attendance]);
+    const currentTWEvents = currentTW === undefined ? [] : events.filter((e) => e.trainingWeek === currentTW);
+    const ascendingThisWeek = [...currentTWEvents].sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    const earliestUnrecorded = ascendingThisWeek.find((e) => new Date(e.eventDate).getTime() <= now && !recordedIds.has(e.id));
+    return earliestUnrecorded ?? ascendingThisWeek[0] ?? sortedEvents[0];
+  }, [events, currentTW, sortedEvents, attendance]);
 
-  const [twFilter, setTwFilter] = useState<number | undefined>(defaultEvent?.trainingWeek);
+  const [twFilter, setTwFilter] = useState<number | undefined>(currentTW);
 
   const weekEvents = useMemo(
     () => (twFilter === undefined ? sortedEvents : sortedEvents.filter((e) => e.trainingWeek === twFilter)),

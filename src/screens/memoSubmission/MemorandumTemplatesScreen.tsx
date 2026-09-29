@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, ExternalLink, LibraryBig } from "lucide-react";
+import { FileText, Download, LibraryBig } from "lucide-react";
 import { listMemorandumTemplates, type MemorandumTemplate } from "../../lib/storage";
 
 /** Known templates get a friendly display name + one-line description; anything else uploaded later falls back to a prettified filename. */
@@ -56,7 +56,7 @@ export function MemorandumTemplatesScreen() {
         Memorandum Templates
       </h2>
       <p className="mb-4 text-sm text-muted-foreground">
-        Reference templates to help you write your own memorandums and emails. View or download a copy -- these master copies can't be edited here.
+        Reference templates to help you write your own memorandums and emails. Download a copy -- these master copies can't be edited here.
       </p>
 
       <Card>
@@ -85,12 +85,6 @@ export function MemorandumTemplatesScreen() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
-                      <a href={t.url} target="_blank" rel="noreferrer">
-                        <Button type="button" size="sm" variant="secondary">
-                          <ExternalLink className="h-3.5 w-3.5" />
-                          View
-                        </Button>
-                      </a>
                       <a href={t.url} download={t.fileName}>
                         <Button type="button" size="sm" variant="outline">
                           <Download className="h-3.5 w-3.5" />

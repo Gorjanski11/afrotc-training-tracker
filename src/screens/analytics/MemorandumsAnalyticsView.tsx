@@ -107,13 +107,13 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
   }, [visibleAbsenceMemos, deviationMemos, pmtEventsById, roster, cadetId, flight, group, sortBy]);
   const filteredAbsence = useMemo(() => {
     const rows = filterByRosterScope(visibleAbsenceMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
-    return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
-  }, [visibleAbsenceMemos, roster, cadetId, flight, group, sortBy]);
-  const filteredDeviation = useMemo(() => {
-    const rows = filterByRosterScope(deviationMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
     return sortBy === "cadet"
       ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName))
-      : rows.sort((a, b) => (b.submittedAt ?? b.dateAssigned).localeCompare(a.submittedAt ?? a.dateAssigned));
+      : rows.sort((a, b) => dateMissedFor(b, pmtEventsById).localeCompare(dateMissedFor(a, pmtEventsById)));
+  }, [visibleAbsenceMemos, roster, cadetId, flight, group, sortBy, pmtEventsById]);
+  const filteredDeviation = useMemo(() => {
+    const rows = filterByRosterScope(deviationMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
+    return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.dateAssigned.localeCompare(a.dateAssigned));
   }, [deviationMemos, roster, cadetId, flight, group, sortBy]);
   const selectedCadetSummary = useMemo(
     () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),

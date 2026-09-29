@@ -381,11 +381,21 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                 className={cn(
                                   "px-1 py-0.5 text-center text-[11px]",
                                   i === 0 && "border-l border-input",
-                                  cell?.notCovered && "text-muted-foreground italic",
-                                  cell?.partial && "bg-warning text-warning-foreground font-medium"
+                                  cell?.status === "complete" && "bg-success text-success-foreground font-medium",
+                                  cell?.status === "partial" && "bg-warning text-warning-foreground font-medium",
+                                  cell?.status === "incomplete" && "bg-destructive text-destructive-foreground font-medium",
+                                  cell?.status === "notCovered" && "text-muted-foreground italic"
                                 )}
                               >
-                                {cell ? (cell.notCovered ? "Not Covered" : cell.partial ? `P-${cell.code}` : cell.code) : ""}
+                                {cell
+                                  ? cell.status === "notCovered"
+                                    ? "Not Covered"
+                                    : cell.status === "incomplete"
+                                      ? "INC"
+                                      : cell.status === "partial"
+                                        ? `PC-${cell.code}`
+                                        : `C-${cell.code}`
+                                  : ""}
                               </TableCell>
                             );
                           })

@@ -88,33 +88,42 @@ export function computeCompletionByCadet(cadets: Cadet[], catalog: TrainingObjec
     .sort((a, b) => compareByLastName(a.name, b.name));
 }
 
+export type CrosstabStatus = "complete" | "partial" | "incomplete" | "notCovered";
+
 export interface CrosstabCell {
   code: ProficiencyCode;
-  /** True when the best completion logged doesn't (yet) satisfy the objective's required proficiency -- rendered in yellow with a "P - " prefix (Section D). */
-  partial: boolean;
-  /** True when nothing but Not Covered completions exist -- rendered as the literal "Not Covered" label instead of `code` (PRESENCE_BASED_OBJECTIVE_IDS, absence on a presence-based objective). */
-  notCovered: boolean;
+  /** Mirrors Quick Log's own C/PC/INC states, plus notCovered for a presence-based absence (Section: crosstab C/PC/INC convention). */
+  status: CrosstabStatus;
 }
 
 /**
  * One cadet's cell in the "Completed TO's by Cadet" crosstab (Section D) -- undefined for a blank
  * cell, either because this objective isn't evaluated at the cadet's dev level at all, or because
- * nothing has been logged against it yet. Prefers a completion that actually satisfies the
- * requirement (a genuine, non-partial, non-notCovered pass at or above the required code) over a
- * merely higher-ranked one that doesn't -- e.g. a cadet with both a qualifying P1 pass and a later,
- * higher-ranked but still-Partial P2 shows the P1 pass, not "P - P2". A real Partial pass always
- * outranks a Not Covered placeholder (Ka, the lowest rank), so one qualifying or partial session
- * anywhere hides a Not Covered from another occurrence -- only shows when nothing else was ever logged.
+ * nothing has been logged against it yet. Otherwise picks the single best-standing completion
+ * across every occurrence, in priority order: a genuine Complete (meets the requirement, not
+ * Partial, not Not Covered) beats a Partial complete, which beats a plain Incomplete, which beats a
+ * Not Covered placeholder -- e.g. a cadet with a qualifying Complete at one occurrence and a
+ * Not Covered at another still shows Complete, not Not Covered. Ties within a tier go to the
+ * highest-ranked code.
  */
 export function crosstabCellFor(objective: TrainingObjective, devLevel: DevLevel, cadetCompletions: Completion[]): CrosstabCell | undefined {
   const required = objective.proficiencyByLevel[devLevel];
   if (required === "") return undefined;
   const relevant = cadetCompletions.filter((c) => c.objectiveId === objective.id);
   if (relevant.length === 0) return undefined;
-  const passing = relevant.filter((c) => meetsRequirement(c, required));
-  const pool = passing.length > 0 ? passing : relevant;
-  const best = pool.reduce((a, b) => (PROFICIENCY_RANK[b.proficiencyAchieved] > PROFICIENCY_RANK[a.proficiencyAchieved] ? b : a));
-  return { code: best.proficiencyAchieved, partial: passing.length === 0 && !best.notCovered, notCovered: best.notCovered };
+
+  const best = (pool: Completion[]) => pool.reduce((a, b) => (PROFICIENCY_RANK[b.proficiencyAchieved] > PROFICIENCY_RANK[a.proficiencyAchieved] ? b : a));
+
+  const complete = relevant.filter((c) => meetsRequirement(c, required));
+  if (complete.length > 0) return { code: best(complete).proficiencyAchieved, status: "complete" };
+
+  const partial = relevant.filter((c) => c.partial && !c.notCovered);
+  if (partial.length > 0) return { code: best(partial).proficiencyAchieved, status: "partial" };
+
+  const incomplete = relevant.filter((c) => !c.partial && !c.notCovered);
+  if (incomplete.length > 0) return { code: best(incomplete).proficiencyAchieved, status: "incomplete" };
+
+  return { code: best(relevant).proficiencyAchieved, status: "notCovered" };
 }
 
 export function computeCompletionByPlo(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): PloCompletionRow[] {

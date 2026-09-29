@@ -5,10 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, ListChecks, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getObjectiveStatus, isOverdue, meetsRequirement } from "../domain/progress";
+import { meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, proficiencyOptionsAtOrAbove, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, proficiencyOptionsAtOrAbove, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
@@ -17,9 +17,9 @@ import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/t
 /**
  * One grid column. Objectives covered by only one PMT get a single column (occurrence is that
  * PMT, or undefined if never scheduled). Objectives whose material is split across several PMTs
- * get one column PER occurrence -- but a genuine Pass at any ONE of them satisfies the whole
- * objective (see getObjectiveStatus), so the other occurrences' columns stop being actionable for
- * that cadet once that happens (rendered as "Passed elsewhere" instead of Pass/Partial buttons).
+ * get one column PER occurrence -- but a genuine Complete at any ONE of them satisfies the whole
+ * objective, so the other occurrences' columns stop being actionable for that cadet once that
+ * happens (rendered as "Completed elsewhere" instead of C/PC/INC buttons).
  */
 interface QuickLogColumn {
   key: string;
@@ -59,10 +59,18 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Required-proficiency cells are usually a single code ("P2"), occasionally a composite ("P1/P2") -- Pass fills the lower/first-listed one, the minimum that satisfies the requirement. */
+/** Required-proficiency cells are usually a single code ("P2"), occasionally a composite ("P1/P2") -- Complete fills the lower/first-listed one, the minimum that satisfies the requirement. */
 function firstRequiredCode(cell: string): ProficiencyCode | undefined {
   const first = cell.split("/")[0]?.trim();
   return (PROFICIENCY_CODES as readonly string[]).includes(first) ? (first as ProficiencyCode) : undefined;
+}
+
+/** The nearest code below the required one -- "almost made it" rather than always bottoming out at Ka. Mirrors the absence auto-fail hook's own helper (useAutoFailCompletions.ts). */
+function defaultNotPassCode(required: ProficiencyCode): ProficiencyCode {
+  const options = PROFICIENCY_CODES.filter((p) => p !== required);
+  const below = options.filter((p) => PROFICIENCY_RANK[p] < PROFICIENCY_RANK[required]);
+  if (below.length === 0) return options[0];
+  return below.reduce((best, p) => (PROFICIENCY_RANK[p] > PROFICIENCY_RANK[best] ? p : best));
 }
 
 function formatOccurrenceLabel(event: PmtEvent | undefined): string {
@@ -134,6 +142,15 @@ export function QuickLogScreen({
     return map;
   }, [completions]);
 
+  const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
+
+  /** Single-occurrence objectives match by objectiveId alone (legacy completions may predate pmtEventId); multi-occurrence ones must match the specific occurrence too. */
+  const getExistingCompletion = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): Completion | undefined => {
+    const list = completionsByCadet.get(cadetId) ?? [];
+    if (isMultiOccurrence) return list.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
+    return list.find((c) => c.objectiveId === objectiveId);
+  };
+
   /** Every PMT occurrence covering each objective, date-sorted -- the basis for both schedule status and column layout. */
   const occurrencesByObjective = useMemo(() => {
     const map = new Map<string, PmtEvent[]>();
@@ -184,18 +201,20 @@ export function QuickLogScreen({
   }, [loggableObjectives, occurrencesByObjective]);
 
   /**
-   * Per searched cadet: objective ids currently overdue (due/missed, graded only), and separately
-   * every objective id (graded or optional) that's applicable at this cadet's level at all --
-   * used below to scope "on the schedule" to objectives that actually apply to someone visible.
+   * Per searched cadet: objective ids that still need SOME judgment logged (graded only), and
+   * separately every objective id (graded or optional) that's applicable at this cadet's level at
+   * all -- used below to scope "on the schedule" to objectives that actually apply to someone visible.
    *
-   * A multi-occurrence objective's overall status only reaches "missed" once EVERY occurrence has
-   * passed (see getObjectiveStatus) -- correct for the objective's real completion/percent math, but
-   * wrong for "should this column appear in Quick Log's default view right now": an objective spread
-   * across many PMTs all semester (e.g. a drill fundamental covered at a dozen D&C sessions) would
-   * otherwise never show up here until the very last of those has already happened, even though
-   * several earlier sessions already occurred and still need grading. So a not-yet-satisfied
-   * objective with at least one PAST occurrence also counts as overdue here, regardless of whether
-   * later occurrences remain.
+   * "Needs judgment" no longer means "hasn't passed yet" -- it means "at least one past occurrence
+   * has nothing logged against it at all". Once a cadre member has entered ANY of Complete, Partial
+   * complete, or Incompleted for a past occurrence, that occurrence is done as far as Quick Log's
+   * default view is concerned (further correction happens from Cadet Detail, not here) -- even a
+   * cadet who's Incompleted straight across the board drops out of the default view once every past
+   * occurrence has been looked at. An objective already satisfied at ANY occurrence needs nothing
+   * more anywhere (matches getObjectiveStatus's "completed" short-circuit). Occurrence-by-occurrence,
+   * not objective-wide, since multi-occurrence objectives are graded independently per PMT -- an
+   * objective spread across many PMTs all semester only needs its own past occurrences resolved, not
+   * every occurrence including future ones.
    */
   const columnEligibilityByCadet = useMemo(() => {
     const now = Date.now();
@@ -204,22 +223,29 @@ export function QuickLogScreen({
       const overdue = new Set<string>();
       const applicable = new Set<string>();
       if (cadet.devLevel) {
-        const cadetCompletions = completionsByCadet.get(cadet.id) ?? [];
         for (const objective of loggableObjectives) {
-          if (objective.proficiencyByLevel[cadet.devLevel] === "") continue;
+          const requiredCell = objective.proficiencyByLevel[cadet.devLevel];
+          if (requiredCell === "") continue;
           applicable.add(objective.id);
-          if (objective.graded) {
-            const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, cadetCompletions);
-            const hasUngradedPastOccurrence =
-              info.status !== "completed" && info.occurrences.some((occ) => new Date(occ.eventDate).getTime() <= now);
-            if (isOverdue(info.status) || hasUngradedPastOccurrence) overdue.add(objective.id);
-          }
+          if (!objective.graded) continue;
+          const occurrences = occurrencesByObjective.get(objective.id) ?? [];
+          const pastOccurrences = occurrences.filter((occ) => new Date(occ.eventDate).getTime() <= now);
+          if (pastOccurrences.length === 0) continue;
+          const required = firstRequiredCode(requiredCell);
+          if (!required) continue;
+          const isMulti = occurrences.length > 1;
+          const satisfiedAnywhere = occurrences.some((occ) =>
+            meetsRequirement(getExistingCompletion(cadet.id, objective.id, occ.id, isMulti), required)
+          );
+          if (satisfiedAnywhere) continue;
+          const hasUnloggedPastOccurrence = pastOccurrences.some((occ) => !getExistingCompletion(cadet.id, objective.id, occ.id, isMulti));
+          if (hasUnloggedPastOccurrence) overdue.add(objective.id);
         }
       }
       map.set(cadet.id, { overdue, applicable });
     }
     return map;
-  }, [searchedCadets, loggableObjectives, pmtEvents, completionsByCadet]);
+  }, [searchedCadets, loggableObjectives, occurrencesByObjective, completionsByCadet]);
 
   /** Default: only cadets who currently have at least one overdue Training Objective. */
   const visibleCadets = useMemo(
@@ -252,15 +278,6 @@ export function QuickLogScreen({
     return ids;
   }, [visibleCadets, columnEligibilityByCadet, occurrencesByObjective]);
 
-  const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
-
-  /** Single-occurrence objectives match by objectiveId alone (legacy completions may predate pmtEventId); multi-occurrence ones must match the specific occurrence too. */
-  const getExistingCompletion = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): Completion | undefined => {
-    const list = completionsByCadet.get(cadetId) ?? [];
-    if (isMultiOccurrence) return list.find((c) => c.objectiveId === objectiveId && c.pmtEventId === pmtEventId);
-    return list.find((c) => c.objectiveId === objectiveId);
-  };
-
   const columns = useMemo(() => {
     const query = objectiveSearch.trim().toLowerCase();
     const qualifying = loggableObjectives
@@ -291,10 +308,10 @@ export function QuickLogScreen({
 
     if (columnScope !== "overdue") return result;
 
-    // Once every cadet who still needs grading at a given occurrence has at least a Partial logged
-    // there, that column has nothing actionable left for right now -- hide it from the default view
-    // (a Partial never satisfies the objective outright, so it stays "due" overall and reappears
-    // in "everything on the schedule"/"show all", just not cluttering the default overdue grid).
+    // Once every cadet who still needs a genuine pass at a given occurrence already has SOME
+    // judgment logged there (Complete, Partial complete, OR Incompleted -- any of the three), that
+    // column has nothing actionable left for right now -- hide it from the default view (it still
+    // reappears in "everything on the schedule"/"show all", just not cluttering the default grid).
     return result.filter((col) => {
       const { objective, occurrence, isMultiOccurrence } = col;
       const pmtEventId = occurrence?.id;
@@ -310,8 +327,8 @@ export function QuickLogScreen({
         return !meetsRequirement(getExistingCompletion(cadet.id, objective.id, pmtEventId, false), required);
       });
       if (stillNeedsGrading.length === 0) return true; // nothing to hide against -- leave it, shouldn't normally happen here
-      const allPartial = stillNeedsGrading.every((cadet) => getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence)?.partial === true);
-      return !allPartial;
+      const allLogged = stillNeedsGrading.every((cadet) => !!getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence));
+      return !allLogged;
     });
   }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective, searchedCadets, completionsByCadet]);
 
@@ -365,8 +382,9 @@ export function QuickLogScreen({
           evaluator: evaluatorName,
           notes: existing?.notes ?? "",
           pmtEventId,
-          // The plain Pass toggle never produces a Partial entry -- even when overwriting a cell that
-          // was previously logged as Partial, this clears that flag back to a definitive pass.
+          // Neither C (Complete) nor INC (Incompleted) ever produces a Partial entry -- even when
+          // overwriting a cell that was previously logged as PC (Partial complete), this clears that
+          // flag back to a definitive judgment.
           partial: false,
           // Not Covered is never a manual Quick Log option -- only the absence auto-fail hook sets it.
           notCovered: false,
@@ -532,25 +550,23 @@ export function QuickLogScreen({
                   const value = getCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
                   const isDirty = key in pending;
                   const requiredCode = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]) ?? "P1";
-                  // A completion logged via the Partial flow stays "Partial" for display even when the
-                  // code entered meets/exceeds the required proficiency -- it's the evaluator vouching
-                  // only for this occurrence's own material, not a definitive session pass. An unsaved
-                  // pending edit (from the plain Pass toggle) always overrides that, since Quick Log's
-                  // one-click toggle never produces a Partial entry.
+                  // A completion logged via the PC (Partial complete) flow stays Partial for display even
+                  // when the code entered meets/exceeds the required proficiency -- it's the evaluator
+                  // vouching only for this occurrence's own material, not a definitive session pass. An
+                  // unsaved pending edit always overrides that, since C/INC never produce a Partial entry.
                   const existingCompletion = getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
-                  const isPartial = !isDirty && value !== NONE && !!existingCompletion?.partial;
-                  const isPass = value === requiredCode && !isPartial;
-                  // "Not Pass" is no longer quick-markable from this grid (removed by request) -- a cell
-                  // with an existing non-pass completion still shows it, read-only, for visibility. To
-                  // change it, log it from Cadet Detail instead, which has the full proficiency picker.
-                  const isNotPass = value !== NONE && !isPass && !isPartial;
+                  const hasValue = value !== NONE;
+                  const isPartial = !isDirty && hasValue && !!existingCompletion?.partial;
+                  const isComplete = hasValue && !isPartial && PROFICIENCY_RANK[value as ProficiencyCode] >= PROFICIENCY_RANK[requiredCode];
+                  const isIncomplete = hasValue && !isPartial && !isComplete;
 
-                  // Once a cadet has a genuine (non-partial) Pass on ANY occurrence of a multi-occurrence
-                  // objective, they don't need to pass it again at the others -- those other columns stop
-                  // being actionable for this cadet. A Partial elsewhere never triggers this (only a real
-                  // Pass does), and the occurrence that actually holds the pass still renders normally.
+                  // Once a cadet has a genuine (non-partial) Complete on ANY occurrence of a
+                  // multi-occurrence objective, they don't need it again at the others -- those other
+                  // columns stop being actionable for this cadet. A Partial elsewhere never triggers
+                  // this (only a real Complete does), and the occurrence that actually holds it still
+                  // renders normally.
                   const passedAtAnotherOccurrence =
-                    !isPass &&
+                    !isComplete &&
                     isMultiOccurrence &&
                     (occurrencesByObjective.get(objective.id) ?? []).some((occ) => {
                       if (occ.id === pmtEventId) return false;
@@ -560,11 +576,12 @@ export function QuickLogScreen({
                   if (passedAtAnotherOccurrence) {
                     return (
                       <TableCell key={col.key} className={cn("text-center text-xs text-muted-foreground", tint)}>
-                        Passed elsewhere
+                        Completed elsewhere
                       </TableCell>
                     );
                   }
                   const passOptions = proficiencyOptionsAtOrAbove(requiredCode);
+                  const notPassCode = defaultNotPassCode(requiredCode);
                   return (
                     <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
                       <div className="flex flex-col items-center gap-1">
@@ -572,17 +589,17 @@ export function QuickLogScreen({
                           {passOptions.length > 1 ? (
                             <>
                               <Select
-                                value={isPass ? value : ""}
+                                value={isComplete ? value : ""}
                                 onValueChange={(v) => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, v)}
                               >
                                 <SelectTrigger
                                   className={cn(
-                                    "h-6 w-16 px-2 text-[11px]",
-                                    isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
-                                    isDirty && "ring-2 ring-primary"
+                                    "h-6 w-14 px-1.5 text-[11px]",
+                                    isComplete && "border-success bg-success text-success-foreground hover:bg-success/90",
+                                    isComplete && isDirty && "ring-2 ring-primary"
                                   )}
                                 >
-                                  <SelectValue placeholder="Pass" />
+                                  <SelectValue placeholder="C" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {passOptions.map((code) => (
@@ -592,7 +609,7 @@ export function QuickLogScreen({
                                   ))}
                                 </SelectContent>
                               </Select>
-                              {isPass && (
+                              {isComplete && (
                                 <button
                                   type="button"
                                   title="Clear"
@@ -608,14 +625,15 @@ export function QuickLogScreen({
                               type="button"
                               size="sm"
                               variant="outline"
+                              title="Complete"
                               className={cn(
                                 "h-6 px-2 text-[11px]",
-                                isPass && "border-success bg-success text-success-foreground hover:bg-success/90",
-                                isDirty && "ring-2 ring-primary"
+                                isComplete && "border-success bg-success text-success-foreground hover:bg-success/90",
+                                isComplete && isDirty && "ring-2 ring-primary"
                               )}
-                              onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isPass ? NONE : requiredCode)}
+                              onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isComplete ? NONE : requiredCode)}
                             >
-                              Pass
+                              C
                             </Button>
                           )}
                           {isMultiOccurrence && occurrence && (
@@ -624,26 +642,36 @@ export function QuickLogScreen({
                               size="sm"
                               variant="outline"
                               className={cn("h-6 px-2 text-[11px]", isPartial && "border-warning bg-warning text-warning-foreground hover:bg-warning/90")}
-                              title="Material for this Training Objective is split across several PMTs -- log partial progress at this specific session, optionally for several cadets at once."
+                              title="Partial complete -- material for this Training Objective is split across several PMTs; log partial progress at this specific session, optionally for several cadets at once."
                               onClick={() => setPartialTarget({ cadet, objective, occurrence, requiredCode })}
                             >
-                              Partial
+                              PC
                             </Button>
                           )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            title="Incompleted -- not yet meeting the standard for this occurrence."
+                            className={cn(
+                              "h-6 px-2 text-[11px]",
+                              isIncomplete && "border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                              isIncomplete && isDirty && "ring-2 ring-primary"
+                            )}
+                            onClick={() => setCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence, isIncomplete ? NONE : notPassCode)}
+                          >
+                            INC
+                          </Button>
                         </div>
                         {isPartial && (
                           <span
                             className="text-[11px] text-warning-foreground"
-                            title="Logged as Partial -- only vouches for this occurrence's own material, even though the code entered meets the requirement."
+                            title="Logged as Partial complete -- only vouches for this occurrence's own material, even though the code entered meets the requirement."
                           >
-                            Partial ({value})
+                            PC ({value})
                           </span>
                         )}
-                        {isNotPass && (
-                          <span className="text-[11px] text-destructive" title="Logged as not passing -- edit from Cadet Detail to change.">
-                            {value}
-                          </span>
-                        )}
+                        {isIncomplete && <span className="text-[11px] text-destructive">INC ({value})</span>}
                       </div>
                     </TableCell>
                   );
@@ -655,7 +683,7 @@ export function QuickLogScreen({
                 <TableCell colSpan={columns.length + 1} className="text-center text-muted-foreground">
                   {searchedCadets.length === 0
                     ? "No cadets match this filter."
-                    : "No cadets currently have an overdue Training Objective. Check \"Show all cadets\" to log ahead of schedule."}
+                    : "No cadets currently have an unlogged past Training Objective. Check \"Show all cadets\" to log ahead of schedule."}
                 </TableCell>
               </TableRow>
             )}
@@ -674,6 +702,7 @@ export function QuickLogScreen({
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-success/60" /> Repeats later — at least one future PMT still covers it
           </span>
+          <span>C = Complete · PC = Partial complete · INC = Incompleted</span>
         </div>
       )}
 

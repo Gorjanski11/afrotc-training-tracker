@@ -123,9 +123,10 @@ export function CompletionEntryDialog({
           evaluator,
           notes,
           pmtEventId,
-          // Opened via Quick Log's "Partial" flow -- true regardless of which proficiency code gets
-          // entered, since it's the evaluator vouching only for this occurrence's own material, not
-          // a definitive session pass. The plain Pass toggle and Cadet Detail's log dialog never set this.
+          // Opened via Quick Log's "PC" (Partial complete) flow -- true regardless of which
+          // proficiency code gets entered, since it's the evaluator vouching only for this
+          // occurrence's own material, not a definitive session judgment. Quick Log's C/INC buttons
+          // and Cadet Detail's log dialog never set this.
           partial: !!allowMultiplePartial,
           // Not Covered is never a manual entry -- only the absence auto-fail hook sets it.
           notCovered: false,
@@ -211,7 +212,7 @@ export function CompletionEntryDialog({
             <div className="grid gap-2 rounded-md border border-input p-3">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <input type="checkbox" checked={multiplePartial} onChange={(e) => setMultiplePartial(e.target.checked)} />
-                Multiple Partial -- apply this exact evaluation to several cadets at once
+                Multiple Partial complete -- apply this exact evaluation to several cadets at once
               </label>
               {multiplePartial && (
                 <div className="grid gap-2">

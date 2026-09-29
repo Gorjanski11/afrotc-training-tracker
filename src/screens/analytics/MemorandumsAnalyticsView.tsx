@@ -352,7 +352,7 @@ function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; rost
         {rows.map((row) => (
           <TableRow key={`${row.kind}-${row.id}`}>
             <TableCell>{shortDate(row.primaryDate)}</TableCell>
-            <TableCell className="max-w-xs truncate">{row.subject}</TableCell>
+            <TableCell className="max-w-xs truncate" title={row.subject || undefined}>{row.subject}</TableCell>
             <TableCell>{cadetDisplayName(row.cadetId, row.cadetName, roster)}</TableCell>
             <TableCell>
               <Badge variant="outline">{row.kind}</Badge>
@@ -367,7 +367,7 @@ function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; rost
             <TableCell>
               <PdfButton url={row.pdfUrl} name={row.pdfFileName} />
             </TableCell>
-            <TableCell className="max-w-xs truncate">{row.notes}</TableCell>
+            <TableCell className="max-w-xs truncate" title={row.notes || undefined}>{row.notes}</TableCell>
             <TableCell>
               <EditButton onClick={() => onEdit(row)} />
             </TableCell>
@@ -413,10 +413,12 @@ function AbsenceTable({
           <TableRow key={m.id}>
             <TableCell>{trainingWeekFor(m, pmtEventsById) ?? "—"}</TableCell>
             <TableCell>{shortDate(dateMissedFor(m, pmtEventsById))}</TableCell>
-            <TableCell className="max-w-xs truncate">{coversLabel(m, pmtEventsById)}</TableCell>
+            <TableCell className="max-w-xs truncate" title={coversLabel(m, pmtEventsById)}>{coversLabel(m, pmtEventsById)}</TableCell>
             <TableCell>{shortDate(m.submittedAt)}</TableCell>
             <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
+            <TableCell className="max-w-xs truncate" title={m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}>
+              {m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}
+            </TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
@@ -426,7 +428,9 @@ function AbsenceTable({
             <TableCell>
               <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
-            <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
+            <TableCell className="max-w-xs truncate" title={(m.status === "Returned" ? m.returnReason : m.reviewNotes) || undefined}>
+              {m.status === "Returned" ? m.returnReason : m.reviewNotes}
+            </TableCell>
             <TableCell>
               <EditButton onClick={() => onEdit(m)} />
             </TableCell>
@@ -463,8 +467,10 @@ function DeviationTable({ memos, roster, onEdit }: { memos: DeviationMemo[]; ros
             <TableCell>{shortDate(m.dateAssigned)}</TableCell>
             <TableCell>{m.assignedBy}</TableCell>
             <TableCell>{shortDate(m.dueDate)}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.purpose}</TableCell>
+            <TableCell className="max-w-xs truncate" title={m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}>
+              {m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}
+            </TableCell>
+            <TableCell className="max-w-xs truncate" title={m.purpose || undefined}>{m.purpose}</TableCell>
             <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
             <TableCell>
               <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
@@ -472,7 +478,7 @@ function DeviationTable({ memos, roster, onEdit }: { memos: DeviationMemo[]; ros
             <TableCell>
               <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
-            <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
+            <TableCell className="max-w-xs truncate" title={m.reviewNotes || undefined}>{m.reviewNotes}</TableCell>
             <TableCell>
               <EditButton onClick={() => onEdit(m)} />
             </TableCell>

@@ -4,11 +4,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, FileDown } from "lucide-react";
+import { FileText, FileDown, ArrowUpDown } from "lucide-react";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
-import { formatCadetName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetBucketStats } from "./AccountabilityAnalyticsView";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
@@ -81,6 +81,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [flight, setFlight] = useState<Flight | "All">("All");
   const [group, setGroup] = useState<Group | "All">("All");
+  const [sortBy, setSortBy] = useState<"date" | "cadet">("date");
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     setCadetId(which === "cadet" ? value : ALL_CADETS);
@@ -94,28 +95,26 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
   // hidden entirely (not just a message) whenever a Group/Flight filter is active instead.
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
-  const combined = useMemo(
-    () =>
-      filterByRosterScope(
-        combineMemos(visibleAbsenceMemos, deviationMemos, pmtEventsById),
-        roster,
-        cadetId === ALL_CADETS ? "All" : cadetId,
-        flight,
-        group
-      ),
-    [visibleAbsenceMemos, deviationMemos, pmtEventsById, roster, cadetId, flight, group]
-  );
-  const filteredAbsence = useMemo(
-    () => filterByRosterScope(visibleAbsenceMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)),
-    [visibleAbsenceMemos, roster, cadetId, flight, group]
-  );
-  const filteredDeviation = useMemo(
-    () =>
-      filterByRosterScope(deviationMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group).sort((a, b) =>
-        (b.submittedAt ?? b.dateAssigned).localeCompare(a.submittedAt ?? a.dateAssigned)
-      ),
-    [deviationMemos, roster, cadetId, flight, group]
-  );
+  const combined = useMemo(() => {
+    const rows = filterByRosterScope(
+      combineMemos(visibleAbsenceMemos, deviationMemos, pmtEventsById),
+      roster,
+      cadetId === ALL_CADETS ? "All" : cadetId,
+      flight,
+      group
+    );
+    return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
+  }, [visibleAbsenceMemos, deviationMemos, pmtEventsById, roster, cadetId, flight, group, sortBy]);
+  const filteredAbsence = useMemo(() => {
+    const rows = filterByRosterScope(visibleAbsenceMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
+    return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  }, [visibleAbsenceMemos, roster, cadetId, flight, group, sortBy]);
+  const filteredDeviation = useMemo(() => {
+    const rows = filterByRosterScope(deviationMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
+    return sortBy === "cadet"
+      ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName))
+      : rows.sort((a, b) => (b.submittedAt ?? b.dateAssigned).localeCompare(a.submittedAt ?? a.dateAssigned));
+  }, [deviationMemos, roster, cadetId, flight, group, sortBy]);
   const selectedCadetSummary = useMemo(
     () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),
     [cadetId, attendance, pmtEventsById]
@@ -144,6 +143,16 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={roster} value={cadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as "date" | "cadet")}>
+          <SelectTrigger className="w-40">
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date">Sort by date</SelectItem>
+            <SelectItem value="cadet">Sort by cadet</SelectItem>
+          </SelectContent>
+        </Select>
         {!hideUnitFilters && (
           <Select value={flight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">

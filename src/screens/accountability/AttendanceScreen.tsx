@@ -382,28 +382,32 @@ export function AttendanceScreen({
                   <TableCell>{formatCadetName(cadet)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      {ATTENDANCE_STATUSES.map((status) => (
-                        <Button
-                          key={status}
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className={cn(
-                            "h-7 w-11 text-[11px]",
-                            // AE/PE are never manually picked -- they're automatic side-effects of the
-                            // memo review lifecycle (Accepted -> AE, Pending -> PE), never something
-                            // cadre clicks here. Hidden below sm to save room on the phone grid; still
-                            // available at sm+ (and in Desktop view) for the rare manual correction.
-                            (status === "AE" || status === "PE") && "hidden sm:inline-flex",
-                            value.status === status && statusActiveClass(status),
-                            isDirty && "ring-2 ring-primary"
-                          )}
-                          onClick={() => handleStatusClick(cadet.id, status)}
-                        >
-                          {status}
-                        </Button>
-                      ))}
-                      {value.status !== NONE && (
+                      {ATTENDANCE_STATUSES.map((status) => {
+                        // AE/PE are never manually picked -- they're automatic side-effects of the
+                        // memo review lifecycle (Accepted -> AE, Pending -> PE). Always visible (so
+                        // cadre can see at a glance that a memo already resolved this cell), but
+                        // read-only here -- no click, no Clear -- since they work automatically.
+                        const automatic = status === "AE" || status === "PE";
+                        return (
+                          <Button
+                            key={status}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={automatic}
+                            className={cn(
+                              "h-7 w-11 text-[11px]",
+                              automatic && "cursor-default disabled:opacity-70",
+                              value.status === status && statusActiveClass(status),
+                              isDirty && "ring-2 ring-primary"
+                            )}
+                            onClick={automatic ? undefined : () => handleStatusClick(cadet.id, status)}
+                          >
+                            {status}
+                          </Button>
+                        );
+                      })}
+                      {value.status !== NONE && value.status !== "AE" && value.status !== "PE" && (
                         <Button
                           type="button"
                           size="sm"

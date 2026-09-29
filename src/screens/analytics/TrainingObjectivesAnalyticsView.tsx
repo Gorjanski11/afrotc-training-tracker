@@ -383,18 +383,16 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                   i === 0 && "border-l border-input",
                                   cell?.status === "complete" && "bg-success text-success-foreground font-medium",
                                   cell?.status === "partial" && "bg-warning text-warning-foreground font-medium",
-                                  cell?.status === "incomplete" && "bg-destructive text-destructive-foreground font-medium",
-                                  cell?.status === "notCovered" && "text-muted-foreground italic"
+                                  (cell?.status === "incomplete" || cell?.status === "notCovered") && "bg-destructive text-destructive-foreground font-medium"
                                 )}
                               >
+                                {/* Not Covered is folded into INC here too -- same red marker, no proficiency level, whether it's a genuine not-yet-met grade or an absence on a presence-based objective. */}
                                 {cell
-                                  ? cell.status === "notCovered"
-                                    ? "Not Covered"
-                                    : cell.status === "incomplete"
-                                      ? "INC"
-                                      : cell.status === "partial"
-                                        ? `PC-${cell.code}`
-                                        : `C-${cell.code}`
+                                  ? cell.status === "incomplete" || cell.status === "notCovered"
+                                    ? "INC"
+                                    : cell.status === "partial"
+                                      ? `PC-${cell.code}`
+                                      : `C-${cell.code}`
                                   : ""}
                               </TableCell>
                             );

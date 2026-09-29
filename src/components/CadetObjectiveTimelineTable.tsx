@@ -166,7 +166,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         className={cn(
                           "w-full rounded px-1 py-0.5 text-[10px] leading-tight",
                           notCovered
-                            ? "text-muted-foreground italic"
+                            ? "bg-destructive/15 text-destructive"
                             : hasEntry
                               ? satisfied
                                 ? "bg-success/15 text-success"
@@ -180,8 +180,9 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                         onClick={() => onOpenObjective(objective)}
                         title={hasEntry && !notCovered && !satisfied ? "Partial" : undefined}
                       >
+                        {/* Not Covered is folded into INC -- same red marker, no proficiency level. */}
                         {notCovered
-                          ? "N/Cov"
+                          ? "INC"
                           : hasEntry
                             ? `✓${columnCompletion?.proficiencyAchieved}`
                             : optional

@@ -671,7 +671,7 @@ export function QuickLogScreen({
                             PC ({value})
                           </span>
                         )}
-                        {isIncomplete && <span className="text-[11px] text-destructive">INC ({value})</span>}
+                        {/* INC never shows a proficiency level -- it's a flat "not yet meeting the standard" marker, not a code (the button itself already conveys the state). */}
                       </div>
                     </TableCell>
                   );

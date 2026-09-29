@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { AbsenceReason, AttendanceStatus } from "../domain/constants";
@@ -73,5 +73,14 @@ export function useAttendance() {
     [refetch]
   );
 
-  return { attendance, loading, error, refetch, createAttendance, updateAttendance };
+  /** Clears an accountability entry back to no input (e.g. a cadet mistakenly marked Present for a future PMT). */
+  const deleteAttendance = useCallback(
+    async (id: string) => {
+      await deleteDoc(doc(db, COLLECTION, id));
+      await refetch(true);
+    },
+    [refetch]
+  );
+
+  return { attendance, loading, error, refetch, createAttendance, updateAttendance, deleteAttendance };
 }

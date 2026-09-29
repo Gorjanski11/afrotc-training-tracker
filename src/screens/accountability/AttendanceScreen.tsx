@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Save, TriangleAlert, ClipboardCheck } from "lucide-react";
+import { Save, TriangleAlert, ClipboardCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
 import { isPostAccountabilityWindowClosed } from "../../domain/attendance";
@@ -18,6 +18,7 @@ interface Props {
   attendance: Attendance[];
   createAttendance: (input: AttendanceInput) => Promise<Attendance>;
   updateAttendance: (id: string, input: AttendanceInput) => Promise<void>;
+  deleteAttendance: (id: string) => Promise<void>;
   catalog: TrainingObjective[];
   applyAbsenceNotPass: (cadet: Cadet, pmtEvent: PmtEvent, catalogById: Map<string, TrainingObjective>) => Promise<void>;
   assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => Promise<void>;
@@ -42,6 +43,7 @@ export function AttendanceScreen({
   attendance,
   createAttendance,
   updateAttendance,
+  deleteAttendance,
   catalog,
   applyAbsenceNotPass,
   assignAbsenceMemo,
@@ -98,7 +100,7 @@ export function AttendanceScreen({
     setSelectedEventId(defaultEvent?.id);
   }, [attendance, defaultEvent]);
   const [pending, setPending] = useState<
-    Record<string, { status: AttendanceStatus; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
+    Record<string, { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
   >({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
@@ -190,6 +192,15 @@ export function AttendanceScreen({
     }
   };
 
+  /**
+   * Explicitly clears the cell back to no input, whether or not anything's been saved yet -- e.g. a
+   * cadet mistakenly marked Present for a future PMT. Unlike re-clicking an active status (which only
+   * drops an unsaved pending edit), this forces the saved Attendance record itself to be deleted on Save.
+   */
+  const handleClear = (cadetId: string) => {
+    setPending((prev) => ({ ...prev, [cadetId]: { status: NONE, absenceReason: undefined, absenceReasonOther: undefined } }));
+  };
+
   const dirtyCount = Object.keys(pending).length;
   const windowClosed = selectedEvent ? isPostAccountabilityWindowClosed(selectedEvent) : false;
 
@@ -200,6 +211,16 @@ export function AttendanceScreen({
     try {
       for (const [cadetId, value] of Object.entries(pending)) {
         const existing = existingByCadet.get(cadetId);
+
+        if (value.status === NONE) {
+          // Clearing back to no input -- delete the saved record (if any) and unwind any downstream
+          // side effects tied to it, same as correcting a mistaken Absent away to something else.
+          if (existing) await deleteAttendance(existing.id);
+          await retractAbsenceMemoAssignment(cadetId, selectedEventId);
+          await discardOrphanedPreSubmission(cadetId, selectedEventId);
+          continue;
+        }
+
         const input: AttendanceInput = {
           cadetId,
           pmtEventId: selectedEventId,
@@ -382,6 +403,18 @@ export function AttendanceScreen({
                           {status}
                         </Button>
                       ))}
+                      {value.status !== NONE && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          title="Clear (no input)"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleClear(cadet.id)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>

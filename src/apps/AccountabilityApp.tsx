@@ -107,6 +107,7 @@ export function AccountabilityApp({ unitScope }: Props) {
                     attendance={attendanceState.attendance}
                     createAttendance={attendanceState.createAttendance}
                     updateAttendance={attendanceState.updateAttendance}
+                    deleteAttendance={attendanceState.deleteAttendance}
                     catalog={catalogState.catalog}
                     applyAbsenceNotPass={applyAbsenceNotPass}
                     assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}

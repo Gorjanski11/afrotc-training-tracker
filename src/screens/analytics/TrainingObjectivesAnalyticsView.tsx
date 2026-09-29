@@ -337,14 +337,14 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                 <Table aria-label="Completed Training Objectives by cadet">
                   <TableHeader>
                     <TableRow>
-                      <TableHead rowSpan={2} className="sticky left-0 top-0 z-20 min-w-40 bg-background align-bottom">
+                      <TableHead rowSpan={2} className="sticky left-0 top-0 z-20 h-auto min-w-28 bg-background px-2 py-1 align-bottom text-xs">
                         Cadet
                       </TableHead>
                       {crosstabPloGroups.map((group) => (
                         <TableHead
                           key={group.plo}
                           colSpan={group.objectives.length}
-                          className="sticky top-0 z-10 border-l border-input bg-muted text-center"
+                          className="sticky top-0 z-10 h-5 border-l border-input bg-muted px-1 py-0.5 text-center text-[10px] leading-tight"
                         >
                           {group.plo}
                         </TableHead>
@@ -355,14 +355,13 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                         group.objectives.map((objective, i) => (
                           <TableHead
                             key={objective.id}
-                            className={cn("sticky top-8 z-10 min-w-16 bg-background text-center text-[11px]", i === 0 && "border-l border-input")}
+                            title={objective.title}
+                            className={cn(
+                              "sticky top-5 z-10 h-5 min-w-9 bg-background px-1 py-0.5 text-center text-[10px] font-medium leading-tight",
+                              i === 0 && "border-l border-input"
+                            )}
                           >
-                            <div className="font-medium">
-                              {group.shortCode} {objective.number}
-                            </div>
-                            <div className="truncate text-[10px] font-normal text-muted-foreground" title={objective.title}>
-                              {objective.title}
-                            </div>
+                            {group.shortCode} {objective.number}
                           </TableHead>
                         ))
                       )}
@@ -371,7 +370,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                   <TableBody>
                     {crosstabCadets.map((cadet) => (
                       <TableRow key={cadet.id}>
-                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background">{formatCadetName(cadet)}</TableCell>
+                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetName(cadet)}</TableCell>
                         {crosstabPloGroups.flatMap((group) =>
                           group.objectives.map((objective, i) => {
                             const cell = cadet.devLevel
@@ -380,13 +379,14 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                             return (
                               <TableCell
                                 key={objective.id}
+                                title={objective.title}
                                 className={cn(
-                                  "text-center text-xs",
+                                  "px-1 py-0.5 text-center text-[11px]",
                                   i === 0 && "border-l border-input",
                                   cell?.partial && "bg-warning text-warning-foreground font-medium"
                                 )}
                               >
-                                {cell ? (cell.partial ? `P - ${cell.code}` : cell.code) : ""}
+                                {cell ? (cell.partial ? `P-${cell.code}` : cell.code) : ""}
                               </TableCell>
                             );
                           })

@@ -186,7 +186,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
   const openOverride = (memo: DeviationMemo) => {
     setOverrideId(memo.id);
     setOverrideStatus(memo.status);
-    setOverrideNotes("");
+    setOverrideNotes(memo.reviewNotes);
   };
 
   const applyOverride = async (memo: DeviationMemo) => {

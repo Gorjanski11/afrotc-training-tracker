@@ -97,7 +97,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   const openOverride = (memo: AbsenceMemo) => {
     setOverrideId(memo.id);
     setOverrideStatus(memo.status);
-    setOverrideNotes("");
+    setOverrideNotes(memo.reviewNotes);
   };
 
   const applyOverride = async (memo: AbsenceMemo) => {

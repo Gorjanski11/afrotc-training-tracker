@@ -8,7 +8,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, ExternalLink, UserPlus, Pencil } from "lucide-react";
+import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
@@ -23,6 +23,8 @@ interface Props {
   memos: DeviationMemo[];
   createMemo: (input: DeviationMemoInput) => Promise<DeviationMemo>;
   updateMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
+  deleteMemo: (id: string) => Promise<void>;
+  reauthenticate: (password: string) => Promise<void>;
   userEmail: string | null | undefined;
 }
 
@@ -51,7 +53,7 @@ function reasonDisplay(memo: DeviationMemo): string {
 }
 
 /** Section 9 -- single view (no more Assign/Submissions-&-Review tabs): Submitted, then Awaiting submission, then Processed, top to bottom. Assign lives in a popup instead of its own tab. */
-export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, userEmail: userEmailRaw }: Props) {
+export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, deleteMemo, reauthenticate, userEmail: userEmailRaw }: Props) {
   const userEmail = userEmailRaw ?? "";
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
 
@@ -203,6 +205,40 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
   const reviewing = memos.find((m) => m.id === reviewingId);
   const overriding_ = memos.find((m) => m.id === overrideId);
 
+  // "Just in case" safety valve, requested explicitly -- permanently deletes a Deviation Memo,
+  // regardless of its current status. Gated to whoever can already review it (same as override),
+  // plus a fresh password re-check right before the delete, since this can't be undone.
+  const [revokeId, setRevokeId] = useState<string | undefined>();
+  const [revokePassword, setRevokePassword] = useState("");
+  const [revoking, setRevoking] = useState(false);
+  const [revokeError, setRevokeError] = useState<string | undefined>();
+  const revoking_ = memos.find((m) => m.id === revokeId);
+
+  const openRevoke = (memo: DeviationMemo) => {
+    setRevokeId(memo.id);
+    setRevokePassword("");
+    setRevokeError(undefined);
+  };
+  const closeRevoke = () => {
+    setRevokeId(undefined);
+    setRevokePassword("");
+    setRevokeError(undefined);
+  };
+  const handleRevoke = async () => {
+    if (!revoking_ || !revokePassword) return;
+    setRevoking(true);
+    setRevokeError(undefined);
+    try {
+      await reauthenticate(revokePassword);
+      await deleteMemo(revoking_.id);
+      closeRevoke();
+    } catch (e) {
+      setRevokeError(e instanceof Error ? e.message : "Failed to revoke -- check your password.");
+    } finally {
+      setRevoking(false);
+    }
+  };
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
@@ -261,9 +297,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                     </TableCell>
                     <TableCell>
                       {canReview(m) ? (
-                        <Button size="sm" onClick={() => openReview(m)}>
-                          Review
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" onClick={() => openReview(m)}>
+                            Review
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Revoke" onClick={() => openRevoke(m)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">View only (CC'd)</span>
                       )}
@@ -316,9 +357,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                     </TableCell>
                     <TableCell>
                       {canReview(m) && (
-                        <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Revoke" onClick={() => openRevoke(m)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -376,9 +422,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
                     <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
                     <TableCell>
                       {canReview(m) && (
-                        <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" title="Revoke" onClick={() => openRevoke(m)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -542,6 +593,37 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, us
               <DialogFooter>
                 <Button disabled={overriding} onClick={() => applyOverride(overriding_)}>
                   {overriding ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revoking_} onOpenChange={(o) => !o && closeRevoke()}>
+        <DialogContent className="max-w-sm">
+          {revoking_ && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Revoke deviation memo — {revoking_.cadetName}?</DialogTitle>
+                <DialogDescription>This permanently deletes it and cannot be undone. Enter your password to confirm.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-1.5">
+                <Label>Your password</Label>
+                <Input
+                  type="password"
+                  value={revokePassword}
+                  onChange={(e) => setRevokePassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
+              {revokeError && <p className="text-sm text-destructive">{revokeError}</p>}
+              <DialogFooter>
+                <Button variant="secondary" onClick={closeRevoke} disabled={revoking}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleRevoke} disabled={revoking || !revokePassword}>
+                  {revoking ? "Revoking..." : "Revoke"}
                 </Button>
               </DialogFooter>
             </>

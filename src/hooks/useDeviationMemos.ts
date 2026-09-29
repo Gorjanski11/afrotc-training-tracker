@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { DeviationMemoStatus } from "../domain/constants";
@@ -91,5 +91,14 @@ export function useDeviationMemos() {
     [refetch]
   );
 
-  return { memos, loading, error, refetch, createMemo, updateMemo };
+  /** Permanently revokes a Deviation Memo -- gated to a password re-check at the call site (Section: Revoke Deviation Memo), since this is destructive and cannot be undone. */
+  const deleteMemo = useCallback(
+    async (id: string) => {
+      await deleteDoc(doc(db, COLLECTION, id));
+      await refetch(true);
+    },
+    [refetch]
+  );
+
+  return { memos, loading, error, refetch, createMemo, updateMemo, deleteMemo };
 }

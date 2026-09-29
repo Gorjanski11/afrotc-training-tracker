@@ -9,6 +9,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useAttendanceLink } from "../hooks/useAttendanceLink";
 import { useAttendanceRecords } from "../hooks/useAttendanceRecords";
+import { useAuth } from "../hooks/useAuth";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
 import { DeviationMemosScreen } from "../screens/memoReview/DeviationMemosScreen";
@@ -37,6 +38,7 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
   const deviationState = useDeviationMemos();
   const attendanceLink = useAttendanceLink();
   const attendanceRecordsState = useAttendanceRecords();
+  const { reauthenticate } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("dashboard");
 
@@ -114,6 +116,8 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
                     memos={deviationState.memos}
                     createMemo={deviationState.createMemo}
                     updateMemo={deviationState.updateMemo}
+                    deleteMemo={deviationState.deleteMemo}
+                    reauthenticate={reauthenticate}
                     userEmail={userEmail}
                   />
                 </AnimatedPanel>

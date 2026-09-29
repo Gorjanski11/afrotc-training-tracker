@@ -86,31 +86,31 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
       <Table aria-label={`Objective x PMT timeline for ${formatCadetName(cadet)}`}>
         <TableHeader>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 min-w-56 bg-background">
-              <div className="flex items-center gap-2">
-                <span>Training Objective</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setRowSort(rowSort === "number" ? "pmtDate" : "number")}>
+            <TableHead className="sticky left-0 z-10 h-auto min-w-40 bg-background px-2 py-1">
+              <div className="flex items-center gap-1">
+                <span className="text-xs">Training Objective</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setRowSort(rowSort === "number" ? "pmtDate" : "number")}>
                   <ArrowUpDown className="h-3 w-3" />
                 </Button>
-                <span className="text-xs font-normal text-muted-foreground">({rowSort === "number" ? "TO order" : "TO date"})</span>
+                <span className="text-[10px] font-normal text-muted-foreground">({rowSort === "number" ? "TO order" : "TO date"})</span>
               </div>
             </TableHead>
             {columns.map((event) => (
-              <TableHead key={event.id} className="min-w-32 text-center">
-                <div className="text-xs font-medium">{event.title}</div>
-                <div className="text-xs text-muted-foreground">{new Date(event.eventDate).toLocaleDateString()}</div>
+              <TableHead key={event.id} className="h-auto min-w-20 px-1 py-1 text-center">
+                <div className="text-[10px] font-medium leading-tight">{event.title}</div>
+                <div className="text-[9px] leading-tight text-muted-foreground">{new Date(event.eventDate).toLocaleDateString()}</div>
               </TableHead>
             ))}
           </TableRow>
           <TableRow>
-            <TableHead className="sticky left-0 z-10 bg-background">
-              <Button variant="ghost" size="sm" className="h-6 gap-1 text-xs" onClick={() => setColumnSort(columnSort === "date" ? "event" : "date")}>
+            <TableHead className="sticky left-0 z-10 h-auto bg-background px-2 py-0.5">
+              <Button variant="ghost" size="sm" className="h-5 gap-1 text-[10px]" onClick={() => setColumnSort(columnSort === "date" ? "event" : "date")}>
                 <ArrowUpDown className="h-3 w-3" />
                 Columns: {columnSort === "date" ? "by date" : "by event"}
               </Button>
             </TableHead>
             {columns.map((event) => (
-              <TableHead key={event.id} />
+              <TableHead key={event.id} className="h-auto px-1 py-0.5" />
             ))}
           </TableRow>
         </TableHeader>
@@ -119,11 +119,11 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
             const requiredCode = objective.proficiencyByLevel[devLevel];
             return (
               <TableRow key={objective.id}>
-                <TableCell className="sticky left-0 z-10 bg-background">
+                <TableCell className="sticky left-0 z-10 bg-background px-2 py-1">
                   <button className="text-left text-primary hover:underline" onClick={() => onOpenObjective(objective)}>
-                    <span className="font-medium">{objective.number}</span> — <span className="text-xs">{objective.title}</span>
+                    <span className="text-xs font-medium">{objective.number}</span> — <span className="text-[11px]">{objective.title}</span>
                   </button>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-[10px] text-muted-foreground">
                     Required: {requiredCode}
                     {!objective.graded && " (optional, never overdue)"}
                   </div>
@@ -132,7 +132,7 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   const covers = event.objectiveIds.includes(objective.id);
                   if (!covers) {
                     return (
-                      <TableCell key={event.id} className="text-center text-muted-foreground">
+                      <TableCell key={event.id} className="px-1 py-0.5 text-center text-[10px] text-muted-foreground">
                         —
                       </TableCell>
                     );
@@ -150,32 +150,37 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   // Non-graded objectives are loggable but never read as overdue/missed, regardless of schedule.
                   const optional = !objective.graded;
                   const columnMissed = isMultiOccurrence ? isPast && !satisfied : info.status === "missed";
+                  const notCovered = hasEntry && columnCompletion?.notCovered;
                   return (
-                    <TableCell key={event.id} className="text-center">
+                    <TableCell key={event.id} className="px-1 py-0.5 text-center">
                       <button
                         className={cn(
-                          "w-full rounded px-1.5 py-0.5 text-xs",
-                          hasEntry
-                            ? satisfied
-                              ? "bg-success/15 text-success"
-                              : "bg-warning/15 text-warning-foreground"
-                            : optional || !isPast
-                              ? "text-muted-foreground"
-                              : columnMissed
-                                ? "bg-destructive/15 text-destructive"
+                          "w-full rounded px-1 py-0.5 text-[10px] leading-tight",
+                          notCovered
+                            ? "text-muted-foreground italic"
+                            : hasEntry
+                              ? satisfied
+                                ? "bg-success/15 text-success"
                                 : "bg-warning/15 text-warning-foreground"
+                              : optional || !isPast
+                                ? "text-muted-foreground"
+                                : columnMissed
+                                  ? "bg-destructive/15 text-destructive"
+                                  : "bg-warning/15 text-warning-foreground"
                         )}
                         onClick={() => onOpenObjective(objective)}
                       >
-                        {hasEntry
-                          ? `✓ ${columnCompletion?.proficiencyAchieved}${!satisfied ? " (Partial)" : ""}`
-                          : optional
-                            ? "Optional"
-                            : !isPast
-                              ? "Upcoming"
-                              : columnMissed
-                                ? "Missed"
-                                : "Due"}
+                        {notCovered
+                          ? "Not Covered"
+                          : hasEntry
+                            ? `✓ ${columnCompletion?.proficiencyAchieved}${!satisfied ? " (Partial)" : ""}`
+                            : optional
+                              ? "Optional"
+                              : !isPast
+                                ? "Upcoming"
+                                : columnMissed
+                                  ? "Missed"
+                                  : "Due"}
                       </button>
                     </TableCell>
                   );

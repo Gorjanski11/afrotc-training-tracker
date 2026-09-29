@@ -1,4 +1,24 @@
-import type { AbsenceMemo, DeviationMemo, Cadet } from "./types";
+import type { AbsenceMemo, DeviationMemo, Cadet, PmtEvent } from "./types";
+
+/** "PT, LLAB" from an absence memo's covered PMTs, or "AS100 class" for an AS-class-only memo -- used by both the dedicated Absence table's "Covers" column and the combined "All" table's "Subject" column. */
+export function coversLabel(memo: AbsenceMemo, pmtEventsById: Map<string, PmtEvent>): string {
+  const types = memo.pmtEventIds.map((id) => pmtEventsById.get(id)?.eventType).filter((t): t is NonNullable<typeof t> => !!t);
+  if (types.length > 0) return [...new Set(types)].join(", ");
+  if (memo.asClass) return `${memo.asClass} class`;
+  return "—";
+}
+
+/** The date of the (first) PMT an absence memo covers, or its AS-class date -- the "Date missed" column, distinct from when it was submitted. */
+export function dateMissedFor(memo: AbsenceMemo, pmtEventsById: Map<string, PmtEvent>): string {
+  const firstEvent = memo.pmtEventIds.map((id) => pmtEventsById.get(id)).find((e): e is PmtEvent => !!e);
+  return firstEvent?.eventDate ?? memo.classDate ?? "";
+}
+
+/** The Training Week of the (first) PMT an absence memo covers -- undefined for an AS-class-only memo. */
+export function trainingWeekFor(memo: AbsenceMemo, pmtEventsById: Map<string, PmtEvent>): number | undefined {
+  const firstEvent = memo.pmtEventIds.map((id) => pmtEventsById.get(id)).find((e): e is PmtEvent => !!e);
+  return firstEvent?.trainingWeek;
+}
 
 /** Unified row for the "All" merged view (Section 6c) -- Absence and Deviation memos have different column shapes, so this is deliberately a reduced, generic shape just for the combined/sorted-by-recency table. */
 export interface CombinedMemoRow {
@@ -6,8 +26,11 @@ export interface CombinedMemoRow {
   id: string;
   cadetId: string;
   cadetName: string;
-  date: string;
-  reason: string;
+  /** "Date Missed" for an Absence row, "Date Assigned" for a Deviation row -- the primary date column, distinct from submittedAt. */
+  primaryDate: string;
+  submittedAt: string | undefined;
+  /** "Covers" for an Absence row, "Reason" for a Deviation row -- the combined table's "Subject" column. */
+  subject: string;
   status: string;
   lateSubmission: "late" | "dns" | undefined;
   pdfUrl: string | undefined;
@@ -15,15 +38,16 @@ export interface CombinedMemoRow {
   notes: string;
 }
 
-export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: DeviationMemo[]): CombinedMemoRow[] {
+export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: DeviationMemo[], pmtEventsById: Map<string, PmtEvent>): CombinedMemoRow[] {
   const rows: CombinedMemoRow[] = [
     ...absenceMemos.map((m) => ({
       kind: "Absence" as const,
       id: m.id,
       cadetId: m.cadetId,
       cadetName: m.cadetName,
-      date: m.submittedAt,
-      reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+      primaryDate: dateMissedFor(m, pmtEventsById),
+      submittedAt: m.submittedAt,
+      subject: coversLabel(m, pmtEventsById),
       status: m.status,
       lateSubmission: m.lateSubmission,
       pdfUrl: m.pdfUrl,
@@ -35,8 +59,9 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
       id: m.id,
       cadetId: m.cadetId,
       cadetName: m.cadetName,
-      date: m.submittedAt ?? m.dateAssigned,
-      reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+      primaryDate: m.dateAssigned,
+      submittedAt: m.submittedAt,
+      subject: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
       status: m.status,
       lateSubmission: undefined,
       pdfUrl: m.pdfUrl,
@@ -44,7 +69,7 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
       notes: m.reviewNotes,
     })),
   ];
-  return rows.sort((a, b) => b.date.localeCompare(a.date));
+  return rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
 }
 
 /** Group/Flight/individual-cadet sub-filter, shared by every table in the Memorandums Analytics view. */

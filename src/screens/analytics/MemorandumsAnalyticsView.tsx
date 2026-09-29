@@ -4,10 +4,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ExternalLink } from "lucide-react";
+import { FileText, FileDown } from "lucide-react";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
-import { combineMemos, filterByRosterScope, shortDate, type CombinedMemoRow } from "../../domain/memoAnalytics";
+import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
+import { formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetBucketStats } from "./AccountabilityAnalyticsView";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
@@ -52,14 +53,26 @@ function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | undefi
   );
 }
 
-function PdfLink({ url, name }: { url: string | undefined; name: string | undefined }) {
+/** Icon-only button (Section: Memorandums Analytics table redesign) -- no filename/link text shown, to keep these dense tables narrow. */
+function PdfButton({ url, name }: { url: string | undefined; name: string | undefined }) {
   if (!url) return <span className="text-muted-foreground">—</span>;
   return (
-    <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-      <ExternalLink className="h-3 w-3" />
-      {name ?? "PDF"}
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      title={name ?? "PDF"}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input text-primary hover:bg-accent"
+    >
+      <FileDown className="h-3.5 w-3.5" />
     </a>
   );
+}
+
+/** "C/Rank Last, First" via the roster lookup (Section: Memorandums Analytics table redesign) -- falls back to the memo's own stored cadetName if the cadet's roster record is gone. */
+function cadetDisplayName(cadetId: string, cadetName: string, roster: Cadet[]): string {
+  const person = roster.find((p) => p.id === cadetId);
+  return person ? formatCadetName(person) : cadetName;
 }
 
 export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, unitScope }: Props) {
@@ -77,10 +90,20 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 
   const visibleAbsenceMemos = useMemo(() => (showAbsence ? absenceMemos : []), [showAbsence, absenceMemos]);
 
+  // Section 16: an individual cadet's own PT/LLAB-FM-D&C standing, shown right below the filters --
+  // hidden entirely (not just a message) whenever a Group/Flight filter is active instead.
+  const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+
   const combined = useMemo(
     () =>
-      filterByRosterScope(combineMemos(visibleAbsenceMemos, deviationMemos), roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group),
-    [visibleAbsenceMemos, deviationMemos, roster, cadetId, flight, group]
+      filterByRosterScope(
+        combineMemos(visibleAbsenceMemos, deviationMemos, pmtEventsById),
+        roster,
+        cadetId === ALL_CADETS ? "All" : cadetId,
+        flight,
+        group
+      ),
+    [visibleAbsenceMemos, deviationMemos, pmtEventsById, roster, cadetId, flight, group]
   );
   const filteredAbsence = useMemo(
     () => filterByRosterScope(visibleAbsenceMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group).sort((a, b) => b.submittedAt.localeCompare(a.submittedAt)),
@@ -93,10 +116,6 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
       ),
     [deviationMemos, roster, cadetId, flight, group]
   );
-
-  // Section 16: an individual cadet's own PT/LLAB-FM-D&C standing, shown right below the filters --
-  // hidden entirely (not just a message) whenever a Group/Flight filter is active instead.
-  const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const selectedCadetSummary = useMemo(
     () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),
     [cadetId, attendance, pmtEventsById]
@@ -167,11 +186,11 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
       <Card>
         <CardContent className="pt-6">
           {mode === "all" ? (
-            <CombinedTable rows={combined} onStatusChange={handleStatusChange} />
+            <CombinedTable rows={combined} roster={roster} onStatusChange={handleStatusChange} />
           ) : mode === "absence" ? (
-            <AbsenceTable memos={filteredAbsence} />
+            <AbsenceTable memos={filteredAbsence} roster={roster} pmtEventsById={pmtEventsById} />
           ) : (
-            <DeviationTable memos={filteredDeviation} />
+            <DeviationTable memos={filteredDeviation} roster={roster} />
           )}
         </CardContent>
       </Card>
@@ -179,17 +198,18 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
   );
 }
 
-function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onStatusChange: (row: CombinedMemoRow, status: string) => void }) {
+function CombinedTable({ rows, roster, onStatusChange }: { rows: CombinedMemoRow[]; roster: Cadet[]; onStatusChange: (row: CombinedMemoRow, status: string) => void }) {
   if (rows.length === 0) return <p className="text-sm text-muted-foreground">No memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
     <Table aria-label="All memorandums">
       <TableHeader>
         <TableRow>
-          <TableHead>Date</TableHead>
+          <TableHead>{"Date Assigned / Missed"}</TableHead>
+          <TableHead>Subject</TableHead>
           <TableHead>Cadet</TableHead>
           <TableHead>Type</TableHead>
-          <TableHead>Reason</TableHead>
+          <TableHead>Date Submitted</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
           <TableHead>Notes</TableHead>
@@ -198,12 +218,13 @@ function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onSt
       <TableBody>
         {rows.map((row) => (
           <TableRow key={`${row.kind}-${row.id}`}>
-            <TableCell>{shortDate(row.date)}</TableCell>
-            <TableCell>{row.cadetName}</TableCell>
+            <TableCell>{shortDate(row.primaryDate)}</TableCell>
+            <TableCell className="max-w-xs truncate">{row.subject}</TableCell>
+            <TableCell>{cadetDisplayName(row.cadetId, row.cadetName, roster)}</TableCell>
             <TableCell>
               <Badge variant="outline">{row.kind}</Badge>
             </TableCell>
-            <TableCell className="max-w-xs truncate">{row.reason}</TableCell>
+            <TableCell>{shortDate(row.submittedAt)}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <Select value={row.status} onValueChange={(v) => onStatusChange(row, v)}>
@@ -222,7 +243,7 @@ function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onSt
               </span>
             </TableCell>
             <TableCell>
-              <PdfLink url={row.pdfUrl} name={row.pdfFileName} />
+              <PdfButton url={row.pdfUrl} name={row.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{row.notes}</TableCell>
           </TableRow>
@@ -233,16 +254,18 @@ function CombinedTable({ rows, onStatusChange }: { rows: CombinedMemoRow[]; onSt
   );
 }
 
-function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
+function AbsenceTable({ memos, roster, pmtEventsById }: { memos: AbsenceMemo[]; roster: Cadet[]; pmtEventsById: Map<string, PmtEvent> }) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No absence memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
     <Table aria-label="Absence memorandums">
       <TableHeader>
         <TableRow>
-          <TableHead>Submitted</TableHead>
-          <TableHead>Cadet</TableHead>
+          <TableHead>TW</TableHead>
+          <TableHead>Date missed</TableHead>
           <TableHead>Covers</TableHead>
+          <TableHead>Date Submitted</TableHead>
+          <TableHead>Cadet</TableHead>
           <TableHead>Reason</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
@@ -252,10 +275,12 @@ function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
       <TableBody>
         {memos.map((m) => (
           <TableRow key={m.id}>
+            <TableCell>{trainingWeekFor(m, pmtEventsById) ?? "—"}</TableCell>
+            <TableCell>{shortDate(dateMissedFor(m, pmtEventsById))}</TableCell>
+            <TableCell className="max-w-xs truncate">{coversLabel(m, pmtEventsById)}</TableCell>
             <TableCell>{shortDate(m.submittedAt)}</TableCell>
-            <TableCell>{m.cadetName}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.pmtEventIds.length > 0 ? `${m.pmtEventIds.length} PMT(s)` : m.asClass ? `${m.asClass} class` : "—"}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
+            <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
+            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
@@ -263,7 +288,7 @@ function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
               </span>
             </TableCell>
             <TableCell>
-              <PdfLink url={m.pdfUrl} name={m.pdfFileName} />
+              <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
           </TableRow>
@@ -274,17 +299,19 @@ function AbsenceTable({ memos }: { memos: AbsenceMemo[] }) {
   );
 }
 
-function DeviationTable({ memos }: { memos: DeviationMemo[] }) {
+function DeviationTable({ memos, roster }: { memos: DeviationMemo[]; roster: Cadet[] }) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No deviation memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
     <Table aria-label="Deviation memorandums">
       <TableHeader>
         <TableRow>
-          <TableHead>Assigned</TableHead>
-          <TableHead>Cadet</TableHead>
-          <TableHead>Reason</TableHead>
+          <TableHead>Date assigned</TableHead>
           <TableHead>Given by</TableHead>
+          <TableHead>Deadline</TableHead>
+          <TableHead>Reason</TableHead>
+          <TableHead>Purpose</TableHead>
+          <TableHead>Cadet</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>PDF</TableHead>
           <TableHead>Notes</TableHead>
@@ -294,14 +321,16 @@ function DeviationTable({ memos }: { memos: DeviationMemo[] }) {
         {memos.map((m) => (
           <TableRow key={m.id}>
             <TableCell>{shortDate(m.dateAssigned)}</TableCell>
-            <TableCell>{m.cadetName}</TableCell>
-            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
             <TableCell>{m.assignedBy}</TableCell>
+            <TableCell>{shortDate(m.dueDate)}</TableCell>
+            <TableCell className="max-w-xs truncate">{m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}</TableCell>
+            <TableCell className="max-w-xs truncate">{m.purpose}</TableCell>
+            <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
             <TableCell>
               <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
             </TableCell>
             <TableCell>
-              <PdfLink url={m.pdfUrl} name={m.pdfFileName} />
+              <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
           </TableRow>

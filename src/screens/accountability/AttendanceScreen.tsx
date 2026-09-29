@@ -66,15 +66,17 @@ export function AttendanceScreen({
     [events]
   );
 
-  // Default PMT (Section I): the most recent PMT at/before now that has zero attendance records yet
-  // -- the one a commander almost certainly opened this screen to fill in. Falls back to the single
-  // most recent PMT overall once every past PMT already has attendance recorded.
+  // Default PMT (Section I): the EARLIEST past-or-current PMT that still has zero attendance
+  // records -- e.g. if Tuesday's PMT already has accountability entered, default to Thursday's
+  // next, not back to some later gap. Falls back to the single most recent PMT overall once every
+  // past PMT already has attendance recorded.
   const defaultEvent = useMemo(() => {
     const now = Date.now();
     const recordedIds = new Set(attendance.map((a) => a.pmtEventId));
-    const pastUnrecorded = sortedEvents.find((e) => new Date(e.eventDate).getTime() <= now && !recordedIds.has(e.id));
-    return pastUnrecorded ?? sortedEvents[0];
-  }, [sortedEvents, attendance]);
+    const ascendingPast = [...events].filter((e) => new Date(e.eventDate).getTime() <= now).sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    const earliestUnrecorded = ascendingPast.find((e) => !recordedIds.has(e.id));
+    return earliestUnrecorded ?? sortedEvents[0];
+  }, [events, sortedEvents, attendance]);
 
   const [twFilter, setTwFilter] = useState<number | undefined>(defaultEvent?.trainingWeek);
 

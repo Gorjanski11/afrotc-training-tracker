@@ -212,13 +212,16 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const hideFlightFilter = unitScope.kind !== "all";
   const hideClassFilter = unitScope.kind !== "all";
 
-  // Master filters (Cadet/Flight/Group/Class) -- exclusive, "last one picked wins". PMT type is
-  // NOT part of this group anymore (Section 6a) -- the trend chart has its own view toggle and the
-  // master table has its own dedicated stepper, both independent of this roster-scoping group.
-  const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
-  const [masterFlight, setMasterFlight] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
-  const [masterGroup, setMasterGroup] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
-  const [masterClass, setMasterClass] = useState<ClassFilter | "All">("All");
+  // Single filter set (Cadet/Flight/Group/Class/Standing) -- exclusive on Cadet vs Flight/Group/Class,
+  // "last one picked wins". Originally split between a top "master" row driving the charts/tiles and
+  // a separate row on the master attendance table; now unified into one row that drives the whole
+  // page, including the table (Section: master table filters -> whole page). PMT type is NOT part of
+  // this group -- the trend chart has its own view toggle and the table has its own dedicated stepper.
+  const [filterCadetId, setFilterCadetId] = useState<string>(ALL_CADETS);
+  const [filterFlight, setFilterFlight] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
+  const [filterGroup, setFilterGroup] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
+  const [filterClass, setFilterClass] = useState<ClassFilter | "All">("All");
+  const [filterStanding, setFilterStanding] = useState<Standing | "All">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
   const [axis, setAxis] = useState<UnitAxis>("flight");
   // A day can have both a PT and a LLAB/FM/D&C session -- the Combined trend view merges them into
@@ -226,46 +229,40 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   // both at once instead of a single eventId.
   const [drillDownDay, setDrillDownDay] = useState<{ ptEventId?: string; llabEventId?: string } | undefined>();
 
-  // Master attendance table's own dedicated filters (Section 10) -- start matching the page's top
-  // filters, but change independently from here on.
-  const [tableCadetId, setTableCadetId] = useState<string>(masterCadetId);
-  const [tableFlight, setTableFlight] = useState<Flight | "All">(masterFlight);
-  const [tableGroup, setTableGroup] = useState<Group | "All">(masterGroup);
-  const [tableClass, setTableClass] = useState<ClassFilter | "All">(masterClass);
+  // Master attendance table's own PT/LLAB-FM-D&C stepper -- independent of the filter row above, and
+  // also which bucket the Standing filter checks (a cadet can be Good on PT but Hard Limit on LLAB/FM).
   const [tableBucketChoice, setTableBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
-  const [tableStanding, setTableStanding] = useState<Standing | "All">("All");
-
-  const setTableExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
-    setTableCadetId(which === "cadet" ? value : ALL_CADETS);
-    setTableFlight(which === "flight" ? (value as Flight | "All") : "All");
-    setTableGroup(which === "group" ? (value as Group | "All") : "All");
-    setTableClass(which === "class" ? (value as ClassFilter | "All") : "All");
-  };
 
   const activeRoster = useMemo(() => roster.filter((p) => p.status === "Active"), [roster]);
   const sortedActiveRoster = useMemo(() => [...activeRoster].sort((a, b) => compareByLastName(a.name, b.name)), [activeRoster]);
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
-  const hasCadetFilter = masterCadetId !== ALL_CADETS;
-  const hasUnitFilter = masterFlight !== "All" || masterGroup !== "All";
+  const hasCadetFilter = filterCadetId !== ALL_CADETS;
+  const hasUnitFilter = filterFlight !== "All" || filterGroup !== "All";
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
-    setMasterCadetId(which === "cadet" ? value : ALL_CADETS);
-    setMasterFlight(which === "flight" ? (value as Flight | "All") : "All");
-    setMasterGroup(which === "group" ? (value as Group | "All") : "All");
-    setMasterClass(which === "class" ? (value as ClassFilter | "All") : "All");
+    setFilterCadetId(which === "cadet" ? value : ALL_CADETS);
+    setFilterFlight(which === "flight" ? (value as Flight | "All") : "All");
+    setFilterGroup(which === "group" ? (value as Group | "All") : "All");
+    setFilterClass(which === "class" ? (value as ClassFilter | "All") : "All");
   };
 
   const filteredRoster = useMemo(
     () =>
       sortedActiveRoster
-        .filter((p) => masterFlight === "All" || p.flight === masterFlight)
-        .filter((p) => masterGroup === "All" || p.group === masterGroup)
-        .filter((p) => masterClass === "All" || deriveClass(p.asClass, p.isCadre) === masterClass),
-    [sortedActiveRoster, masterFlight, masterGroup, masterClass]
+        .filter((p) => filterFlight === "All" || p.flight === filterFlight)
+        .filter((p) => filterGroup === "All" || p.group === filterGroup)
+        .filter((p) => filterClass === "All" || deriveClass(p.asClass, p.isCadre) === filterClass)
+        .filter((p) => {
+          if (filterStanding === "All") return true;
+          const summary = computeCadetAttendanceSummary(p.id, attendance, pmtEventsById);
+          const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
+          return standing === filterStanding;
+        }),
+    [sortedActiveRoster, filterFlight, filterGroup, filterClass, filterStanding, tableBucketChoice, attendance, pmtEventsById]
   );
 
-  const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === masterCadetId), [filteredRoster, hasCadetFilter, masterCadetId]);
+  const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === filterCadetId), [filteredRoster, hasCadetFilter, filterCadetId]);
 
   // --- Attendance trend --------------------------------------------------
   // "combined" is handled separately below (computeCombinedDayTrend) since it merges same-day PT +
@@ -274,9 +271,9 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     if (trendView !== "pt" && trendView !== "llab") return [];
     const bucket = trendView === "pt" ? "PT" : "LLAB_FM";
     return hasCadetFilter
-      ? computeCadetSessionTrend(bucket, masterCadetId, attendance, events)
+      ? computeCadetSessionTrend(bucket, filterCadetId, attendance, events)
       : computeSessionTrend(bucket, filteredRoster, attendance, events);
-  }, [trendView, hasCadetFilter, masterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
 
   const singleTrendData = useMemo(
     () =>
@@ -294,7 +291,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const combinedTrendData = useMemo(() => {
     if (trendView !== "combined") return [];
     const points = hasCadetFilter
-      ? computeCadetCombinedDayTrend(masterCadetId, attendance, events)
+      ? computeCadetCombinedDayTrend(filterCadetId, attendance, events)
       : computeCombinedDayTrend(filteredRoster, attendance, events);
     return cutoffAtNow(points).map((t) => ({
       date: t.date,
@@ -309,15 +306,15 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
       llabPct: t.llabPercent === undefined ? null : Math.round(t.llabPercent * 100),
       llabCountedCadets: t.llabCountedCadets,
     }));
-  }, [trendView, hasCadetFilter, masterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
 
   const splitTrendData = useMemo(() => {
     if (trendView !== "split") return [];
     const ptPoints = hasCadetFilter
-      ? computeCadetSessionTrend("PT", masterCadetId, attendance, events)
+      ? computeCadetSessionTrend("PT", filterCadetId, attendance, events)
       : computeSessionTrend("PT", filteredRoster, attendance, events);
     const llabPoints = hasCadetFilter
-      ? computeCadetSessionTrend("LLAB_FM", masterCadetId, attendance, events)
+      ? computeCadetSessionTrend("LLAB_FM", filterCadetId, attendance, events)
       : computeSessionTrend("LLAB_FM", filteredRoster, attendance, events);
 
     type Row = { date: string; dateLabel: string; ptEventId?: string; llabEventId?: string; ptPct: number | null; llabPct: number | null };
@@ -348,7 +345,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     }
     const rows = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     return cutoffAtNow(rows);
-  }, [trendView, hasCadetFilter, masterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
 
   // Single-event dots (PT-only/LLAB-only views, and each line in Split view) resolve their own
   // bucket from the event itself. The Combined view's dots already know both ids for that day.
@@ -417,10 +414,10 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     [distribution]
   );
 
-  const selectedCadet = useMemo(() => (hasCadetFilter ? roster.find((p) => p.id === masterCadetId) : undefined), [hasCadetFilter, roster, masterCadetId]);
+  const selectedCadet = useMemo(() => (hasCadetFilter ? roster.find((p) => p.id === filterCadetId) : undefined), [hasCadetFilter, roster, filterCadetId]);
   const selectedCadetSummary = useMemo(
-    () => (hasCadetFilter ? computeCadetAttendanceSummary(masterCadetId, attendance, pmtEventsById) : undefined),
-    [hasCadetFilter, masterCadetId, attendance, pmtEventsById]
+    () => (hasCadetFilter ? computeCadetAttendanceSummary(filterCadetId, attendance, pmtEventsById) : undefined),
+    [hasCadetFilter, filterCadetId, attendance, pmtEventsById]
   );
 
   const cohortCombinedPercent = useMemo(() => {
@@ -457,21 +454,9 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
     () => events.filter((e) => bucketForEventType(e.eventType) === tableBucketChoice).sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
     [events, tableBucketChoice]
   );
-  const tableRoster = useMemo(
-    () =>
-      sortedActiveRoster
-        .filter((p) => tableFlight === "All" || p.flight === tableFlight)
-        .filter((p) => tableGroup === "All" || p.group === tableGroup)
-        .filter((p) => tableClass === "All" || deriveClass(p.asClass, p.isCadre) === tableClass)
-        .filter((p) => tableCadetId === ALL_CADETS || p.id === tableCadetId)
-        .filter((p) => {
-          if (tableStanding === "All") return true;
-          const summary = computeCadetAttendanceSummary(p.id, attendance, pmtEventsById);
-          const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
-          return standing === tableStanding;
-        }),
-    [sortedActiveRoster, tableFlight, tableGroup, tableClass, tableCadetId, tableStanding, tableBucketChoice, attendance, pmtEventsById]
-  );
+  // The table now shares the single page-wide filter set -- same roster as the stat tiles (Section:
+  // master table filters -> whole page).
+  const tableRoster = statsRoster;
   const cellByKey = useMemo(() => {
     const map = new Map<string, Attendance>();
     for (const record of attendance) map.set(`${record.cadetId}__${record.pmtEventId}`, record);
@@ -569,9 +554,9 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
-        <CadetFilterCombobox roster={sortedActiveRoster} value={masterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+        <CadetFilterCombobox roster={sortedActiveRoster} value={filterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
-          <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+          <Select value={filterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Flight" />
             </SelectTrigger>
@@ -586,7 +571,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           </Select>
         )}
         {!hideGroupFilter && (
-          <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
+          <Select value={filterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Group" />
             </SelectTrigger>
@@ -601,7 +586,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           </Select>
         )}
         {!hideClassFilter && (
-          <Select value={masterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
+          <Select value={filterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Class" />
             </SelectTrigger>
@@ -615,6 +600,17 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             </SelectContent>
           </Select>
         )}
+        <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All")}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Standing" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All standings</SelectItem>
+            <SelectItem value="Good">Good</SelectItem>
+            <SelectItem value="Warning">Warning</SelectItem>
+            <SelectItem value="Hard Limit">Hard Limit</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -867,65 +863,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             />
           </CardHeader>
           <CardContent>
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <CadetFilterCombobox roster={sortedActiveRoster} value={tableCadetId} onChange={(v) => setTableExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
-              {!hideFlightFilter && (
-                <Select value={tableFlight} onValueChange={(v) => setTableExclusiveFilter("flight", v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Flight" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All flights</SelectItem>
-                    {FLIGHTS.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f} Flight
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {!hideGroupFilter && (
-                <Select value={tableGroup} onValueChange={(v) => setTableExclusiveFilter("group", v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All groups</SelectItem>
-                    {GROUPS.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {!hideClassFilter && (
-                <Select value={tableClass} onValueChange={(v) => setTableExclusiveFilter("class", v)}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">POC + GMC</SelectItem>
-                    {CLASS_OPTIONS.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              <Select value={tableStanding} onValueChange={(v) => setTableStanding(v as Standing | "All")}>
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Standing" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All">All standings</SelectItem>
-                  <SelectItem value="Good">Good</SelectItem>
-                  <SelectItem value="Warning">Warning</SelectItem>
-                  <SelectItem value="Hard Limit">Hard Limit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             {tableEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No {tableBucketChoice === "PT" ? "PT" : "LLAB/FM/D&C"} sessions yet.</p>
             ) : (

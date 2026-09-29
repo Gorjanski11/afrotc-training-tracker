@@ -160,7 +160,9 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
 
   const openReview = (memo: DeviationMemo) => {
     setReviewingId(memo.id);
-    setReviewerName("");
+    // Whoever assigned the memo is almost always the one reviewing it (reviewOwnOnly already
+    // restricts the Review button to them) -- default the box to their name instead of blank.
+    setReviewerName(memo.assignedBy);
     setReviewNotes("");
   };
 

@@ -45,6 +45,7 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
   const [overrideId, setOverrideId] = useState<string | undefined>();
   const [overrideStatus, setOverrideStatus] = useState<AbsenceMemoStatus>("Pending");
   const [overrideNotes, setOverrideNotes] = useState("");
+  const [overrideReturnReason, setOverrideReturnReason] = useState("");
   const [overriding, setOverriding] = useState(false);
 
   const pendingMemos = useMemo(() => memos.filter((m) => m.status === "Pending").sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)), [memos]);
@@ -98,12 +99,16 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
     setOverrideId(memo.id);
     setOverrideStatus(memo.status);
     setOverrideNotes(memo.reviewNotes);
+    setOverrideReturnReason(memo.returnReason ?? "");
   };
 
   const applyOverride = async (memo: AbsenceMemo) => {
     setOverriding(true);
     try {
-      await applyDecision(memo, overrideStatus, overrideNotes || memo.reviewNotes, memo.returnReason);
+      // The returned-memo email and the cadet's portal both read `returnReason` specifically, not
+      // Notes -- without this, overriding a memo to Returned from a status that was never Returned
+      // before would carry over a blank reason (Section: onAbsenceMemoReturned).
+      await applyDecision(memo, overrideStatus, overrideNotes || memo.reviewNotes, overrideStatus === "Returned" ? overrideReturnReason : memo.returnReason);
       setOverrideId(undefined);
     } finally {
       setOverriding(false);
@@ -332,6 +337,12 @@ export function AbsenceMemosScreen({ events, memos, updateMemo, applyMemoDecisio
                   <Label>Notes</Label>
                   <Textarea value={overrideNotes} onChange={(e) => setOverrideNotes(e.target.value)} placeholder="Optional -- why this was changed" />
                 </div>
+                {overrideStatus === "Returned" && (
+                  <div className="grid gap-1.5">
+                    <Label>Return reason</Label>
+                    <Textarea value={overrideReturnReason} onChange={(e) => setOverrideReturnReason(e.target.value)} placeholder="What the cadet needs to fix -- sent in the return email and shown on their portal" />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button disabled={overriding} onClick={() => applyOverride(overriding_)}>

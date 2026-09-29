@@ -144,12 +144,14 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
   const [editing, setEditing] = useState<EditTarget | undefined>();
   const [editStatus, setEditStatus] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editReturnReason, setEditReturnReason] = useState("");
   const [saving, setSaving] = useState(false);
 
   const openEdit = (target: EditTarget) => {
     setEditing(target);
     setEditStatus(target.status);
     setEditNotes(target.reviewNotes);
+    setEditReturnReason(target.returnReason ?? "");
   };
   const openEditAbsence = (m: AbsenceMemo) =>
     openEdit({ kind: "Absence", id: m.id, cadetId: m.cadetId, cadetName: m.cadetName, status: m.status, reviewNotes: m.reviewNotes, pmtEventIds: m.pmtEventIds, returnReason: m.returnReason });
@@ -178,7 +180,9 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
           status: editStatus as AbsenceMemoStatus,
           reviewedAt: now,
           reviewNotes: editNotes,
-          returnReason: editStatus === "Returned" ? editing.returnReason : undefined,
+          // The cadet's portal and the automatic "returned" email both read `returnReason`
+          // specifically (Section: onAbsenceMemoReturned) -- Notes alone never reaches the cadet.
+          returnReason: editStatus === "Returned" ? editReturnReason : undefined,
         });
       } else {
         await updateDeviationMemo(editing.id, { status: editStatus as DeviationMemoStatus, reviewedAt: now, reviewNotes: editNotes });
@@ -295,6 +299,12 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
                   <Label>Notes</Label>
                   <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Optional -- why this was changed" />
                 </div>
+                {editing.kind === "Absence" && editStatus === "Returned" && (
+                  <div className="grid gap-1.5">
+                    <Label>Return reason</Label>
+                    <Textarea value={editReturnReason} onChange={(e) => setEditReturnReason(e.target.value)} placeholder="What the cadet needs to fix -- sent in the return email and shown on their portal" />
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="secondary" onClick={() => setEditing(undefined)} disabled={saving}>

@@ -49,3 +49,18 @@ export async function listAllMemoPdfs(): Promise<StoredMemoPdf[]> {
 export async function deleteMemoPdf(path: string): Promise<void> {
   await deleteObject(ref(storage, path));
 }
+
+export interface MemorandumTemplate {
+  path: string;
+  fileName: string;
+  url: string;
+}
+
+/** Static reference templates under `memorandumTemplates/` (Memo Submission's "Memorandum Templates" tab) -- view/download only, no in-app upload or edit UI. */
+export async function listMemorandumTemplates(): Promise<MemorandumTemplate[]> {
+  const top = await listAll(ref(storage, "memorandumTemplates"));
+  const results = await Promise.all(
+    top.items.map(async (item) => ({ path: item.fullPath, fileName: item.name, url: await getDownloadURL(item) }))
+  );
+  return results.sort((a, b) => a.fileName.localeCompare(b.fileName));
+}

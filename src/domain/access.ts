@@ -9,7 +9,12 @@ export type TrainingObjectivesAccess = "none" | "poc" | "gmc" | "full";
  * (Section 5) -- applied everywhere in both sub-apps (Dashboard, Roster, Events, Attendance /
  * Dashboard, Cadet Detail, Roster, Calendar, Quick Log), not just the Dashboard.
  */
-export type UnitScope = { kind: "all" } | { kind: "group"; group: Group } | { kind: "flight"; flight: Flight } | { kind: "gmc" };
+export type UnitScope =
+  | { kind: "all" }
+  | { kind: "group"; group: Group }
+  | { kind: "flight"; flight: Flight }
+  | { kind: "gmc" }
+  | { kind: "group-and-gmc"; group: Group };
 
 const SCOPE_ALL: UnitScope = { kind: "all" };
 
@@ -89,6 +94,27 @@ function pocGroupAccess(group: Group): TabAccess {
   };
 }
 
+/**
+ * A POC Group Commander who's ALSO been given unrestricted GMC TO access (e.g. Santiago, TRG --
+ * see ACCESS_BY_EMAIL). TO's shows both cohorts (home picker); Accountability + TO's are scoped to
+ * their own group for POC, but see every GMC cadet unrestricted (not just their own group's GMC
+ * staff). Since Accountability shares the same `unitScope`, this also widens their Accountability
+ * roster to include all GMC -- accepted as correct here since the only person using this helper is
+ * already a Group Commander whose GMC TO access implies GMC accountability responsibility too.
+ */
+function pocGroupPlusAllGmcAccess(group: Group): TabAccess {
+  return {
+    trainingObjectives: "full",
+    accountability: true,
+    memoReview: true,
+    memoReviewAbsence: false,
+    memoSubmission: true,
+    unitScope: { kind: "group-and-gmc", group },
+    gmcDashboard: false,
+    pocDashboard: false,
+  };
+}
+
 /** A GMC Flight Commander -- TO's GMC-only, Accountability + TO's scoped to their own flight. */
 function gmcFlightAccess(flight: Flight): TabAccess {
   return {
@@ -131,7 +157,7 @@ const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
   "adolfo.reynoso@upr.edu": ALL_ACCESS, // TSgt Reynoso (Cadre)
   "trinity.dance@upr.edu": ALL_ACCESS, // Dance, Trinity (Cadre)
 
-  "john.santiago12@upr.edu": pocGroupAccess("TRG"), // Santiago Ruiz, John (TRG Group Commander)
+  "john.santiago12@upr.edu": pocGroupPlusAllGmcAccess("TRG"), // Santiago Ruiz, John (TRG Group Commander) -- also given unrestricted GMC TO access
   "lorean.delgado@upr.edu": pocGroupAccess("OG"), // Delgado Ortiz, Lorean (OG Group Commander)
   "hector.belen@upr.edu": pocGroupAccess("MSG"), // Belen Caraballo, Hector (MSG Group Commander)
   "edgardo.puente.afrotc@upr.edu": pocGroupAccess("WSG"), // Puente Bonilla, Edgardo (WSG Group Commander)
@@ -177,6 +203,7 @@ export function applyUnitScope(scope: UnitScope, roster: Cadet[]): Cadet[] {
   if (scope.kind === "all") return roster;
   if (scope.kind === "group") return roster.filter((p) => p.group === scope.group);
   if (scope.kind === "flight") return roster.filter((p) => p.flight === scope.flight);
+  if (scope.kind === "group-and-gmc") return roster.filter((p) => p.group === scope.group || deriveClass(p.asClass, p.isCadre) === "GMC");
   return roster.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
 }
 

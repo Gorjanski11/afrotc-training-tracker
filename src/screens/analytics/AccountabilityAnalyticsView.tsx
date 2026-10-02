@@ -210,11 +210,13 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   // and Class all hide for them (Section A3). But "gmc" (all 4 flights, e.g. Montalvo) and
   // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights, so
   // Flight stays meaningful there; "group-and-gmc" also spans both POC and GMC, so Class stays
-  // meaningful there too -- only Group is always hidden once scoped at all (even "group-and-gmc"
-  // only ever has one meaningful group value).
-  const hideGroupFilter = unitScope.kind !== "all";
+  // meaningful there too. "group-and-gmc" ALSO needs a way back to just their own group (otherwise
+  // there's no way to see TRG-only, only "everything" or one flight at a time) -- so Group stays
+  // visible for them too, restricted to their one group as a two-option All/TRG switch.
+  const hideGroupFilter = unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
   const hideFlightFilter = unitScope.kind === "flight" || unitScope.kind === "group";
   const hideClassFilter = unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
+  const scopedGroupOptions = unitScope.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
 
   // Single filter set (Cadet/Flight/Group/Class/Standing) -- exclusive on Cadet vs Flight/Group/Class,
   // "last one picked wins". Originally split between a top "master" row driving the charts/tiles and
@@ -581,7 +583,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
+              {scopedGroupOptions.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>

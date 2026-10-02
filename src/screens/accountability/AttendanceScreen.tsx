@@ -57,9 +57,13 @@ export function AttendanceScreen({
   // it -- hide BOTH selects for them, since the other one would only ever show a meaningless
   // empty-or-single-value option (Section A2). But "gmc" (all 4 flights, e.g. Montalvo) and
   // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights,
-  // so the Flight select stays meaningful there -- only Group gets hidden for them.
-  const hideGroupFilter = unitScope.kind !== "all";
+  // so the Flight select stays meaningful for them. "group-and-gmc" ALSO needs a way back to just
+  // their own group (otherwise there's no way to see TRG-only, only "everything" or one flight at a
+  // time) -- so Group stays visible for them too, just restricted to their one group as a two-option
+  // All/TRG switch rather than the full 4-group list.
+  const hideGroupFilter = unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
   const hideFlightFilter = unitScope.kind === "flight" || unitScope.kind === "group";
+  const scopedGroupOptions = unitScope.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 
@@ -342,7 +346,7 @@ export function AttendanceScreen({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
+              {scopedGroupOptions.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>

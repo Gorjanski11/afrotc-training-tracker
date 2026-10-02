@@ -95,9 +95,12 @@ interface EditTarget {
 
 export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, applyMemoDecision, unitScope }: Props) {
   // "gmc"/"group-and-gmc" scopes (Montalvo, Santiago) span multiple flights -- Flight stays
-  // meaningful for them, same fix as Accountability/TO Analytics. Group always hides once scoped.
-  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all";
+  // meaningful for them, same fix as Accountability/TO Analytics. "group-and-gmc" ALSO needs a way
+  // back to just their own group, so Group stays visible for them too, restricted to their one
+  // group as a two-option All/TRG switch.
+  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
   const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
+  const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [mode, setMode] = useState<ViewMode>("all");
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [flight, setFlight] = useState<Flight | "All">("All");
@@ -246,7 +249,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
+              {scopedGroupOptions.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>

@@ -60,10 +60,13 @@ type CohortFilter = (typeof COHORT_OPTIONS)[number];
 export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS, unitScope }: Props) {
   // "gmc" (all 4 flights, e.g. Montalvo) and "group-and-gmc" (one group PLUS all 4 flights, e.g.
   // Santiago) genuinely span multiple flights, so the Flight select stays meaningful for them --
-  // only "flight"/"group" scopes (a single fixed value either way) hide it. Group always hides once
-  // scoped at all, since even "group-and-gmc" only ever has one meaningful group value.
-  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all";
+  // only "flight"/"group" scopes (a single fixed value either way) hide it. "group-and-gmc" ALSO
+  // needs a way back to just their own group (otherwise there's no way to see TRG-only, only
+  // "everything" or one flight at a time) -- so Group stays visible for them too, restricted to
+  // their one group as a two-option All/TRG switch.
+  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
   const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
+  const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
   const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
   const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
@@ -183,7 +186,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
+              {scopedGroupOptions.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>

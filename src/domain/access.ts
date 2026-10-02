@@ -95,12 +95,11 @@ function pocGroupAccess(group: Group): TabAccess {
 }
 
 /**
- * A POC Group Commander who's ALSO been given unrestricted GMC TO access (e.g. Santiago, TRG --
- * see ACCESS_BY_EMAIL). TO's shows both cohorts (home picker); Accountability + TO's are scoped to
- * their own group for POC, but see every GMC cadet unrestricted (not just their own group's GMC
- * staff). Since Accountability shares the same `unitScope`, this also widens their Accountability
- * roster to include all GMC -- accepted as correct here since the only person using this helper is
- * already a Group Commander whose GMC TO access implies GMC accountability responsibility too.
+ * A POC Group Commander who's ALSO been given unrestricted GMC access across the board (e.g.
+ * Santiago, TRG -- see ACCESS_BY_EMAIL). TO's shows both cohorts (home picker). Accountability +
+ * TO's + Accountability Analytics are all scoped to their own group for POC, but see every GMC
+ * cadet unrestricted regardless of flight -- confirmed with the user this covers GMC accountability
+ * submission and analytics too, not just TO's, since all three read the same `unitScope`.
  */
 function pocGroupPlusAllGmcAccess(group: Group): TabAccess {
   return {

@@ -168,7 +168,7 @@ const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
   "sebastian.montalvo3@upr.edu": GMC_WIDE_ACCESS, // Montalvo Nieves, Sebastian (CTO -- all GMC, TRG group)
 
   "angel.huertas2@upr.edu": TO_FULL_ONLY, // Huertas Pabón, Angel
-  "edgar.feliciano3@upr.edu": MEMO_DEVIATION_ONLY, // Feliciano Feliciano, Edgardo
+  "edgar.feliciano3@upr.edu": MEMO_DEVIATION_ONLY, // Feliciano Feliciano, Edgar (PFO)
 };
 
 /**
@@ -345,7 +345,9 @@ const DEVIATION_ASSIGN_OVERRIDES: Record<string, DeviationAssignRule> = {
   "fabiola.merle@upr.edu": flightRule("M"),
   "julian.vivas@upr.edu": flightRule("N"),
   "jakob.garcia@upr.edu": flightRule("O"),
-  "edgar.feliciano3@upr.edu": RULE_ANY_GMC,
+  // Feliciano Feliciano, Edgar -- PFO (Physical Fitness Officer), one of the 5 roles the SOP (1 Oct
+  // 2026, Section 5) names with full deviation-memo assignment authority, same tier as CWL.
+  "edgar.feliciano3@upr.edu": RULE_EVERYONE_OWN_REVIEW,
 };
 
 /**

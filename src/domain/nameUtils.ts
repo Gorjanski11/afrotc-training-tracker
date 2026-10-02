@@ -22,3 +22,14 @@ export function formatCadetName(cadet: { name: string; rank: string | undefined;
   if (cadet.isCadre || !cadet.rank) return cadet.name;
   return `C/${cadet.rank} ${cadet.name}`;
 }
+
+/**
+ * Narrow-width display format: "C/{rank} {first surname only}" (e.g. "C/2d Lt Rodriguez"), dropping
+ * the first name and any second surname that `formatCadetName` keeps. Cadre names have no comma to
+ * split on, so they pass through unchanged, same as `formatCadetName`.
+ */
+export function formatCadetNameCompact(cadet: { name: string; rank: string | undefined; isCadre: boolean }): string {
+  if (cadet.isCadre) return cadet.name;
+  const firstSurname = cadet.name.split(",")[0]!.trim().split(/\s+/)[0]!;
+  return cadet.rank ? `C/${cadet.rank} ${firstSurname}` : firstSurname;
+}

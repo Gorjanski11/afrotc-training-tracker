@@ -23,7 +23,7 @@ import {
   type SessionTrendPoint,
   type MissedCadetRow,
 } from "../../domain/accountabilityAnalytics";
-import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetName, formatCadetNameCompact } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { Stepper } from "../../components/analytics/Stepper";
 import type { UnitScope } from "../../domain/access";
@@ -885,7 +885,10 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                       const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
                       return (
                         <TableRow key={cadet.id}>
-                          <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">{formatCadetName(cadet)}</TableCell>
+                          <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">
+                            <span className="sm:hidden">{formatCadetNameCompact(cadet)}</span>
+                            <span className="hidden sm:inline">{formatCadetName(cadet)}</span>
+                          </TableCell>
                           {tableEvents.map((e) => {
                             const record = cellByKey.get(`${cadet.id}__${e.id}`);
                             return (

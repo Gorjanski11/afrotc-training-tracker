@@ -130,7 +130,17 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
     setCc([]);
   };
 
-  const assignValid = !!cadetId && !!reason && (reason !== "Other" || !!reasonOther.trim()) && !!purpose.trim() && !!assignedByEmail;
+  // SOP (1 Oct 2026) Section 5a: a deviation memo must give the cadet a minimum of 48 hours to
+  // submit it, no maximum. The earliest valid calendar date is whichever day end-of-day (23:59:59,
+  // via `endOfDay`) lands at or after now+48h -- that's always the calendar date of now+48h itself,
+  // since that date's own end-of-day is necessarily later than that exact moment.
+  const minDueDate = useMemo(() => {
+    const d = new Date(Date.now() + 48 * 3_600_000);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, []);
+
+  const assignValid =
+    !!cadetId && !!reason && (reason !== "Other" || !!reasonOther.trim()) && !!purpose.trim() && !!assignedByEmail && !!dueDate && dueDate >= minDueDate;
 
   const handleAssign = async () => {
     const person = roster.find((p) => p.id === cadetId);
@@ -514,7 +524,8 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
               </div>
               <div className="space-y-1.5">
                 <Label>Due date</Label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <Input type="date" value={dueDate} min={minDueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Minimum 48 hours from now -- no maximum.</p>
               </div>
             </div>
             <div className="space-y-1.5">

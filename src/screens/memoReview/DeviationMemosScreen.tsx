@@ -13,7 +13,13 @@ import { CadetCombobox } from "../../components/CadetCombobox";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
 import { DEVIATION_MEMO_STATUSES, DEVIATION_REASONS, endOfDay, type DeviationMemoStatus, type DeviationReason } from "../../domain/constants";
-import { cadetsInAssignScope, getAuthorizedDeviationAssigners, getCcEligiblePeople, resolveDeviationAssignRule } from "../../domain/access";
+import {
+  cadetsInAssignScope,
+  getAuthorizedDeviationAssigners,
+  getCcEligiblePeople,
+  isWithinDeviationAssignWindow,
+  resolveDeviationAssignRule,
+} from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
 import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
@@ -58,6 +64,9 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
 
   const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
+  // Checked once per render, not on a ticking clock -- matches how every other "now" check in this
+  // app is handled (no live timer), accepted as good enough for a business-hours gate.
+  const withinAssignWindow = isWithinDeviationAssignWindow();
   const authorizedAssigners = useMemo(() => getAuthorizedDeviationAssigners(roster), [roster]);
   const ccEligible = useMemo(() => getCcEligiblePeople(roster), [roster]);
 
@@ -126,6 +135,10 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
   const handleAssign = async () => {
     const person = roster.find((p) => p.id === cadetId);
     if (!person || !assignValid) return;
+    if (!isWithinDeviationAssignWindow()) {
+      setAssignError("Deviation Memos can only be assigned Monday-Friday, 0400-2000.");
+      return;
+    }
     setAssigning(true);
     setAssignError(undefined);
     try {
@@ -248,12 +261,15 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
           <ClipboardList className="h-5 w-5 text-primary" />
           Deviation Memos
         </h2>
-        {rule.canAssign && (
-          <Button onClick={() => setAssignDialogOpen(true)}>
-            <UserPlus className="h-3.5 w-3.5" />
-            Assign
-          </Button>
-        )}
+        {rule.canAssign &&
+          (withinAssignWindow ? (
+            <Button onClick={() => setAssignDialogOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" />
+              Assign
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">Assigning is only available Monday-Friday, 0400-2000.</p>
+          ))}
       </div>
 
       <div className="space-y-6">
@@ -511,7 +527,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
             <Button variant="secondary" onClick={() => setAssignDialogOpen(false)} disabled={assigning}>
               Cancel
             </Button>
-            <Button onClick={handleAssign} disabled={assigning || !assignValid}>
+            <Button onClick={handleAssign} disabled={assigning || !assignValid || !withinAssignWindow}>
               {assigning ? "Assigning..." : "Assign"}
             </Button>
           </DialogFooter>

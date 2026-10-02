@@ -373,6 +373,17 @@ export function cadetsInAssignScope(scope: DeviationAssignScope, roster: Cadet[]
   return roster.filter((p) => p.group === scope.group);
 }
 
+/**
+ * Deviation Memos may only be assigned Monday-Friday, 0400-2000 -- device-local time, same as every
+ * other "now" check in this app (no timezone library is used anywhere else either). `canAssign` on
+ * `DeviationAssignRule` governs WHO can assign; this governs WHEN, independent of who they are.
+ */
+export function isWithinDeviationAssignWindow(now: Date = new Date()): boolean {
+  const day = now.getDay(); // 0 = Sunday ... 6 = Saturday
+  const hour = now.getHours();
+  return day >= 1 && day <= 5 && hour >= 4 && hour < 20;
+}
+
 /** Every roster member currently authorized to assign a Deviation Memo -- populates the "Assigned by" combobox. */
 export function getAuthorizedDeviationAssigners(roster: Cadet[]): Cadet[] {
   return roster.filter((p) => p.email && resolveDeviationAssignRule(p.email, roster).canAssign);

@@ -58,7 +58,12 @@ type CohortFilter = (typeof COHORT_OPTIONS)[number];
 
 /** Section 6b -- same Cadet/Flight/Group exclusive-filter bar as Accountability Analytics, plus this screen's own Class (Dev Level) and PLO filters, all of which now feed every chart below. */
 export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS, unitScope }: Props) {
-  const hideUnitFilters = unitScope !== undefined && unitScope.kind !== "all";
+  // "gmc" (all 4 flights, e.g. Montalvo) and "group-and-gmc" (one group PLUS all 4 flights, e.g.
+  // Santiago) genuinely span multiple flights, so the Flight select stays meaningful for them --
+  // only "flight"/"group" scopes (a single fixed value either way) hide it. Group always hides once
+  // scoped at all, since even "group-and-gmc" only ever has one meaningful group value.
+  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all";
+  const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
   const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
   const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
@@ -156,7 +161,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={cadets} value={masterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
-        {!hideUnitFilters && (
+        {!hideFlightFilter && (
           <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Flight" />
@@ -171,7 +176,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
             </SelectContent>
           </Select>
         )}
-        {!hideUnitFilters && (
+        {!hideGroupFilter && (
           <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Group" />

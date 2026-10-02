@@ -94,7 +94,10 @@ interface EditTarget {
 }
 
 export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, applyMemoDecision, unitScope }: Props) {
-  const hideUnitFilters = unitScope !== undefined && unitScope.kind !== "all";
+  // "gmc"/"group-and-gmc" scopes (Montalvo, Santiago) span multiple flights -- Flight stays
+  // meaningful for them, same fix as Accountability/TO Analytics. Group always hides once scoped.
+  const hideGroupFilter = unitScope !== undefined && unitScope.kind !== "all";
+  const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
   const [mode, setMode] = useState<ViewMode>("all");
   const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [flight, setFlight] = useState<Flight | "All">("All");
@@ -221,7 +224,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
             <SelectItem value="cadet">Sort by cadet</SelectItem>
           </SelectContent>
         </Select>
-        {!hideUnitFilters && (
+        {!hideFlightFilter && (
           <Select value={flight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Flight" />
@@ -236,7 +239,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
             </SelectContent>
           </Select>
         )}
-        {!hideUnitFilters && (
+        {!hideGroupFilter && (
           <Select value={group} onValueChange={(v) => setExclusiveFilter("group", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Group" />

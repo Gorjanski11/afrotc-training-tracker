@@ -206,11 +206,15 @@ function CombinedClickableDot({
 }
 
 export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope }: Props) {
-  // A scoped commander (Flight/Group) only ever gets the Cadet filter -- both Flight and Group
-  // selects hide, not just the one matching their own scope kind (Section A3).
+  // A single-unit scoped commander (Flight/Group) only ever gets the Cadet filter -- Flight, Group,
+  // and Class all hide for them (Section A3). But "gmc" (all 4 flights, e.g. Montalvo) and
+  // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights, so
+  // Flight stays meaningful there; "group-and-gmc" also spans both POC and GMC, so Class stays
+  // meaningful there too -- only Group is always hidden once scoped at all (even "group-and-gmc"
+  // only ever has one meaningful group value).
   const hideGroupFilter = unitScope.kind !== "all";
-  const hideFlightFilter = unitScope.kind !== "all";
-  const hideClassFilter = unitScope.kind !== "all";
+  const hideFlightFilter = unitScope.kind === "flight" || unitScope.kind === "group";
+  const hideClassFilter = unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
 
   // Single filter set (Cadet/Flight/Group/Class/Standing) -- exclusive on Cadet vs Flight/Group/Class,
   // "last one picked wins". Originally split between a top "master" row driving the charts/tiles and

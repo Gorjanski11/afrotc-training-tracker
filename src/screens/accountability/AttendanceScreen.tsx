@@ -53,11 +53,13 @@ export function AttendanceScreen({
   initialPmtEventId,
   unitScope,
 }: Props) {
-  // A scoped commander's roster only ever has one Group or one Flight value in it -- hide BOTH
-  // selects, not just the one matching their own scope kind, since the other one would only ever
-  // show meaningless empty-or-single-value options for their already-narrowed roster (Section A2).
+  // A "group" or "flight" scoped commander's roster only ever has one Group or one Flight value in
+  // it -- hide BOTH selects for them, since the other one would only ever show a meaningless
+  // empty-or-single-value option (Section A2). But "gmc" (all 4 flights, e.g. Montalvo) and
+  // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights,
+  // so the Flight select stays meaningful there -- only Group gets hidden for them.
   const hideGroupFilter = unitScope.kind !== "all";
-  const hideFlightFilter = unitScope.kind !== "all";
+  const hideFlightFilter = unitScope.kind === "flight" || unitScope.kind === "group";
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 

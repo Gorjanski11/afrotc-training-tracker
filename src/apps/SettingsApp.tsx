@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus } from "lucide-react";
+import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useExtraEvents } from "../hooks/useExtraEvents";
@@ -14,7 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCadreOrCortesGaray, canManageAccounts, canEditEvents, resolveTabAccess } from "../domain/access";
+import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canManageAccounts, canEditEvents, resolveTabAccess } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
@@ -22,8 +22,9 @@ import { QuickLinksScreen } from "../screens/settings/QuickLinksScreen";
 import { MemorandumTemplatesScreen } from "../screens/settings/MemorandumTemplatesScreen";
 import { DataManagementScreen } from "../screens/settings/DataManagementScreen";
 import { NewSemesterScreen } from "../screens/settings/NewSemesterScreen";
+import { SaeReviewScreen } from "../screens/settings/SaeReviewScreen";
 
-type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester";
+type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -55,6 +56,9 @@ export function SettingsApp({ userEmail }: Props) {
   const eventEditAccess = canEditEvents(userEmail, cadetsState.cadets);
   const unitScope = resolveTabAccess(userEmail, cadetsState.cadets).unitScope;
   const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
+  // SOP (1 Oct 2026) Sections 3/4's review flags are literally "for review by the SAE" -- narrower
+  // than Cadre, matching isCortesGaray (the same tier that gates New Semester's riskiest actions).
+  const saeReviewAccess = isCortesGaray(userEmail);
   const [section, setSection] = useState<Section>("roster");
 
   const refetchAll = async () => {
@@ -98,6 +102,7 @@ export function SettingsApp({ userEmail }: Props) {
     ...(fullAccess ? [{ value: "templates" as const, label: "Auto-email Templates", icon: Mail }] : []),
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
     ...(newSemesterAccess ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
+    ...(saeReviewAccess ? [{ value: "saeReview" as const, label: "SAE Review", icon: ShieldAlert }] : []),
   ];
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
@@ -205,6 +210,15 @@ export function SettingsApp({ userEmail }: Props) {
                 createCadetAccounts={createCadetAccounts}
                 disableCadetAccounts={disableCadetAccounts}
                 refetchAll={refetchAll}
+              />
+            )}
+            {activeSection === "saeReview" && saeReviewAccess && (
+              <SaeReviewScreen
+                roster={cadetsState.cadets}
+                events={eventsState.events}
+                attendance={attendanceState.attendance}
+                catalog={catalogState.catalog}
+                completions={completionsState.completions}
               />
             )}
           </AnimatedPanel>

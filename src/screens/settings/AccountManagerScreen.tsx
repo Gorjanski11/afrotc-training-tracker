@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { UserCog, KeyRound, Copy, Check, Dices } from "lucide-react";
-import { resolveTabAccess, isFullAccess, canManageAccounts, applyUnitScope } from "../../domain/access";
+import { UserCog, KeyRound, Copy, Check, Dices, LogIn } from "lucide-react";
+import { resolveTabAccess, isFullAccess, isCortesGaray, canManageAccounts, applyUnitScope } from "../../domain/access";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { Cadet } from "../../domain/types";
 import type { CadetInput } from "../../hooks/useCadets";
@@ -18,6 +18,8 @@ interface Props {
   userEmail: string | null | undefined;
   reauthenticate: (password: string) => Promise<void>;
   resetOtherPassword: (targetEmail: string, newPassword: string) => Promise<void>;
+  /** Cortes Garay only -- signs the current browser session in as another account entirely, no password needed or changed. */
+  impersonate: (targetEmail: string) => Promise<void>;
 }
 
 /** Human-readable label for whatever tier `resolveTabAccess` resolves someone to -- explicit `ACCESS_BY_EMAIL` overrides (the ~15 named exceptions) read as "Custom (code-defined)" since editing those needs a code change, by design. */
@@ -45,10 +47,14 @@ function generatePassword(): string {
  * resolves to -- roster-editing fields (rank/cadre/position) stay full-access-only; a scoped
  * commander only ever sees Name/Email/Reset password for their own unit.
  */
-export function AccountManagerScreen({ roster, updateCadetFields, userEmail, reauthenticate, resetOtherPassword }: Props) {
+export function AccountManagerScreen({ roster, updateCadetFields, userEmail, reauthenticate, resetOtherPassword, impersonate }: Props) {
   const [search, setSearch] = useState("");
   const fullAccess = isFullAccess(userEmail, roster);
   const canResetPasswords = canManageAccounts(userEmail, roster);
+  // Narrower than canResetPasswords -- CWL and unit-scoped commanders can reset a password, but only
+  // Cortes Garay can sign in AS someone else outright, since that's strictly more powerful (it
+  // bypasses Cadre's own password entirely, no reset or notice to them required).
+  const canImpersonate = isCortesGaray(userEmail);
   const unitScope = resolveTabAccess(userEmail, roster).unitScope;
   const scopedRoster = useMemo(() => (fullAccess ? roster : applyUnitScope(unitScope, roster)), [fullAccess, unitScope, roster]);
 
@@ -59,6 +65,11 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
   const [error, setError] = useState<string | undefined>();
   const [justReset, setJustReset] = useState<{ name: string; password: string } | undefined>();
   const [copied, setCopied] = useState(false);
+
+  const [impersonateTarget, setImpersonateTarget] = useState<Cadet | undefined>();
+  const [impersonatePassword, setImpersonatePassword] = useState("");
+  const [impersonating, setImpersonating] = useState(false);
+  const [impersonateError, setImpersonateError] = useState<string | undefined>();
 
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -79,6 +90,35 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
     setNewPassword("");
     setAdminPassword("");
     setError(undefined);
+  };
+
+  const openImpersonateFor = (cadet: Cadet) => {
+    setImpersonateTarget(cadet);
+    setImpersonatePassword("");
+    setImpersonateError(undefined);
+  };
+
+  const closeImpersonateDialog = () => {
+    setImpersonateTarget(undefined);
+    setImpersonatePassword("");
+    setImpersonateError(undefined);
+  };
+
+  /** Confirms it's really Cortes Garay via their own password first (same friction as a reset), then
+   * swaps the whole browser session over to the target account -- no password of theirs is touched. */
+  const handleImpersonate = async () => {
+    if (!impersonateTarget?.email || !impersonatePassword) return;
+    setImpersonating(true);
+    setImpersonateError(undefined);
+    try {
+      await reauthenticate(impersonatePassword);
+      await impersonate(impersonateTarget.email);
+      closeImpersonateDialog();
+    } catch (e) {
+      setImpersonateError(e instanceof Error ? e.message : "Failed to sign in as this account -- check your own password and try again.");
+    } finally {
+      setImpersonating(false);
+    }
   };
 
   const handleReset = async () => {
@@ -110,6 +150,7 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
         decide what a signed-in person can see. The ~15 named exceptions (Cadre, Cortes Garay, Group/Flight Commanders, etc.) are defined in code and
         aren't editable from here.
         {canResetPasswords && " You can also reset anyone's password here if they get locked out -- that always requires your own current password first."}
+        {canImpersonate && " You can also sign in directly as anyone, including Cadre, without touching their password -- also confirmed with your own password first."}
       </p>
 
       {justReset && (
@@ -148,7 +189,7 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                   {fullAccess && <TableHead>Cadre</TableHead>}
                   {fullAccess && <TableHead>Position</TableHead>}
                   {fullAccess && <TableHead>Resolved access</TableHead>}
-                  {canResetPasswords && <TableHead />}
+                  {(canResetPasswords || canImpersonate) && <TableHead />}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -196,13 +237,23 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                         <Badge variant="outline">{accessLabel(p, roster)}</Badge>
                       </TableCell>
                     )}
-                    {canResetPasswords && (
+                    {(canResetPasswords || canImpersonate) && (
                       <TableCell>
                         {p.email && (
-                          <Button variant="outline" size="sm" onClick={() => openFor(p)}>
-                            <KeyRound className="h-3.5 w-3.5" />
-                            Reset password
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {canResetPasswords && (
+                              <Button variant="outline" size="sm" onClick={() => openFor(p)}>
+                                <KeyRound className="h-3.5 w-3.5" />
+                                Reset password
+                              </Button>
+                            )}
+                            {canImpersonate && p.email.trim().toLowerCase() !== (userEmail ?? "").trim().toLowerCase() && (
+                              <Button variant="outline" size="sm" onClick={() => openImpersonateFor(p)}>
+                                <LogIn className="h-3.5 w-3.5" />
+                                Sign in as
+                              </Button>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                     )}
@@ -210,7 +261,7 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
                 ))}
                 {rows.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={(fullAccess ? 6 : 2) + (canResetPasswords ? 1 : 0)} className="text-center text-muted-foreground">
+                    <TableCell colSpan={(fullAccess ? 6 : 2) + (canResetPasswords || canImpersonate ? 1 : 0)} className="text-center text-muted-foreground">
                       No one matches this search.
                     </TableCell>
                   </TableRow>
@@ -250,6 +301,40 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
               </Button>
               <Button onClick={handleReset} disabled={busy || newPassword.length < 6 || !adminPassword}>
                 {busy ? "Resetting..." : "Reset password"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {canImpersonate && (
+        <Dialog open={!!impersonateTarget} onOpenChange={(o) => !o && closeImpersonateDialog()}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Sign in as {impersonateTarget ? formatCadetName(impersonateTarget) : ""}?</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This browser will be signed in as them immediately -- their password is never touched or shown. To get back to your own account, sign out
+                and log back in with your own credentials.
+              </p>
+              <div className="grid gap-1.5">
+                <Label>Your password (confirms it's really you)</Label>
+                <Input
+                  type="password"
+                  value={impersonatePassword}
+                  onChange={(e) => setImpersonatePassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
+              {impersonateError && <p className="text-sm text-destructive">{impersonateError}</p>}
+            </div>
+            <DialogFooter>
+              <Button variant="secondary" onClick={closeImpersonateDialog} disabled={impersonating}>
+                Cancel
+              </Button>
+              <Button onClick={handleImpersonate} disabled={impersonating || !impersonatePassword}>
+                {impersonating ? "Signing in..." : "Sign in as them"}
               </Button>
             </DialogFooter>
           </DialogContent>

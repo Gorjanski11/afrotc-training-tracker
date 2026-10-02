@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   signOut,
   updatePassword,
   reauthenticateWithCredential,
@@ -99,6 +100,18 @@ export function useAuth() {
     await call({ targetEmail, newPassword });
   }, []);
 
+  /**
+   * Cortes Garay only -- signs the current browser session in as ANY other account, Cadre included,
+   * with no password of theirs ever touched, reset, or exposed. The Cloud Function independently
+   * re-checks that the caller is really Cortes Garay and logs every use (Settings > Account Manager);
+   * this just takes the one-time custom token it mints and swaps the current session over to it.
+   */
+  const impersonate = useCallback(async (targetEmail: string) => {
+    const call = httpsCallable<{ targetEmail: string }, { customToken: string }>(functions, "impersonateAccount");
+    const res = await call({ targetEmail });
+    await signInWithCustomToken(auth, res.data.customToken);
+  }, []);
+
   /** New Semester (Cortes Garay only) -- provisions a fresh det756-password login for every brand-new cadet. */
   const createCadetAccounts = useCallback(async (emails: string[]): Promise<AccountOpResult[]> => {
     if (emails.length === 0) return [];
@@ -123,6 +136,7 @@ export function useAuth() {
     changePassword,
     reauthenticate,
     resetOtherPassword,
+    impersonate,
     createCadetAccounts,
     disableCadetAccounts,
   };

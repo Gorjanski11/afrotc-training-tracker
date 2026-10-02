@@ -48,7 +48,7 @@ export function SettingsApp({ userEmail }: Props) {
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
   const emailTemplatesState = useEmailTemplates();
-  const { reauthenticate, resetOtherPassword, createCadetAccounts, disableCadetAccounts } = useAuth();
+  const { reauthenticate, resetOtherPassword, impersonate, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
   const accountManagerAccess = canManageAccounts(userEmail, cadetsState.cadets);
@@ -136,6 +136,7 @@ export function SettingsApp({ userEmail }: Props) {
                 userEmail={userEmail}
                 reauthenticate={reauthenticate}
                 resetOtherPassword={resetOtherPassword}
+                impersonate={impersonate}
               />
             )}
             {activeSection === "roster" && (

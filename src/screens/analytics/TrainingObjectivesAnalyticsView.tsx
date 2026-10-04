@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, PLO_SHORT_CODE, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group, type PloSection } from "../../domain/constants";
 import { computeCohortSummary, computeCompletionByPlo, computeOverdueObjectives, crosstabCellFor, type PloCompletionRow } from "../../domain/analytics";
 import { groupByPlo } from "../../domain/objectiveGrouping";
+import { SIX_ONE_PARENT_ID, computeSixOneRollup } from "../../domain/sixOneRollup";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetObjectiveTimelineTable } from "../../components/CadetObjectiveTimelineTable";
@@ -379,9 +380,11 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                         <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetName(cadet)}</TableCell>
                         {crosstabPloGroups.flatMap((group) =>
                           group.objectives.map((objective, i) => {
-                            const cell = cadet.devLevel
-                              ? crosstabCellFor(objective, cadet.devLevel, crosstabCompletionsByCadet.get(cadet.id) ?? [])
-                              : undefined;
+                            const cell = !cadet.devLevel
+                              ? undefined
+                              : objective.id === SIX_ONE_PARENT_ID
+                                ? computeSixOneRollup(filteredCatalog, cadet.devLevel, crosstabCompletionsByCadet.get(cadet.id) ?? [])
+                                : crosstabCellFor(objective, cadet.devLevel, crosstabCompletionsByCadet.get(cadet.id) ?? []);
                             return (
                               <TableCell
                                 key={objective.id}

@@ -58,10 +58,24 @@ export function proficiencyOptionsAtOrAbove(required: ProficiencyCode): Proficie
  * means the material was never covered for that cadet, not that they attempted and failed. Marking
  * a cadet Absent for a PMT covering one of these auto-logs a `notCovered: true` completion instead
  * of the usual Not Pass (see useAutoFailCompletions); never a manual Quick Log option.
- * - "2-6.1": Drill fundamentals and drill of the flight/squadron.
+ * - "2-6.1.1".."2-6.1.11": Drill fundamentals' 11 sub-objectives (see domain/sixOneRollup.ts) --
+ *   "2-6.1" itself is no longer directly graded, so it's not listed here anymore.
  * - "4-2.3": Base defense/UXO/IED/sUAS/active-shooter TTPs.
  */
-export const PRESENCE_BASED_OBJECTIVE_IDS = new Set(["2-6.1", "4-2.3"]);
+export const PRESENCE_BASED_OBJECTIVE_IDS = new Set([
+  "2-6.1.1",
+  "2-6.1.2",
+  "2-6.1.3",
+  "2-6.1.4",
+  "2-6.1.5",
+  "2-6.1.6",
+  "2-6.1.7",
+  "2-6.1.8",
+  "2-6.1.9",
+  "2-6.1.10",
+  "2-6.1.11",
+  "4-2.3",
+]);
 
 // PMT (Practical Military Training) session types tracked on the Calendar tab. This calendar is
 // shared with the separate Accountability site (same pmtEvents collection, same Firebase project)

@@ -13,12 +13,20 @@ export function objectiveDocId(ploOrder: number, number: string): string {
 }
 
 /** Numeric-aware compare for objective numbers like "2.1" vs "2.10" (plain string compare would sort "2.10" before "2.2"). */
+/**
+ * Numeric, per-segment comparison for any number of dot-separated parts -- "6.1" < "6.1.1" < "6.1.2"
+ * < ... < "6.1.10" < "6.1.11" (a 2-segment comparator here would silently drop the 3rd segment,
+ * collapsing every "6.1.X" sub-objective to the same sort key as "6.1" itself).
+ */
 export function compareObjectiveNumbers(a: string, b: string): number {
-  const [aMajor, aMinor = "0"] = a.split(".");
-  const [bMajor, bMinor = "0"] = b.split(".");
-  const majorDiff = Number(aMajor) - Number(bMajor);
-  if (majorDiff !== 0) return majorDiff;
-  return Number(aMinor) - Number(bMinor);
+  const aParts = a.split(".").map(Number);
+  const bParts = b.split(".").map(Number);
+  const len = Math.max(aParts.length, bParts.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (aParts[i] ?? 0) - (bParts[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 /** Builds the PLO -> sub-area -> objectives tree used by Cadet Detail and the Reference Library, in document order. */

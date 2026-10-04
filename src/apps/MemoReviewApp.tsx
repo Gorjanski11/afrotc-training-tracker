@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, LayoutDashboard, ClipboardList } from "lucide-react";
@@ -28,10 +28,13 @@ interface Props {
   /** Absence Memos tab/queue only shows for full-access users -- everyone else with Memo Review access sees Deviation Memos only. */
   showAbsence: boolean;
   userEmail: string | null | undefined;
+  /** Set by a Cadre/SAE Dashboard tile click (e.g. "Absence Memos pending review") -- jumps straight to that sub-screen on mount, then `onConsumeInitialScreen` clears it so it doesn't re-fire on a later remount. */
+  initialScreen?: "absence" | "deviation";
+  onConsumeInitialScreen?: () => void;
 }
 
 /** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation. Memorandum Templates and History moved to Settings (Section 6). */
-export function MemoReviewApp({ showAbsence, userEmail }: Props) {
+export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsumeInitialScreen }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const absenceState = useAbsenceMemos();
@@ -41,6 +44,13 @@ export function MemoReviewApp({ showAbsence, userEmail }: Props) {
   const { reauthenticate } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("dashboard");
+
+  useEffect(() => {
+    if (!initialScreen) return;
+    setScreen(initialScreen);
+    onConsumeInitialScreen?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScreen]);
 
   const dataLoading =
     cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading || attendanceRecordsState.loading;

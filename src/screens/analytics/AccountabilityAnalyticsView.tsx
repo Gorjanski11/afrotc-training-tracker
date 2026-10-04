@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Line, LineChart, Bar, BarChart, Pie, PieChart as RePieChart, Cell, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,6 +27,7 @@ import { compareByLastName, formatCadetName, formatCadetNameCompact } from "../.
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { Stepper } from "../../components/analytics/Stepper";
 import type { UnitScope } from "../../domain/access";
+import type { DashboardNavIntent } from "../../domain/dashboardNav";
 import type { Attendance, PmtEvent, Cadet, AbsenceMemo } from "../../domain/types";
 
 interface Props {
@@ -36,6 +37,9 @@ interface Props {
   absenceMemos: AbsenceMemo[];
   /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
   unitScope: UnitScope;
+  /** Set by a Cadre/SAE Dashboard row click -- pre-applies this cadet/group/flight filter on mount, then `onConsumeInitialFilter` clears it. */
+  initialFilter?: Extract<DashboardNavIntent, { kind: "accountabilityAnalytics" }>;
+  onConsumeInitialFilter?: () => void;
 }
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
@@ -205,7 +209,7 @@ function CombinedClickableDot({
   );
 }
 
-export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope }: Props) {
+export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope, initialFilter, onConsumeInitialFilter }: Props) {
   // A single-unit scoped commander (Flight/Group) only ever gets the Cadet filter -- Flight, Group,
   // and Class all hide for them (Section A3). But "gmc" (all 4 flights, e.g. Montalvo) and
   // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights, so
@@ -238,6 +242,16 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   // Master attendance table's own PT/LLAB-FM-D&C stepper -- independent of the filter row above, and
   // also which bucket the Standing filter checks (a cadet can be Good on PT but Hard Limit on LLAB/FM).
   const [tableBucketChoice, setTableBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
+
+  useEffect(() => {
+    if (!initialFilter) return;
+    setFilterCadetId(initialFilter.cadetId ?? ALL_CADETS);
+    setFilterFlight(initialFilter.flight ?? "All");
+    setFilterGroup(initialFilter.group ?? "All");
+    setFilterClass("All");
+    onConsumeInitialFilter?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFilter]);
 
   const activeRoster = useMemo(() => roster.filter((p) => p.status === "Active"), [roster]);
   const sortedActiveRoster = useMemo(() => [...activeRoster].sort((a, b) => compareByLastName(a.name, b.name)), [activeRoster]);

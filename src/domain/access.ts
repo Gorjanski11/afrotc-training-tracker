@@ -36,6 +36,14 @@ export interface TabAccess {
   gmcDashboard: boolean;
   /** Same as `gmcDashboard`, but for every POC-class cadet -- the two are mutually exclusive. */
   pocDashboard: boolean;
+  /**
+   * True for true Cadre (roster `isCadre` flag -- the detachment's actual officer/NCO staff, not
+   * Cortes Garay or CWL, who are POC-cohort cadets with ALL_ACCESS instead). Mutually exclusive with
+   * gmcDashboard/pocDashboard. Also the signal App.tsx uses to hide the Accountability, TO's, and
+   * Memo Submission tabs -- true Cadre oversee/review, they don't personally take attendance, grade
+   * TOs, or submit their own memos the way cadets do.
+   */
+  cadreDashboard: boolean;
 }
 
 const ALL_ACCESS: TabAccess = {
@@ -47,6 +55,7 @@ const ALL_ACCESS: TabAccess = {
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
   pocDashboard: false,
+  cadreDashboard: false,
 };
 const TO_FULL_ONLY: TabAccess = {
   trainingObjectives: "full",
@@ -57,6 +66,7 @@ const TO_FULL_ONLY: TabAccess = {
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
   pocDashboard: false,
+  cadreDashboard: false,
 };
 const MEMO_DEVIATION_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -67,6 +77,7 @@ const MEMO_DEVIATION_ONLY: TabAccess = {
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
   pocDashboard: false,
+  cadreDashboard: false,
 };
 const CADET_ONLY: TabAccess = {
   trainingObjectives: "none",
@@ -77,6 +88,7 @@ const CADET_ONLY: TabAccess = {
   unitScope: SCOPE_ALL,
   gmcDashboard: false,
   pocDashboard: false,
+  cadreDashboard: false,
 };
 CADET_ONLY.memoReview = false;
 
@@ -91,6 +103,7 @@ function pocGroupAccess(group: Group): TabAccess {
     unitScope: { kind: "group", group },
     gmcDashboard: false,
     pocDashboard: false,
+    cadreDashboard: false,
   };
 }
 
@@ -111,6 +124,7 @@ function pocGroupPlusAllGmcAccess(group: Group): TabAccess {
     unitScope: { kind: "group-and-gmc", group },
     gmcDashboard: false,
     pocDashboard: false,
+    cadreDashboard: false,
   };
 }
 
@@ -125,6 +139,7 @@ function gmcFlightAccess(flight: Flight): TabAccess {
     unitScope: { kind: "flight", flight },
     gmcDashboard: false,
     pocDashboard: false,
+    cadreDashboard: false,
   };
 }
 
@@ -138,6 +153,7 @@ const GMC_WIDE_ACCESS: TabAccess = {
   unitScope: { kind: "gmc" },
   gmcDashboard: false,
   pocDashboard: false,
+  cadreDashboard: false,
 };
 
 /**
@@ -206,7 +222,7 @@ export function resolveTabAccess(email: string | null | undefined, roster: Cadet
   const normalized = email.trim().toLowerCase();
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
   const cohort = match ? deriveClass(match.asClass, match.isCadre) : undefined;
-  return { ...base, gmcDashboard: cohort === "GMC", pocDashboard: cohort === "POC" };
+  return { ...base, gmcDashboard: cohort === "GMC", pocDashboard: cohort === "POC", cadreDashboard: cohort === "Cadre" };
 }
 
 function resolveBaseTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {

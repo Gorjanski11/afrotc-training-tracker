@@ -1,17 +1,19 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Users, FileText, Gauge, CalendarDays } from "lucide-react";
+import { LayoutDashboard, Users, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bucketForEventType, SEMESTER_PMT_TOTALS } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent } from "../../domain/attendance";
 import { shortDate } from "../../domain/memoAnalytics";
+import { isCortesGaray } from "../../domain/access";
+import { accountabilityFlags, toFlags } from "../../domain/saeReviewDeadlines";
 import { Stepper } from "../../components/analytics/Stepper";
-import { WeekView } from "../accountability/DashboardScreen";
+import { WeekView } from "../../components/WeekView";
 import { CadetBucketStats, StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
-import type { AbsenceMemo, Attendance, Cadet, DeviationMemo, PmtEvent } from "../../domain/types";
+import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   cadet: Cadet;
@@ -19,6 +21,12 @@ interface Props {
   attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
+  /** Only needed to compute the SAE Review glance, shown only when `cadet` is Cortes Garay -- every
+   * other viewer's dashboard ignores these entirely, so callers can pass the full roster/catalog. */
+  fullRoster?: Cadet[];
+  catalog?: TrainingObjective[];
+  completions?: Completion[];
+  onOpenSaeReview?: () => void;
 }
 
 function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
@@ -53,10 +61,26 @@ function pct(n: number | undefined): string {
 const ABSENCE_ACTIONABLE = new Set(["Assigned", "Returned"]);
 const DEVIATION_ACTIONABLE = new Set(["Assigned", "Late", "Returned"]);
 
-/** Section 13 -- every GMC or POC cadet's personal, self-service dashboard (own numbers only, no filters needed). */
-export function SelfServiceDashboardScreen({ cadet, events, attendance, absenceMemos, deviationMemos }: Props) {
+/** Section 13 -- every GMC or POC cadet's personal, self-service dashboard (own numbers only, no filters needed). Cortes Garay (SAE) gets a trimmed version -- standing detail and the week calendar drop, replaced with an SAE Review glance. */
+export function SelfServiceDashboardScreen({
+  cadet,
+  events,
+  attendance,
+  absenceMemos,
+  deviationMemos,
+  fullRoster,
+  catalog,
+  completions,
+  onOpenSaeReview,
+}: Props) {
+  const isSae = isCortesGaray(cadet.email);
   const [bucketChoice, setBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+
+  const saeFlags = useMemo(() => {
+    if (!isSae || !fullRoster || !catalog || !completions) return undefined;
+    return { acct: accountabilityFlags(events, fullRoster, attendance), to: toFlags(events, catalog, fullRoster, completions) };
+  }, [isSae, fullRoster, catalog, completions, events, attendance]);
 
   const summary = useMemo(() => computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
 
@@ -112,22 +136,62 @@ export function SelfServiceDashboardScreen({ cadet, events, attendance, absenceM
         <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Combined %" value={pct(myCombinedPercent)} index={3} />
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>
-            <CalendarDays className="h-4 w-4 text-primary" />
-            This week
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <WeekView events={events} />
-        </CardContent>
-      </Card>
+      {isSae ? (
+        saeFlags && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>
+                <ShieldAlert className="h-4 w-4 text-primary" />
+                SAE Review
+                {saeFlags.acct.length + saeFlags.to.length > 0 && (
+                  <Badge variant="destructive" className="ml-1.5">
+                    {saeFlags.acct.length + saeFlags.to.length}
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Accountability and Training Objectives not yet submitted/graded past their deadline.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {saeFlags.acct.length + saeFlags.to.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing flagged right now.</p>
+              ) : (
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <span>
+                    Accountability: <strong>{saeFlags.acct.length}</strong> outstanding
+                  </span>
+                  <span>
+                    Training Objectives: <strong>{saeFlags.to.length}</strong> outstanding
+                  </span>
+                  {onOpenSaeReview && (
+                    <button type="button" className="text-primary underline underline-offset-2" onClick={onOpenSaeReview}>
+                      Open full SAE Review →
+                    </button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+      ) : (
+        <>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>
+                <CalendarDays className="h-4 w-4 text-primary" />
+                This week
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <WeekView events={events} />
+            </CardContent>
+          </Card>
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2">
-        <CadetBucketStats label="PT" tally={summary.pt} fixedTotal={SEMESTER_PMT_TOTALS.PT} />
-        <CadetBucketStats label="LLAB/FM/D&C" tally={summary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
-      </div>
+          <div className="mb-6 grid gap-4 sm:grid-cols-2">
+            <CadetBucketStats label="PT" tally={summary.pt} fixedTotal={SEMESTER_PMT_TOTALS.PT} />
+            <CadetBucketStats label="LLAB/FM/D&C" tally={summary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
+          </div>
+        </>
+      )}
 
       <Card className="mb-6">
         <CardHeader className="flex-row items-center justify-between space-y-0">

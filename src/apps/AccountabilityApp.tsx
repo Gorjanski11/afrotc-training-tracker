@@ -1,8 +1,6 @@
+import { useMemo } from "react";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, LayoutDashboard } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
@@ -10,14 +8,11 @@ import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useAutoFailCompletions } from "../hooks/useAutoFailCompletions";
 import { useAbsenceMemoAssignments } from "../hooks/useAbsenceMemoAssignments";
 import { applyUnitScope, excludeCadre, excludeInactive, type UnitScope } from "../domain/access";
-import { DashboardScreen } from "../screens/accountability/DashboardScreen";
 import { AttendanceScreen } from "../screens/accountability/AttendanceScreen";
-
-type Screen = "dashboard" | "attendance";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}>
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }} className="h-full">
       {children}
     </motion.div>
   );
@@ -28,7 +23,12 @@ interface Props {
   unitScope: UnitScope;
 }
 
-/** PT/LLAB/FM accountability -- Dashboard, Accountability entry. Roster/Events moved to Settings (Section 6). */
+/**
+ * PT/LLAB/FM accountability -- goes straight to the attendance-taking screen, no more Dashboard
+ * sub-tab (deleted: its "Active roster"/standing counts and Missed Accountability list now live in
+ * the Cadre Dashboard and SAE Review, which cover the same ground detachment-wide instead of per
+ * unit-scoped viewer). Roster/Events moved to Settings (Section 6).
+ */
 export function AccountabilityApp({ unitScope }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
@@ -44,85 +44,44 @@ export function AccountabilityApp({ unitScope }: Props) {
     [unitScope, cadetsState.cadets]
   );
 
-  const [screen, setScreen] = useState<Screen>("dashboard");
-  // Dashboard's "Missed Accountability" card jumps straight to a specific PMT in the Accountability
-  // (attendance-taking) screen -- this is that target, threaded down as AttendanceScreen's initial selection.
-  const [targetPmtEventId, setTargetPmtEventId] = useState<string | undefined>();
-  const navigateToPmt = (pmtEventId: string) => {
-    setTargetPmtEventId(pmtEventId);
-    setScreen("attendance");
-  };
-
   const dataLoading = cadetsState.loading || eventsState.loading || attendanceState.loading || catalogState.loading || absenceMemoAssignmentsState.loading;
   const loadError = cadetsState.error || eventsState.error || attendanceState.error || catalogState.error || absenceMemoAssignmentsState.error;
 
   return (
-    <div className="flex h-full flex-col">
-      <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-3 pt-2 sm:px-8">
-          <TabsList>
-            <TabsTrigger value="dashboard">
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="attendance">
-              <ClipboardCheck className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Accountability</span>
-            </TabsTrigger>
-          </TabsList>
-        </nav>
-
-        <main className="flex-1 overflow-auto p-3 sm:p-6">
-          {dataLoading ? (
-            <div className="space-y-4">
-              <div className="flex gap-4">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-24 w-full" />
-              </div>
-              <Skeleton className="h-64 w-full" />
-            </div>
-          ) : loadError ? (
-            <div className="flex h-full items-center justify-center">
-              <span className="text-destructive">{loadError}</span>
-            </div>
-          ) : (
-            <>
-              <TabsContent value="dashboard">
-                <AnimatedPanel>
-                  <DashboardScreen
-                    roster={scopedCadets}
-                    events={eventsState.events}
-                    attendance={attendanceState.attendance}
-                    onNavigateToPmt={navigateToPmt}
-                  />
-                </AnimatedPanel>
-              </TabsContent>
-              <TabsContent value="attendance">
-                <AnimatedPanel>
-                  <AttendanceScreen
-                    roster={scopedCadets}
-                    events={eventsState.events}
-                    attendance={attendanceState.attendance}
-                    createAttendance={attendanceState.createAttendance}
-                    updateAttendance={attendanceState.updateAttendance}
-                    deleteAttendance={attendanceState.deleteAttendance}
-                    catalog={catalogState.catalog}
-                    applyAbsenceNotPass={applyAbsenceNotPass}
-                    assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}
-                    retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
-                    linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
-                    discardOrphanedPreSubmission={absenceMemoAssignmentsState.discardOrphanedPreSubmission}
-                    initialPmtEventId={targetPmtEventId}
-                    unitScope={unitScope}
-                  />
-                </AnimatedPanel>
-              </TabsContent>
-            </>
-          )}
-        </main>
-      </Tabs>
+    <div className="flex h-full flex-col overflow-auto p-3 sm:p-6">
+      {dataLoading ? (
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+          <Skeleton className="h-64 w-full" />
+        </div>
+      ) : loadError ? (
+        <div className="flex h-full items-center justify-center">
+          <span className="text-destructive">{loadError}</span>
+        </div>
+      ) : (
+        <AnimatedPanel>
+          <AttendanceScreen
+            roster={scopedCadets}
+            events={eventsState.events}
+            attendance={attendanceState.attendance}
+            createAttendance={attendanceState.createAttendance}
+            updateAttendance={attendanceState.updateAttendance}
+            deleteAttendance={attendanceState.deleteAttendance}
+            catalog={catalogState.catalog}
+            applyAbsenceNotPass={applyAbsenceNotPass}
+            assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}
+            retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
+            linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
+            discardOrphanedPreSubmission={absenceMemoAssignmentsState.discardOrphanedPreSubmission}
+            unitScope={unitScope}
+          />
+        </AnimatedPanel>
+      )}
     </div>
   );
 }

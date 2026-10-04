@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,6 +16,7 @@ import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS } from "../domain/constants"
 import { AccountabilityAnalyticsView } from "../screens/analytics/AccountabilityAnalyticsView";
 import { TrainingObjectivesAnalyticsView } from "../screens/analytics/TrainingObjectivesAnalyticsView";
 import { MemorandumsAnalyticsView } from "../screens/analytics/MemorandumsAnalyticsView";
+import type { DashboardNavIntent } from "../domain/dashboardNav";
 
 type Screen = "accountability" | "trainingObjectives" | "memorandums";
 
@@ -33,10 +34,21 @@ interface Props {
   memoReviewAccess: boolean;
   memoReviewAbsenceAccess: boolean;
   unitScope: UnitScope;
+  /** Set by a Cadre/SAE Dashboard tile/row click -- jumps to the Accountability sub-screen and pre-applies this cadet/group/flight filter, then `onConsumeInitialFilter` clears it. */
+  initialAccountabilityFilter?: Extract<DashboardNavIntent, { kind: "accountabilityAnalytics" }>;
+  onConsumeInitialFilter?: () => void;
 }
 
 /** Consolidated hub-level Analytics tab (Section 6) -- replaces the old per-sub-app Analytics screens (Accountability's, Training Objectives') and Memo Review's History screen. */
-export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, memoReviewAccess, memoReviewAbsenceAccess, unitScope }: Props) {
+export function AnalyticsApp({
+  accountabilityAccess,
+  trainingObjectivesAccess,
+  memoReviewAccess,
+  memoReviewAbsenceAccess,
+  unitScope,
+  initialAccountabilityFilter,
+  onConsumeInitialFilter,
+}: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -48,6 +60,12 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
 
   const first: Screen = accountabilityAccess ? "accountability" : trainingObjectivesAccess !== "none" ? "trainingObjectives" : "memorandums";
   const [screen, setScreen] = useState<Screen>(first);
+
+  useEffect(() => {
+    if (!initialAccountabilityFilter) return;
+    setScreen("accountability");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialAccountabilityFilter]);
 
   // Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside unit scoping.
   // An Inactive cadet is no longer tracked in Accountability/TO's Analytics either.
@@ -136,6 +154,8 @@ export function AnalyticsApp({ accountabilityAccess, trainingObjectivesAccess, m
                       attendance={attendanceState.attendance}
                       absenceMemos={absenceState.memos}
                       unitScope={unitScope}
+                      initialFilter={initialAccountabilityFilter}
+                      onConsumeInitialFilter={onConsumeInitialFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>

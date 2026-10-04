@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,6 +28,9 @@ type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data"
 
 interface Props {
   userEmail: string | null | undefined;
+  /** Set by the SAE's My Dashboard "Open full SAE Review" link -- jumps to that section on mount, then `onConsumeInitialSection` clears it. */
+  initialSection?: Section;
+  onConsumeInitialSection?: () => void;
 }
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
@@ -39,7 +42,7 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 }
 
 /** Section 6 -- the new Settings mega-tab. Unlike every other hub tab, its sub-sections live in a left-side vertical list instead of a top TabsList. */
-export function SettingsApp({ userEmail }: Props) {
+export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const extraEventsState = useExtraEvents();
@@ -60,6 +63,13 @@ export function SettingsApp({ userEmail }: Props) {
   // than Cadre, matching isCortesGaray (the same tier that gates New Semester's riskiest actions).
   const saeReviewAccess = isCortesGaray(userEmail);
   const [section, setSection] = useState<Section>("roster");
+
+  useEffect(() => {
+    if (!initialSection) return;
+    setSection(initialSection);
+    onConsumeInitialSection?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSection]);
 
   const refetchAll = async () => {
     await Promise.all([

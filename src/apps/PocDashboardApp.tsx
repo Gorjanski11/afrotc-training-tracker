@@ -4,21 +4,35 @@ import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
+import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
+import { useCompletions } from "../hooks/useCompletions";
+import { isCortesGaray } from "../domain/access";
 import { SelfServiceDashboardScreen } from "../screens/selfServiceDashboard/SelfServiceDashboardScreen";
 
 interface Props {
   userEmail: string | null | undefined;
+  /** Only Cortes Garay's dashboard ever uses this (its "Open full SAE Review" link). */
+  onOpenSaeReview?: () => void;
 }
 
-/** Same as GmcDashboardApp, for every POC cadet. */
-export function PocDashboardApp({ userEmail }: Props) {
+/** Same as GmcDashboardApp, for every POC cadet. Cortes Garay (SAE) additionally fetches the catalog/completions his dashboard's SAE Review glance needs. */
+export function PocDashboardApp({ userEmail, onOpenSaeReview }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
+  const isSaeViewer = isCortesGaray(userEmail);
+  const catalogState = useTrainingObjectives();
+  const completionsState = useCompletions();
 
-  const dataLoading = cadetsState.loading || eventsState.loading || attendanceState.loading || absenceState.loading || deviationState.loading;
+  const dataLoading =
+    cadetsState.loading ||
+    eventsState.loading ||
+    attendanceState.loading ||
+    absenceState.loading ||
+    deviationState.loading ||
+    (isSaeViewer && (catalogState.loading || completionsState.loading));
   const loadError = cadetsState.error || eventsState.error || attendanceState.error || absenceState.error || deviationState.error;
 
   const normalized = userEmail?.trim().toLowerCase();
@@ -55,6 +69,10 @@ export function PocDashboardApp({ userEmail }: Props) {
         attendance={attendanceState.attendance}
         absenceMemos={absenceState.memos}
         deviationMemos={deviationState.memos}
+        fullRoster={isSaeViewer ? cadetsState.cadets : undefined}
+        catalog={isSaeViewer ? catalogState.catalog : undefined}
+        completions={isSaeViewer ? completionsState.completions : undefined}
+        onOpenSaeReview={onOpenSaeReview}
       />
     </div>
   );

@@ -34,6 +34,8 @@ import { AnalyticsApp } from "./apps/AnalyticsApp";
 import { SettingsApp } from "./apps/SettingsApp";
 import { GmcDashboardApp } from "./apps/GmcDashboardApp";
 import { PocDashboardApp } from "./apps/PocDashboardApp";
+import { CadreDashboardApp } from "./apps/CadreDashboardApp";
+import type { DashboardNavIntent } from "./domain/dashboardNav";
 
 type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDashboard" | "memoReview" | "analytics" | "settings";
 
@@ -115,11 +117,14 @@ function App() {
   const tabAccess = resolveTabAccess(user?.email, cadetsState.cadets);
   const hasAnalyticsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none" || tabAccess.memoReview;
   const hasSettingsAccess = tabAccess.accountability || tabAccess.trainingObjectives !== "none";
+  // True Cadre (the detachment's officer/NCO staff, not Cortes Garay/CWL) oversee and review rather
+  // than personally take attendance, grade TOs, or submit their own memos -- those 3 tabs hide for
+  // them specifically, replaced by the Cadre Dashboard (Section 7).
   const visibleTabs: HubTab[] = [
-    ...(tabAccess.gmcDashboard || tabAccess.pocDashboard ? (["myDashboard"] as const) : []),
-    ...(tabAccess.accountability ? (["accountability"] as const) : []),
-    ...(tabAccess.trainingObjectives !== "none" ? (["trainingObjectives"] as const) : []),
-    "memoSubmission",
+    ...(tabAccess.gmcDashboard || tabAccess.pocDashboard || tabAccess.cadreDashboard ? (["myDashboard"] as const) : []),
+    ...(tabAccess.accountability && !tabAccess.cadreDashboard ? (["accountability"] as const) : []),
+    ...(tabAccess.trainingObjectives !== "none" && !tabAccess.cadreDashboard ? (["trainingObjectives"] as const) : []),
+    ...(tabAccess.cadreDashboard ? [] : (["memoSubmission"] as const)),
     ...(tabAccess.memoReview ? (["memoReview"] as const) : []),
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
     ...(hasSettingsAccess ? (["settings"] as const) : []),
@@ -127,6 +132,14 @@ function App() {
   const [tab, setTab] = useState<HubTab>(visibleTabs[0]);
   const activeTab = visibleTabs.includes(tab) ? tab : visibleTabs[0];
   const [phoneNavOpen, setPhoneNavOpen] = useState(false);
+
+  // Cross-tab "take me there" intent from a dashboard tile/row click (Cadre Dashboard, SAE's My
+  // Dashboard) -- set alongside the tab switch, consumed once by the destination then cleared.
+  const [navIntent, setNavIntent] = useState<DashboardNavIntent | undefined>();
+  const navigateTo = (destTab: "memoReview" | "analytics" | "settings", intent?: DashboardNavIntent) => {
+    setTab(destTab);
+    setNavIntent(intent);
+  };
 
   if (authLoading || cadetsState.loading) {
     return (
@@ -240,18 +253,20 @@ function App() {
                 </AnimatedPanel>
               </TabsContent>
             )}
-            {activeTab === "myDashboard" && (tabAccess.gmcDashboard || tabAccess.pocDashboard) && (
+            {activeTab === "myDashboard" && (tabAccess.gmcDashboard || tabAccess.pocDashboard || tabAccess.cadreDashboard) && (
               <TabsContent value="myDashboard" className="h-full" forceMount>
                 <AnimatedPanel>
                   {tabAccess.gmcDashboard ? (
                     <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
+                  ) : tabAccess.pocDashboard ? (
+                    <PocDashboardApp key="pocDashboard" userEmail={user.email} onOpenSaeReview={() => navigateTo("settings", { kind: "settings", section: "saeReview" })} />
                   ) : (
-                    <PocDashboardApp key="pocDashboard" userEmail={user.email} />
+                    <CadreDashboardApp key="cadreDashboard" userEmail={user.email} navigateTo={navigateTo} />
                   )}
                 </AnimatedPanel>
               </TabsContent>
             )}
-            {activeTab === "memoSubmission" && (
+            {activeTab === "memoSubmission" && !tabAccess.cadreDashboard && (
               <TabsContent value="memoSubmission" className="h-full" forceMount>
                 <AnimatedPanel>
                   <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
@@ -261,7 +276,13 @@ function App() {
             {activeTab === "memoReview" && tabAccess.memoReview && (
               <TabsContent value="memoReview" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <MemoReviewApp key="memoReview" showAbsence={tabAccess.memoReviewAbsence} userEmail={user.email} />
+                  <MemoReviewApp
+                    key="memoReview"
+                    showAbsence={tabAccess.memoReviewAbsence}
+                    userEmail={user.email}
+                    initialScreen={navIntent?.kind === "memoReview" ? navIntent.screen : undefined}
+                    onConsumeInitialScreen={() => setNavIntent(undefined)}
+                  />
                 </AnimatedPanel>
               </TabsContent>
             )}
@@ -275,6 +296,8 @@ function App() {
                     memoReviewAccess={tabAccess.memoReview}
                     memoReviewAbsenceAccess={tabAccess.memoReviewAbsence}
                     unitScope={tabAccess.unitScope}
+                    initialAccountabilityFilter={navIntent?.kind === "accountabilityAnalytics" ? navIntent : undefined}
+                    onConsumeInitialFilter={() => setNavIntent(undefined)}
                   />
                 </AnimatedPanel>
               </TabsContent>
@@ -282,7 +305,12 @@ function App() {
             {activeTab === "settings" && hasSettingsAccess && (
               <TabsContent value="settings" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <SettingsApp key="settings" userEmail={user.email} />
+                  <SettingsApp
+                    key="settings"
+                    userEmail={user.email}
+                    initialSection={navIntent?.kind === "settings" ? navIntent.section : undefined}
+                    onConsumeInitialSection={() => setNavIntent(undefined)}
+                  />
                 </AnimatedPanel>
               </TabsContent>
             )}

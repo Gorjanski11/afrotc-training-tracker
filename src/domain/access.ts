@@ -141,6 +141,28 @@ const GMC_WIDE_ACCESS: TabAccess = {
 };
 
 /**
+ * Reverse lookup of ACCESS_BY_EMAIL's unit-scoped commanders -- who to hold responsible when a
+ * Group's/Flight's Accountability or TO reporting is late or missing (SAE Review, Section: SOP
+ * Sections 3/4 responsibility attribution). Kept as its own explicit table rather than derived from
+ * ACCESS_BY_EMAIL at runtime, matching this file's existing "explicit per-person" convention.
+ */
+export const GROUP_COMMANDER_EMAIL: Record<Group, string> = {
+  OG: "lorean.delgado@upr.edu",
+  MSG: "hector.belen@upr.edu",
+  WSG: "edgardo.puente.afrotc@upr.edu",
+  TRG: "john.santiago12@upr.edu",
+  // CWL isn't an accountability-reporting unit in practice (no dedicated cadet body of its own) --
+  // mapped to Saltiel only so this stays a total function; never expected to actually fire.
+  CWL: "francisco.saltiel@upr.edu",
+};
+export const FLIGHT_COMMANDER_EMAIL: Record<Flight, string> = {
+  P: "alexis.rodriguez53@upr.edu",
+  M: "fabiola.merle@upr.edu",
+  N: "julian.vivas@upr.edu",
+  O: "jakob.garcia@upr.edu",
+};
+
+/**
  * Fully explicit per-person access -- deliberately not derived from roster Group/Flight, since
  * several people below are themselves in TRG/CWL groups but get a restricted subset rather than
  * full access (confirmed directly with the user; group membership alone grants nothing).

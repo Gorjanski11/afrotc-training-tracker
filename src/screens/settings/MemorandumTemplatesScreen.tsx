@@ -101,6 +101,32 @@ const TEMPLATE_DEFS: TemplateDef[] = [
       "For any questions and concerns contact your {{commanderTitle}}.<br><br>" +
       "<strong>This is an automated message, DO NOT reply to this email.</strong>",
   },
+  {
+    id: "accountability-reminder",
+    label: "Accountability reminder (SOP Section 3)",
+    trigger:
+      "Sent once a Group's/Flight's Accountability is still missing after its own PMT's 2000-same-day deadline, while still within the 2-hour grace window -- at most once per PMT/unit.",
+    placeholders: ["greeting", "unitLabel", "pmtSessionLabel"],
+    defaultSubject: "Accountability reminder -- submission due by 2000",
+    defaultBody:
+      "{{greeting}},<br><br>" +
+      "Accountability for {{unitLabel}} on {{pmtSessionLabel}} has not been submitted yet, and is due by 2000 today.<br><br>" +
+      "Please submit it as soon as possible to avoid it being marked Missing.<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
+    id: "to-reminder",
+    label: "Training Objectives reminder (SOP Section 4)",
+    trigger:
+      "Sent once a GMC Flight's Training Objective is still ungraded after its Training Week's Friday-2000 deadline, while still within the 2-hour grace window -- at most once per TW/objective/flight. POC TO's are the SAE's own responsibility and never trigger this.",
+    placeholders: ["greeting", "objectiveLabel", "flight", "tw"],
+    defaultSubject: "Training Objectives reminder -- grading due by Friday 2000",
+    defaultBody:
+      "{{greeting}},<br><br>" +
+      "{{objectiveLabel}} for {{flight}} Flight has not been graded yet for Training Week {{tw}}, and is due by 2000 this Friday.<br><br>" +
+      "Please grade it from Quick Log as soon as possible to avoid it being marked Missing.<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
 ];
 
 function TemplateEditor({

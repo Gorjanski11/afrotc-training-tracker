@@ -28,5 +28,13 @@ service cloud.firestore {
     match /pmtEvents/{id} { allow write: if true; }
     match /trainingObjectives/{id} { allow write: if true; }
     match /completions/{id} { allow write: if true; }
+
+    // Maintenance mode -- locks every signed-in user except Cortes Garay out of the whole app
+    // (App.tsx), so only he may toggle it. A real server-enforced boundary, not just a client-side
+    // check like most of this app's per-tab permissions -- a client-side-only gate here would let
+    // anyone with dev tools re-enable write access to flip it.
+    match /siteConfig/{id} {
+      allow write: if request.auth != null && request.auth.token.email == "jorge.cortes4@upr.edu";
+    }
   }
 }

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert } from "lucide-react";
+import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert, Wrench } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useExtraEvents } from "../hooks/useExtraEvents";
@@ -23,8 +23,9 @@ import { MemorandumTemplatesScreen } from "../screens/settings/MemorandumTemplat
 import { DataManagementScreen } from "../screens/settings/DataManagementScreen";
 import { NewSemesterScreen } from "../screens/settings/NewSemesterScreen";
 import { SaeReviewScreen } from "../screens/settings/SaeReviewScreen";
+import { MaintenanceScreen } from "../screens/settings/MaintenanceScreen";
 
-type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview";
+type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -113,6 +114,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
     ...(newSemesterAccess ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
     ...(saeReviewAccess ? [{ value: "saeReview" as const, label: "SAE Review", icon: ShieldAlert }] : []),
+    ...(saeReviewAccess ? [{ value: "maintenance" as const, label: "Maintenance Mode", icon: Wrench }] : []),
   ];
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
@@ -231,6 +233,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 completions={completionsState.completions}
               />
             )}
+            {activeSection === "maintenance" && saeReviewAccess && <MaintenanceScreen />}
           </AnimatedPanel>
         )}
       </main>

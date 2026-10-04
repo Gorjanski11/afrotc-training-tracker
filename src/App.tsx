@@ -18,12 +18,14 @@ import {
   Monitor,
   Smartphone,
   ChevronDown,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { useViewMode } from "./hooks/useViewMode";
-import { resolveTabAccess } from "./domain/access";
+import { resolveTabAccess, isCortesGaray } from "./domain/access";
+import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { SignInScreen } from "./components/SignInScreen";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { TrainingObjectivesApp } from "./apps/TrainingObjectivesApp";
@@ -82,6 +84,7 @@ function App() {
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
   const { mode: viewMode, toggle: toggleViewMode } = useViewMode();
+  const maintenance = useMaintenanceMode();
 
   const handleSignIn = async (email: string, password: string) => {
     await signIn(email, password);
@@ -151,6 +154,24 @@ function App() {
 
   if (!user) {
     return <SignInScreen signIn={handleSignIn} />;
+  }
+
+  if (maintenance.inEffect && !isCortesGaray(user.email)) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <Wrench className="h-10 w-10 text-muted-foreground" />
+        <h1 className="text-xl font-semibold">Under maintenance</h1>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          The site is temporarily unavailable while updates are made.
+          {maintenance.doc?.until
+            ? ` Expected back up by ${new Date(maintenance.doc.until).toLocaleString()}.`
+            : " Check back shortly."}
+        </p>
+        <Button variant="outline" onClick={() => void signOut()}>
+          Sign out
+        </Button>
+      </div>
+    );
   }
 
   return (

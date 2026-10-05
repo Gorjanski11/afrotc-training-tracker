@@ -130,6 +130,7 @@ export function QuickLogScreen({
   const [objectiveSearch, setObjectiveSearch] = useState("");
   const [columnScope, setColumnScope] = useState<ColumnScope>("overdue");
   const [showAllCadets, setShowAllCadets] = useState(false);
+  const [twFilter, setTwFilter] = useState<number | undefined>(undefined);
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
   const [levelFilter, setLevelFilter] = useState<DevLevel | "All">("All");
   const [pending, setPending] = useState<Record<string, string>>({}); // `${cadetId}:${objectiveId}` -> ProficiencyCode | NONE
@@ -146,6 +147,13 @@ export function QuickLogScreen({
 
   const availableFlights = useMemo(() => FLIGHTS.filter((f) => cadets.some((c) => c.flight === f)), [cadets]);
   const availableLevels = useMemo(() => DEV_LEVELS.filter((l) => cadets.some((c) => c.devLevel === l)), [cadets]);
+
+  // Lets a grader jump straight to one Training Week's PMTs instead of scrolling through the
+  // whole semester's columns -- narrows which occurrences are even eligible to become columns below.
+  const availableTWs = useMemo(
+    () => [...new Set(pmtEvents.map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined))].sort((a, b) => a - b),
+    [pmtEvents]
+  );
 
   const searchedCadets = useMemo(() => {
     const query = cadetSearch.trim().toLowerCase();
@@ -325,10 +333,15 @@ export function QuickLogScreen({
     const result: QuickLogColumn[] = [];
     for (const objective of qualifying) {
       let occurrences = occurrencesByObjective.get(objective.id) ?? [];
+      // A Training Week filter narrows columns down to just that week's occurrences -- an objective
+      // with no PMT in the selected week drops out of the grid entirely rather than showing an empty
+      // "not yet scheduled" column that belongs to a different week.
+      if (twFilter !== undefined) occurrences = occurrences.filter((e) => e.trainingWeek === twFilter);
       // In the overdue-only scope, drop any occurrence that hasn't happened yet -- an objective can
       // be overdue from a past PMT while also having a future one scheduled, and that future date
       // has nothing to grade yet, so it shouldn't take up a column here.
       if (columnScope === "overdue") occurrences = occurrences.filter((e) => new Date(e.eventDate).getTime() <= now);
+      if (twFilter !== undefined && occurrences.length === 0) continue;
       if (occurrences.length > 1) {
         for (const occurrence of occurrences) {
           result.push({ key: `${objective.id}:${occurrence.id}`, objective, occurrence, isMultiOccurrence: true });
@@ -362,7 +375,7 @@ export function QuickLogScreen({
       const allLogged = stillNeedsGrading.every((cadet) => !!getExistingCompletion(cadet.id, objective.id, pmtEventId, isMultiOccurrence));
       return !allLogged;
     });
-  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective, searchedCadets, completionsByCadet]);
+  }, [loggableObjectives, columnScope, overdueObjectiveIds, scheduledObjectiveIds, objectiveSearch, occurrencesByObjective, searchedCadets, completionsByCadet, twFilter]);
 
   const getCellValue = (cadetId: string, objectiveId: string, pmtEventId: string | undefined, isMultiOccurrence: boolean): string => {
     const key = cellKey(cadetId, objectiveId, pmtEventId);
@@ -471,6 +484,21 @@ export function QuickLogScreen({
             onChange={(e) => setObjectiveSearch(e.target.value)}
           />
         </div>
+        {availableTWs.length > 0 && (
+          <Select value={twFilter === undefined ? "All" : String(twFilter)} onValueChange={(v) => setTwFilter(v === "All" ? undefined : Number(v))}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Training Week" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All weeks</SelectItem>
+              {availableTWs.map((tw) => (
+                <SelectItem key={tw} value={String(tw)}>
+                  TW {tw}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         {!hideFlightFilter && availableFlights.length > 0 && (
           <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
             <SelectTrigger className="w-32">

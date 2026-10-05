@@ -15,6 +15,12 @@ import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, shortDat
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetBucketStats } from "./AccountabilityAnalyticsView";
+import {
+  isTrueCadre,
+  visibleAbsenceMemos as filterVisibleAbsenceMemos,
+  visibleDeviationMemos as filterVisibleDeviationMemos,
+  isDeviationMemoViaCc,
+} from "../../domain/access";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 import type { AbsenceMemoStatus, DeviationMemoStatus } from "../../domain/constants";
@@ -22,7 +28,10 @@ import type { UnitScope } from "../../domain/access";
 import type { AbsenceMemo, Attendance, DeviationMemo, Cadet, PmtEvent } from "../../domain/types";
 
 interface Props {
+  /** Unit-scoped, Cadre-excluded -- who the table rows can be ABOUT. */
   roster: Cadet[];
+  /** Full, unscoped roster (Cadre included) -- used only to look up the signed-in VIEWER's own identity for the owner-based scoping (Section 2). A unit-scoped/Cadre-excluded roster would never find true Cadre's own record, silently defeating that scoping. */
+  fullRoster: Cadet[];
   events: PmtEvent[];
   attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
@@ -35,6 +44,7 @@ interface Props {
   applyMemoDecision: (cadetId: string, pmtEventIds: string[], newStatus: "AE" | "A") => Promise<number>;
   /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
   unitScope?: UnitScope;
+  userEmail: string | null | undefined;
 }
 
 type ViewMode = "all" | "absence" | "deviation";
@@ -93,7 +103,20 @@ interface EditTarget {
   returnReason: string | undefined;
 }
 
-export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMemos, deviationMemos, showAbsence, updateAbsenceMemo, updateDeviationMemo, applyMemoDecision, unitScope }: Props) {
+export function MemorandumsAnalyticsView({
+  roster,
+  fullRoster,
+  events,
+  attendance,
+  absenceMemos,
+  deviationMemos,
+  showAbsence,
+  updateAbsenceMemo,
+  updateDeviationMemo,
+  applyMemoDecision,
+  unitScope,
+  userEmail,
+}: Props) {
   // "gmc"/"group-and-gmc" scopes (Montalvo, Santiago) span multiple flights -- Flight stays
   // meaningful for them, same fix as Accountability/TO Analytics. "group-and-gmc" ALSO needs a way
   // back to just their own group, so Group stays visible for them too, restricted to their one
@@ -113,7 +136,24 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
     setGroup(which === "group" ? (value as Group | "All") : "All");
   };
 
-  const visibleAbsenceMemos = useMemo(() => (showAbsence ? absenceMemos : []), [showAbsence, absenceMemos]);
+  // Section 2 -- only memorandums concerning this viewer by default: Capt Deaton (general reviewer)
+  // or their own AS-Class for absence memos, assigned-by-them-or-CC'd for deviation memos. Only true
+  // Cadre get a toggle to see everything; POC/GMC commanders and CWL stay scoped (same rule their
+  // own Memo Review screens already use -- unit-scoping alone isn't the same thing, since a cadet in
+  // my unit can still have a memo someone else assigned that doesn't concern me at all).
+  const isTrueCadreViewer = isTrueCadre(userEmail, fullRoster);
+  const [showAllMemos, setShowAllMemos] = useState(false);
+  const effectivelyShowAll = isTrueCadreViewer && showAllMemos;
+
+  const absenceMemosIfAllowed = useMemo(() => (showAbsence ? absenceMemos : []), [showAbsence, absenceMemos]);
+  const ownerScopedAbsence = useMemo(
+    () => (effectivelyShowAll ? absenceMemosIfAllowed : filterVisibleAbsenceMemos(userEmail, fullRoster, absenceMemosIfAllowed)),
+    [effectivelyShowAll, absenceMemosIfAllowed, userEmail, fullRoster]
+  );
+  const ownerScopedDeviation = useMemo(
+    () => (effectivelyShowAll ? deviationMemos : filterVisibleDeviationMemos(userEmail, fullRoster, deviationMemos)),
+    [effectivelyShowAll, deviationMemos, userEmail, fullRoster]
+  );
 
   // Section 16: an individual cadet's own PT/LLAB-FM-D&C standing, shown right below the filters --
   // hidden entirely (not just a message) whenever a Group/Flight filter is active instead.
@@ -121,31 +161,31 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 
   const combined = useMemo(() => {
     const rows = filterByRosterScope(
-      combineMemos(visibleAbsenceMemos, deviationMemos, pmtEventsById),
+      combineMemos(ownerScopedAbsence, ownerScopedDeviation, pmtEventsById),
       roster,
       cadetId === ALL_CADETS ? "All" : cadetId,
       flight,
       group
     );
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
-  }, [visibleAbsenceMemos, deviationMemos, pmtEventsById, roster, cadetId, flight, group, sortBy]);
+  }, [ownerScopedAbsence, ownerScopedDeviation, pmtEventsById, roster, cadetId, flight, group, sortBy]);
   const filteredAbsence = useMemo(() => {
-    const rows = filterByRosterScope(visibleAbsenceMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
+    const rows = filterByRosterScope(ownerScopedAbsence, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
     return sortBy === "cadet"
       ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName))
       : rows.sort((a, b) => dateMissedFor(b, pmtEventsById).localeCompare(dateMissedFor(a, pmtEventsById)));
-  }, [visibleAbsenceMemos, roster, cadetId, flight, group, sortBy, pmtEventsById]);
+  }, [ownerScopedAbsence, roster, cadetId, flight, group, sortBy, pmtEventsById]);
   const filteredDeviation = useMemo(() => {
-    const rows = filterByRosterScope(deviationMemos, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
+    const rows = filterByRosterScope(ownerScopedDeviation, roster, cadetId === ALL_CADETS ? "All" : cadetId, flight, group);
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.dateAssigned.localeCompare(a.dateAssigned));
-  }, [deviationMemos, roster, cadetId, flight, group, sortBy]);
+  }, [ownerScopedDeviation, roster, cadetId, flight, group, sortBy]);
   const selectedCadetSummary = useMemo(
     () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),
     [cadetId, attendance, pmtEventsById]
   );
 
-  const absenceById = useMemo(() => new Map(visibleAbsenceMemos.map((m) => [m.id, m])), [visibleAbsenceMemos]);
-  const deviationById = useMemo(() => new Map(deviationMemos.map((m) => [m.id, m])), [deviationMemos]);
+  const absenceById = useMemo(() => new Map(ownerScopedAbsence.map((m) => [m.id, m])), [ownerScopedAbsence]);
+  const deviationById = useMemo(() => new Map(ownerScopedDeviation.map((m) => [m.id, m])), [ownerScopedDeviation]);
 
   const [editing, setEditing] = useState<EditTarget | undefined>();
   const [editStatus, setEditStatus] = useState("");
@@ -217,6 +257,16 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={roster} value={cadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+        {isTrueCadreViewer && (
+          <Button
+            variant={showAllMemos ? "default" : "outline"}
+            size="sm"
+            title={showAllMemos ? "Showing every memorandum, including ones not connected to you" : "Only showing memorandums concerning you (assigned by you, CC'd, or your AS-Class)"}
+            onClick={() => setShowAllMemos((v) => !v)}
+          >
+            {showAllMemos ? "Showing all" : "Concerning me only"}
+          </Button>
+        )}
         <Select value={sortBy} onValueChange={(v) => setSortBy(v as "date" | "cadet")}>
           <SelectTrigger className="w-40">
             <ArrowUpDown className="h-3.5 w-3.5" />
@@ -273,7 +323,7 @@ export function MemorandumsAnalyticsView({ roster, events, attendance, absenceMe
           ) : mode === "absence" ? (
             <AbsenceTable memos={filteredAbsence} roster={roster} pmtEventsById={pmtEventsById} onEdit={openEditAbsence} />
           ) : (
-            <DeviationTable memos={filteredDeviation} roster={roster} onEdit={openEditDeviation} />
+            <DeviationTable memos={filteredDeviation} roster={roster} onEdit={openEditDeviation} userEmail={userEmail} />
           )}
         </CardContent>
       </Card>
@@ -448,7 +498,17 @@ function AbsenceTable({
   );
 }
 
-function DeviationTable({ memos, roster, onEdit }: { memos: DeviationMemo[]; roster: Cadet[]; onEdit: (m: DeviationMemo) => void }) {
+function DeviationTable({
+  memos,
+  roster,
+  onEdit,
+  userEmail,
+}: {
+  memos: DeviationMemo[];
+  roster: Cadet[];
+  onEdit: (m: DeviationMemo) => void;
+  userEmail: string | null | undefined;
+}) {
   if (memos.length === 0) return <p className="text-sm text-muted-foreground">No deviation memorandums match this filter.</p>;
   return (
     <div className="overflow-x-auto">
@@ -477,7 +537,14 @@ function DeviationTable({ memos, roster, onEdit }: { memos: DeviationMemo[]; ros
               {m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}
             </TableCell>
             <TableCell className="max-w-xs truncate" title={m.purpose || undefined}>{m.purpose}</TableCell>
-            <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
+            <TableCell>
+              {cadetDisplayName(m.cadetId, m.cadetName, roster)}
+              {isDeviationMemoViaCc(userEmail, m) && (
+                <Badge variant="outline" className="ml-1.5 text-[10px]">
+                  CC'd
+                </Badge>
+              )}
+            </TableCell>
             <TableCell>
               <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
             </TableCell>

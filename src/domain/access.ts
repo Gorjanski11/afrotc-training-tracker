@@ -1,5 +1,5 @@
-import { deriveClass, type Flight, type Group } from "./constants";
-import type { Cadet } from "./types";
+import { deriveClass, type AbsenceAsClass, type Flight, type Group } from "./constants";
+import type { AbsenceMemo, Cadet, DeviationMemo } from "./types";
 
 /** Which parts of the hub a signed-in person can see. */
 export type TrainingObjectivesAccess = "none" | "poc" | "gmc" | "full";
@@ -390,8 +390,9 @@ const DEVIATION_ASSIGN_OVERRIDES: Record<string, DeviationAssignRule> = {
 
 /**
  * Who can assign a Deviation Memo, to whom, and whether they only ever review their own. Explicit
- * per-email overrides first, then Cadre (roster `isCadre`) get everyone/full-review automatically;
- * everyone else cannot assign at all.
+ * per-email overrides first, then Cadre (roster `isCadre`) get everyone/own-review automatically
+ * (true Cadre only ever see memos concerning them -- assigned by them or CC'd, same as CWL/unit
+ * commanders; only Cortes Garay keeps unrestricted full review); everyone else cannot assign at all.
  */
 export function resolveDeviationAssignRule(email: string | null | undefined, roster: Cadet[]): DeviationAssignRule {
   if (!email) return RULE_CANNOT_ASSIGN;
@@ -399,8 +400,63 @@ export function resolveDeviationAssignRule(email: string | null | undefined, ros
   const override = DEVIATION_ASSIGN_OVERRIDES[normalized];
   if (override) return override;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
-  if (match?.isCadre === true) return RULE_EVERYONE;
+  if (match?.isCadre === true) return RULE_EVERYONE_OWN_REVIEW;
   return RULE_CANNOT_ASSIGN;
+}
+
+/** Every Deviation Memo concerning this viewer -- assigned by them, or they were CC'd -- or every memo at all if their rule isn't own-review-restricted. Shared by the review list, Memorandums Analytics, and the Cadre Dashboard's pending count, so all three agree on who sees what. */
+export function visibleDeviationMemos(email: string | null | undefined, roster: Cadet[], memos: DeviationMemo[]): DeviationMemo[] {
+  const rule = resolveDeviationAssignRule(email, roster);
+  if (!rule.reviewOwnOnly) return memos;
+  const normalized = (email ?? "").trim().toLowerCase();
+  return memos.filter((m) => m.assignedByEmail?.trim().toLowerCase() === normalized || m.cc.some((c) => c.email.trim().toLowerCase() === normalized));
+}
+/** True when `email` sees this Deviation Memo only because they were CC'd on it, not because they assigned it -- used to show a "CC'd" badge explaining why it's in their list. */
+export function isDeviationMemoViaCc(email: string | null | undefined, memo: DeviationMemo): boolean {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (memo.assignedByEmail?.trim().toLowerCase() === normalized) return false;
+  return memo.cc.some((c) => c.email.trim().toLowerCase() === normalized);
+}
+
+/**
+ * Which AS-Class each instructor reviews absence memos for (SOP Section G) -- reverse of
+ * domain/constants.ts's INSTRUCTOR_BY_AS_CLASS (that one maps AS-Class -> display name for
+ * auto-filling the Instructor field; this one maps AS-Class -> email for access scoping).
+ */
+const AS_CLASS_INSTRUCTOR_EMAIL: Record<AbsenceAsClass, string> = {
+  AS100: "jalen.jackson@upr.edu", // Capt Jackson
+  AS200: "jason.laboy@upr.edu", // Lt Col Laboy
+  AS300: "adolfo.reynoso@upr.edu", // TSgt Reynoso
+  AS400: "michael.deaton@upr.edu", // Capt Deaton
+};
+/** Capt Deaton is the detachment's general Absence Memo reviewer -- sees every memo, not just AS400's. */
+const GENERAL_ABSENCE_REVIEWER_EMAIL = "michael.deaton@upr.edu";
+
+/**
+ * True Cadre only see an Absence Memo if they're Capt Deaton (the general reviewer, sees
+ * everything) or it's an AS-Class memo for the specific class they instruct. Cortes Garay/CWL are
+ * unrestricted, same as today -- only true Cadre narrows. Memo Submission/everyone-else never had
+ * memoReviewAbsence access to begin with, so this is only ever consulted for the full-access tier.
+ */
+export function canSeeAbsenceMemo(email: string | null | undefined, roster: Cadet[], memo: AbsenceMemo): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  if (match?.isCadre !== true) return true; // Cortes Garay/CWL -- unrestricted
+  if (normalized === GENERAL_ABSENCE_REVIEWER_EMAIL) return true;
+  return !!memo.asClass && AS_CLASS_INSTRUCTOR_EMAIL[memo.asClass] === normalized;
+}
+/** Every Absence Memo `email` is allowed to see, per `canSeeAbsenceMemo`. */
+export function visibleAbsenceMemos(email: string | null | undefined, roster: Cadet[], memos: AbsenceMemo[]): AbsenceMemo[] {
+  return memos.filter((m) => canSeeAbsenceMemo(email, roster, m));
+}
+
+/** True roster Cadre (the detachment's officer/NCO staff) -- distinct from Cortes Garay/CWL, who are POC-cohort with ALL_ACCESS. Drives Memorandums Analytics' "show all" toggle, since only true Cadre default to a scoped-to-them view. */
+export function isTrueCadre(email: string | null | undefined, roster: Cadet[]): boolean {
+  if (!email) return false;
+  const normalized = email.trim().toLowerCase();
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  return match?.isCadre === true;
 }
 
 /** Cadets a given assign scope allows targeting -- drives the cadet picker in the Assign tab. */

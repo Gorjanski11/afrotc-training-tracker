@@ -29,11 +29,13 @@ interface Props {
   userEmail: string | null | undefined;
   /** Set by a Cadre/SAE Dashboard tile click (e.g. "Absence Memos pending review") -- jumps straight to that sub-screen on mount, then `onConsumeInitialScreen` clears it so it doesn't re-fire on a later remount. */
   initialScreen?: "absence" | "deviation";
+  /** Set alongside `initialScreen` when the dashboard click was on a SPECIFIC memo row (not just the count tile) -- opens that memo's review popup immediately instead of just landing on the list. */
+  initialOpenMemoId?: string;
   onConsumeInitialScreen?: () => void;
 }
 
 /** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation. Memorandum Templates and History moved to Settings (Section 6). */
-export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsumeInitialScreen }: Props) {
+export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOpenMemoId, onConsumeInitialScreen }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const absenceState = useAbsenceMemos();
@@ -42,13 +44,23 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
   const { reauthenticate } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("dashboard");
+  // Which memo's review popup to auto-open the moment its screen mounts -- set either by the
+  // top-level Dashboard/SAE Dashboard nav intent, or by clicking a row on this app's OWN Dashboard
+  // sub-screen below. Cleared once AbsenceMemosScreen/DeviationMemosScreen has consumed it.
+  const [openMemoId, setOpenMemoId] = useState<string | undefined>();
 
   useEffect(() => {
     if (!initialScreen) return;
     setScreen(initialScreen);
+    if (initialOpenMemoId) setOpenMemoId(initialOpenMemoId);
     onConsumeInitialScreen?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialScreen]);
+  }, [initialScreen, initialOpenMemoId]);
+
+  const openFromOwnDashboard = (target: "absence" | "deviation", memoId: string) => {
+    setScreen(target);
+    setOpenMemoId(memoId);
+  };
 
   const dataLoading = cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading;
   const loadError = cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error;
@@ -94,7 +106,14 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
             <>
               <TabsContent value="dashboard">
                 <AnimatedPanel>
-                  <DashboardScreen events={eventsState.events} absenceMemos={absenceState.memos} deviationMemos={deviationState.memos} />
+                  <DashboardScreen
+                    events={eventsState.events}
+                    absenceMemos={absenceState.memos}
+                    deviationMemos={deviationState.memos}
+                    roster={cadetsState.cadets}
+                    userEmail={userEmail}
+                    onOpenAbsence={showAbsence ? (memoId) => openFromOwnDashboard("absence", memoId) : undefined}
+                  />
                 </AnimatedPanel>
               </TabsContent>
               {showAbsence && (
@@ -109,6 +128,8 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
                       applyMemoDecision={attendanceLink.applyMemoDecision}
                       reauthenticate={reauthenticate}
                       userEmail={userEmail}
+                      initialReviewId={screen === "absence" ? openMemoId : undefined}
+                      onConsumeInitialReview={() => setOpenMemoId(undefined)}
                     />
                   </AnimatedPanel>
                 </TabsContent>

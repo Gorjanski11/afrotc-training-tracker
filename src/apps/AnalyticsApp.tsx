@@ -37,6 +37,8 @@ interface Props {
   /** Set by a Cadre/SAE Dashboard tile/row click -- jumps to the Accountability sub-screen and pre-applies this cadet/group/flight filter, then `onConsumeInitialFilter` clears it. */
   initialAccountabilityFilter?: Extract<DashboardNavIntent, { kind: "accountabilityAnalytics" }>;
   onConsumeInitialFilter?: () => void;
+  /** Memorandums Analytics' owner-based scoping (Section 2) needs to know who's looking. */
+  userEmail: string | null | undefined;
 }
 
 /** Consolidated hub-level Analytics tab (Section 6) -- replaces the old per-sub-app Analytics screens (Accountability's, Training Objectives') and Memo Review's History screen. */
@@ -48,6 +50,7 @@ export function AnalyticsApp({
   unitScope,
   initialAccountabilityFilter,
   onConsumeInitialFilter,
+  userEmail,
 }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
@@ -179,11 +182,13 @@ export function AnalyticsApp({
                   <AnimatedPanel>
                     <MemorandumsAnalyticsView
                       roster={memoRoster}
+                      fullRoster={cadetsState.cadets}
                       events={eventsState.events}
                       attendance={attendanceState.attendance}
                       absenceMemos={absenceState.memos}
                       deviationMemos={deviationState.memos}
                       showAbsence={memoReviewAbsenceAccess}
+                      userEmail={userEmail}
                       updateAbsenceMemo={absenceState.updateMemo}
                       updateDeviationMemo={deviationState.updateMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}

@@ -302,6 +302,7 @@ function App() {
                     showAbsence={tabAccess.memoReviewAbsence}
                     userEmail={user.email}
                     initialScreen={navIntent?.kind === "memoReview" ? navIntent.screen : undefined}
+                    initialOpenMemoId={navIntent?.kind === "memoReview" ? navIntent.openMemoId : undefined}
                     onConsumeInitialScreen={() => setNavIntent(undefined)}
                   />
                 </AnimatedPanel>
@@ -319,6 +320,7 @@ function App() {
                     unitScope={tabAccess.unitScope}
                     initialAccountabilityFilter={navIntent?.kind === "accountabilityAnalytics" ? navIntent : undefined}
                     onConsumeInitialFilter={() => setNavIntent(undefined)}
+                    userEmail={user.email}
                   />
                 </AnimatedPanel>
               </TabsContent>

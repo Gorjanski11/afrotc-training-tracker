@@ -8,6 +8,6 @@ import type { Group, Flight } from "./constants";
  * Dashboard -> Attendance jump.
  */
 export type DashboardNavIntent =
-  | { kind: "memoReview"; screen: "absence" | "deviation" }
+  | { kind: "memoReview"; screen: "absence" | "deviation"; openMemoId?: string }
   | { kind: "accountabilityAnalytics"; cadetId?: string; group?: Group; flight?: Flight }
   | { kind: "settings"; section: "saeReview" };

@@ -4,12 +4,17 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { absenceMemoDeadline } from "../../domain/constants";
-import type { AbsenceMemo, DeviationMemo, PmtEvent } from "../../domain/types";
+import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
+import type { AbsenceMemo, Cadet, DeviationMemo, PmtEvent } from "../../domain/types";
 
 interface Props {
   events: PmtEvent[];
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
+  roster: Cadet[];
+  userEmail: string | null | undefined;
+  /** Jumps to the Absence Memos screen with this specific memo's review popup opened -- undefined when the viewer can't see Absence Memos at all. */
+  onOpenAbsence?: (memoId: string) => void;
 }
 
 function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
@@ -35,14 +40,18 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
   );
 }
 
-export function DashboardScreen({ events, absenceMemos, deviationMemos }: Props) {
-  const pendingAbsence = useMemo(() => absenceMemos.filter((m) => m.status === "Pending"), [absenceMemos]);
-  const awaitingSubmission = useMemo(() => deviationMemos.filter((m) => m.status === "Assigned"), [deviationMemos]);
+/** Section 2 -- same "concerning this viewer" scoping as the Absence/Deviation Memos screens and Memorandums Analytics, so every count on this landing page agrees with what's actually in the lists behind it. */
+export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, onOpenAbsence }: Props) {
+  const myAbsenceMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, absenceMemos), [absenceMemos, roster, userEmail]);
+  const myDeviationMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, deviationMemos), [deviationMemos, roster, userEmail]);
+
+  const pendingAbsence = useMemo(() => myAbsenceMemos.filter((m) => m.status === "Pending"), [myAbsenceMemos]);
+  const awaitingSubmission = useMemo(() => myDeviationMemos.filter((m) => m.status === "Assigned"), [myDeviationMemos]);
   const overdueDeviations = useMemo(
     () => awaitingSubmission.filter((m) => m.dueDate && new Date(m.dueDate).getTime() < Date.now()),
     [awaitingSubmission]
   );
-  const awaitingReview = useMemo(() => deviationMemos.filter((m) => m.status === "Submitted"), [deviationMemos]);
+  const awaitingReview = useMemo(() => myDeviationMemos.filter((m) => m.status === "Submitted"), [myDeviationMemos]);
 
   // Cadets who haven't submitted their auto-assigned Absence Memo within 72 hours of the PMT's own
   // end time -- distinct from "Absent, no memo filed" below, which has no time limit and also
@@ -50,11 +59,11 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos }: Props)
   const overdueAbsence = useMemo(() => {
     const eventsById = new Map(events.map((e) => [e.id, e]));
     const now = Date.now();
-    return absenceMemos
+    return myAbsenceMemos
       .filter((m) => m.status === "Assigned")
       .map((m) => ({ memo: m, event: eventsById.get(m.pmtEventIds[0]) }))
       .filter((row): row is { memo: AbsenceMemo; event: PmtEvent } => !!row.event && absenceMemoDeadline(row.event.eventDate, row.event.eventType).getTime() < now);
-  }, [absenceMemos, events]);
+  }, [myAbsenceMemos, events]);
 
   return (
     <div>
@@ -113,12 +122,24 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos }: Props)
               <p className="text-sm text-muted-foreground">Nothing pending.</p>
             ) : (
               <div className="space-y-1.5">
-                {pendingAbsence.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-sm">
-                    <span>{m.cadetName}</span>
-                    <span className="text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
-                  </div>
-                ))}
+                {pendingAbsence.map((m) =>
+                  onOpenAbsence ? (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => onOpenAbsence(m.id)}
+                      className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
+                    >
+                      <span>{m.cadetName}</span>
+                      <span className="text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                    </button>
+                  ) : (
+                    <div key={m.id} className="flex items-center justify-between text-sm">
+                      <span>{m.cadetName}</span>
+                      <span className="text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </CardContent>

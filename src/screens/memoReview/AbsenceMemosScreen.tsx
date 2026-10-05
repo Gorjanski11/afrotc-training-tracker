@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { FileText, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
-import { canDeleteAbsenceMemo } from "../../domain/access";
+import { canDeleteAbsenceMemo, visibleAbsenceMemos } from "../../domain/access";
 import type { AbsenceMemo, Cadet, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -23,6 +23,9 @@ interface Props {
   applyMemoDecision: (cadetId: string, pmtEventIds: string[], newStatus: "AE" | "A") => Promise<number>;
   reauthenticate: (password: string) => Promise<void>;
   userEmail: string | null | undefined;
+  /** Set by a dashboard row click -- opens this specific memo's review popup on mount, then `onConsumeInitialReview` clears it. */
+  initialReviewId?: string;
+  onConsumeInitialReview?: () => void;
 }
 
 function StatusBadge({ status }: { status: AbsenceMemoStatus }) {
@@ -42,8 +45,22 @@ function coverageSummary(m: AbsenceMemo, eventLabel: (id: string) => string): st
 const OFC_REVIEWER = "Capt Deaton";
 
 /** Submission now lives on the separate GMC/POC submission site -- this screen is cadre review only. */
-export function AbsenceMemosScreen({ events, memos, roster, updateMemo, deleteMemo, applyMemoDecision, reauthenticate, userEmail }: Props) {
+export function AbsenceMemosScreen({
+  events,
+  memos,
+  roster,
+  updateMemo,
+  deleteMemo,
+  applyMemoDecision,
+  reauthenticate,
+  userEmail,
+  initialReviewId,
+  onConsumeInitialReview,
+}: Props) {
   const canDelete = canDeleteAbsenceMemo(userEmail, roster);
+  // Section G: true Cadre only see memos concerning them -- Capt Deaton (general reviewer) sees
+  // everything, everyone else only their own AS-Class. Cortes Garay/CWL stay unrestricted.
+  const visibleMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, memos), [memos, roster, userEmail]);
   const [reviewingId, setReviewingId] = useState<string | undefined>();
   const [reviewNotes, setReviewNotes] = useState("");
   const [returnReason, setReturnReason] = useState("");
@@ -55,16 +72,27 @@ export function AbsenceMemosScreen({ events, memos, roster, updateMemo, deleteMe
   const [overrideReturnReason, setOverrideReturnReason] = useState("");
   const [overriding, setOverriding] = useState(false);
 
-  const pendingMemos = useMemo(() => memos.filter((m) => m.status === "Pending").sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)), [memos]);
+  const pendingMemos = useMemo(
+    () => visibleMemos.filter((m) => m.status === "Pending").sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)),
+    [visibleMemos]
+  );
   // Section 9/15: sorted by date reviewed, most recent first, capped to the last 10 -- the full history lives in Memorandums Analytics.
   const decidedMemos = useMemo(
     () =>
-      memos
+      visibleMemos
         .filter((m) => m.status !== "Pending" && m.status !== "Assigned")
         .sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? ""))
         .slice(0, 10),
-    [memos]
+    [visibleMemos]
   );
+
+  useEffect(() => {
+    if (!initialReviewId) return;
+    const target = memos.find((m) => m.id === initialReviewId);
+    if (target) openReview(target);
+    onConsumeInitialReview?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReviewId, memos]);
 
   const openReview = (memo: AbsenceMemo) => {
     setReviewingId(memo.id);

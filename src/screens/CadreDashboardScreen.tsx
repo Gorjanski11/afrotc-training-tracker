@@ -7,6 +7,7 @@ import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Users, BarChar
 import { cn } from "@/lib/utils";
 import { computeCadetAttendanceSummary } from "../domain/attendance";
 import { computeUnitComparison } from "../domain/accountabilityAnalytics";
+import { visibleAbsenceMemos, visibleDeviationMemos } from "../domain/access";
 import { deriveClass, type Standing } from "../domain/constants";
 import { formatCadetName } from "../domain/nameUtils";
 import { shortDate } from "../domain/memoAnalytics";
@@ -67,11 +68,16 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const activeRoster = useMemo(() => roster.filter((c) => !c.isCadre && c.status === "Active"), [roster]);
 
-  const pendingAbsence = useMemo(() => absenceMemos.filter((m) => m.status === "Pending"), [absenceMemos]);
-  const normalizedEmail = userEmail?.trim().toLowerCase();
+  // Section 2: only memos concerning this viewer -- Capt Deaton (general reviewer) or their own
+  // AS-Class for absence memos; assigned by them or CC'd for deviation memos (same rule the Memo
+  // Review screens and Memorandums Analytics use, so every count agrees).
+  const pendingAbsence = useMemo(
+    () => visibleAbsenceMemos(userEmail, roster, absenceMemos).filter((m) => m.status === "Pending"),
+    [absenceMemos, roster, userEmail]
+  );
   const pendingDeviation = useMemo(
-    () => deviationMemos.filter((m) => m.status === "Submitted" && m.assignedByEmail?.trim().toLowerCase() === normalizedEmail),
-    [deviationMemos, normalizedEmail]
+    () => visibleDeviationMemos(userEmail, roster, deviationMemos).filter((m) => m.status === "Submitted"),
+    [deviationMemos, roster, userEmail]
   );
 
   const warningCadets = useMemo(() => {
@@ -95,11 +101,21 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
 
   const memoHistory = useMemo(() => {
     const rows = [
-      ...absenceMemos.map((m) => ({ kind: "Absence" as const, cadetName: m.cadetName, date: m.submittedAt || m.assignedAt || "", status: m.status })),
-      ...deviationMemos.map((m) => ({ kind: "Deviation" as const, cadetName: m.cadetName, date: m.submittedAt ?? m.dateAssigned, status: m.status })),
+      ...visibleAbsenceMemos(userEmail, roster, absenceMemos).map((m) => ({
+        kind: "Absence" as const,
+        cadetName: m.cadetName,
+        date: m.submittedAt || m.assignedAt || "",
+        status: m.status,
+      })),
+      ...visibleDeviationMemos(userEmail, roster, deviationMemos).map((m) => ({
+        kind: "Deviation" as const,
+        cadetName: m.cadetName,
+        date: m.submittedAt ?? m.dateAssigned,
+        status: m.status,
+      })),
     ];
     return rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
-  }, [absenceMemos, deviationMemos]);
+  }, [absenceMemos, deviationMemos, roster, userEmail]);
 
   const goToCadetAccountability = (cadet: Cadet) => {
     const isGmc = deriveClass(cadet.asClass, cadet.isCadre) === "GMC";
@@ -205,6 +221,34 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
           </CardContent>
         </Card>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>
+            <FileText className="h-4 w-4 text-primary" />
+            Pending Absence Memos for review
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingAbsence.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nothing pending.</p>
+          ) : (
+            <div className="space-y-1">
+              {pendingAbsence.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent"
+                  onClick={() => navigateTo("memoReview", { kind: "memoReview", screen: "absence", openMemoId: m.id })}
+                >
+                  <span>{m.cadetName}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

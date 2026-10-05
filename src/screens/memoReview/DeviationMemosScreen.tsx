@@ -17,8 +17,10 @@ import {
   cadetsInAssignScope,
   getAuthorizedDeviationAssigners,
   getCcEligiblePeople,
+  isDeviationMemoViaCc,
   isWithinDeviationAssignWindow,
   resolveDeviationAssignRule,
+  visibleDeviationMemos,
 } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
 import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
@@ -94,12 +96,8 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
   const [overriding, setOverriding] = useState(false);
 
   // Section 7: a reviewOwnOnly viewer only ever sees memos they personally assigned (full review)
-  // or were CC'd on (view only) -- everyone else (Cadre/Cortes Garay) sees everything.
-  const visibleMemos = useMemo(() => {
-    if (!rule.reviewOwnOnly) return memos;
-    const email = userEmail.trim().toLowerCase();
-    return memos.filter((m) => m.assignedByEmail?.trim().toLowerCase() === email || m.cc.some((c) => c.email.trim().toLowerCase() === email));
-  }, [memos, rule.reviewOwnOnly, userEmail]);
+  // or were CC'd on (view only) -- everyone else (Cortes Garay) sees everything.
+  const visibleMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, memos), [memos, roster, userEmail]);
 
   const canReview = (m: DeviationMemo) => !rule.reviewOwnOnly || m.assignedByEmail?.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
@@ -311,7 +309,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 {submitted.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>{m.submittedAt ? new Date(m.submittedAt).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>{m.cadetName}</TableCell>
+                    <TableCell>
+                      {m.cadetName}
+                      {isDeviationMemoViaCc(userEmail, m) && (
+                        <Badge variant="outline" className="ml-1.5 text-[10px]">
+                          CC'd
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
                     <TableCell>
                       {m.pdfUrl ? (
@@ -373,7 +378,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
               <TableBody>
                 {assigned.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell>{m.cadetName}</TableCell>
+                    <TableCell>
+                      {m.cadetName}
+                      {isDeviationMemoViaCc(userEmail, m) && (
+                        <Badge variant="outline" className="ml-1.5 text-[10px]">
+                          CC'd
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
@@ -432,7 +444,14 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 {processed.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
-                    <TableCell>{m.cadetName}</TableCell>
+                    <TableCell>
+                      {m.cadetName}
+                      {isDeviationMemoViaCc(userEmail, m) && (
+                        <Badge variant="outline" className="ml-1.5 text-[10px]">
+                          CC'd
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell>
                       <StatusBadge status={m.status} />

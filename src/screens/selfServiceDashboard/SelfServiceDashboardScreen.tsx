@@ -98,6 +98,7 @@ export function SelfServiceDashboardScreen({
       unit: f.unitKind === "group" ? `${f.unitValue} Group` : `${f.unitValue} Flight`,
       responsible: nameFor(f.responsibleEmail),
       status: f.status,
+      missing: `${f.missing}/${f.total}`,
     }));
     const toRows = saeFlags.to.map((f: ToFlag) => ({
       trainingWeek: f.trainingWeek,
@@ -106,6 +107,9 @@ export function SelfServiceDashboardScreen({
       unit: f.cohort === "GMC" ? `${f.unitValue} Flight` : "POC",
       responsible: nameFor(f.responsibleEmail),
       status: f.status,
+      // Training Objectives are graded pass/fail per cohort, not per-cadet like Accountability --
+      // no "N missing" count exists for these, same as the full SAE Review page's own ToRow.
+      missing: "—",
     }));
     return [...acctRows, ...toRows].sort((a, b) => {
       if (a.status !== b.status) return a.status === "missing" ? -1 : 1;
@@ -204,6 +208,7 @@ export function SelfServiceDashboardScreen({
                           <TableHead>Item</TableHead>
                           <TableHead>Unit</TableHead>
                           <TableHead>Responsible</TableHead>
+                          <TableHead>Missing</TableHead>
                           <TableHead>Status</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -217,6 +222,7 @@ export function SelfServiceDashboardScreen({
                             </TableCell>
                             <TableCell className="whitespace-nowrap">{row.unit}</TableCell>
                             <TableCell className="whitespace-nowrap">{row.responsible}</TableCell>
+                            <TableCell className="whitespace-nowrap">{row.missing}</TableCell>
                             <TableCell>
                               <Badge variant={row.status === "missing" ? "destructive" : "warning"}>
                                 {row.status === "missing" ? "Missing" : "Late"}

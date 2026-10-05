@@ -56,28 +56,31 @@ export function useAttendance() {
     refetch();
   }, [refetch]);
 
+  // `opts.refetch === false` lets a bulk Accountability save (one cadet per pending entry) skip the
+  // per-write refetch entirely and do exactly one at the end instead of one full-collection
+  // `getDocs` + full re-render per cadet.
   const createAttendance = useCallback(
-    async (input: AttendanceInput) => {
+    async (input: AttendanceInput, opts?: { refetch?: boolean }) => {
       const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
       return { id: ref.id, ...input } satisfies Attendance;
     },
     [refetch]
   );
 
   const updateAttendance = useCallback(
-    async (id: string, input: AttendanceInput) => {
+    async (id: string, input: AttendanceInput, opts?: { refetch?: boolean }) => {
       await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refetch]
   );
 
   /** Clears an accountability entry back to no input (e.g. a cadet mistakenly marked Present for a future PMT). */
   const deleteAttendance = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { refetch?: boolean }) => {
       await deleteDoc(doc(db, COLLECTION, id));
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refetch]
   );

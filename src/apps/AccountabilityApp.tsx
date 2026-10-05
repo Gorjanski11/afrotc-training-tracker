@@ -72,12 +72,14 @@ export function AccountabilityApp({ unitScope }: Props) {
             createAttendance={attendanceState.createAttendance}
             updateAttendance={attendanceState.updateAttendance}
             deleteAttendance={attendanceState.deleteAttendance}
+            refetchAttendance={attendanceState.refetch}
             catalog={catalogState.catalog}
             applyAbsenceNotPass={applyAbsenceNotPass}
             assignAbsenceMemo={absenceMemoAssignmentsState.assignAbsenceMemo}
             retractAbsenceMemoAssignment={absenceMemoAssignmentsState.retractAssignment}
             linkPreSubmittedAttendance={absenceMemoAssignmentsState.linkPreSubmittedAttendance}
             discardOrphanedPreSubmission={absenceMemoAssignmentsState.discardOrphanedPreSubmission}
+            refetchAbsenceMemoAssignments={absenceMemoAssignmentsState.refetch}
             unitScope={unitScope}
           />
         </AnimatedPanel>

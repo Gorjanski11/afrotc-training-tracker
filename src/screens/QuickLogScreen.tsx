@@ -44,9 +44,11 @@ interface Props {
   pmtEvents: PmtEvent[];
   /** Shown as a small P/L/A corner badge per cell -- that cadet's attendance status for the specific PMT occurrence that column grades. */
   attendance: Attendance[];
-  createCompletion: (input: CompletionInput) => Promise<Completion>;
-  updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
-  deleteCompletion: (id: string) => Promise<void>;
+  createCompletion: (input: CompletionInput, opts?: { refetch?: boolean }) => Promise<Completion>;
+  updateCompletion: (id: string, input: CompletionInput, opts?: { refetch?: boolean }) => Promise<Completion>;
+  deleteCompletion: (id: string, opts?: { refetch?: boolean }) => Promise<void>;
+  /** One explicit refetch after a multi-entry Save, instead of one per entry (mobile crash fix). */
+  refetchCompletions: (silent?: boolean) => Promise<void>;
   onSelectCadet: (cadetId: string) => void;
   /** A GMC Flight Commander's `cadets` here is already just their own flight (Section 8) -- hide the redundant Flight filter. */
   hideFlightFilter?: boolean;
@@ -111,6 +113,7 @@ export function QuickLogScreen({
   createCompletion,
   updateCompletion,
   deleteCompletion,
+  refetchCompletions,
   onSelectCadet,
   hideFlightFilter,
   roster,
@@ -404,6 +407,11 @@ export function QuickLogScreen({
     setSaving(true);
     setSaveError(undefined);
     try {
+      // Every write below skips its own per-entry refetch (`{ refetch: false }`) -- with a whole
+      // grid's worth of pending entries, refetching + re-rendering the entire completions
+      // collection (and briefly unmounting the grid to its loading skeleton) after EVERY single
+      // entry rather than once at the end was slow enough on mobile to look like the app crashing.
+      // One explicit refetch happens after the loop instead.
       for (const [key, value] of Object.entries(pending)) {
         const [cadetId, objectiveId, pmtEventIdRaw] = key.split(":");
         const pmtEventId = pmtEventIdRaw === "" ? undefined : pmtEventIdRaw;
@@ -413,7 +421,7 @@ export function QuickLogScreen({
         const existing = getExistingCompletion(cadetId, objectiveId, pmtEventId, isMultiOccurrenceObjective(objectiveId));
 
         if (value === NONE) {
-          if (existing) await deleteCompletion(existing.id);
+          if (existing) await deleteCompletion(existing.id, { refetch: false });
           continue;
         }
 
@@ -435,11 +443,14 @@ export function QuickLogScreen({
           notCovered: false,
         };
         if (existing) {
-          await updateCompletion(existing.id, input);
+          await updateCompletion(existing.id, input, { refetch: false });
         } else {
-          await createCompletion(input);
+          await createCompletion(input, { refetch: false });
         }
       }
+      // One explicit refetch, now that every pending entry's write is in -- not one per entry (see
+      // the per-write `{ refetch: false }` calls above).
+      await refetchCompletions(true);
       setPending({});
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save one or more entries.");
@@ -786,6 +797,7 @@ export function QuickLogScreen({
           userEmail={userEmail}
           createCompletion={createCompletion}
           updateCompletion={updateCompletion}
+          refetchCompletions={refetchCompletions}
           allowMultiplePartial
           findExistingCompletion={(cadetId) => getExistingCompletion(cadetId, partialTarget.objective.id, partialTarget.occurrence.id, true)}
         />

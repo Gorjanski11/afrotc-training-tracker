@@ -25,8 +25,10 @@ interface Props {
   /** Which PMT occurrence this entry applies to -- undefined for objectives that only ever occur once. */
   pmtEventId?: string;
   existingCompletion?: Completion;
-  createCompletion: (input: CompletionInput) => Promise<Completion>;
-  updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
+  createCompletion: (input: CompletionInput, opts?: { refetch?: boolean }) => Promise<Completion>;
+  updateCompletion: (id: string, input: CompletionInput, opts?: { refetch?: boolean }) => Promise<Completion>;
+  /** One explicit refetch after a multi-cadet save, instead of one per cadet (mobile crash fix) -- only needed/used when `allowMultiplePartial` is set. */
+  refetchCompletions?: (silent?: boolean) => Promise<void>;
   /**
    * Only offered for objectives whose material is split across several PMT occurrences: lets one
    * evaluation apply identically to a whole group of cadets at once, since everyone at that session
@@ -55,6 +57,7 @@ export function CompletionEntryDialog({
   existingCompletion,
   createCompletion,
   updateCompletion,
+  refetchCompletions,
   allowMultiplePartial,
   findExistingCompletion,
   evaluatorOptions,
@@ -111,6 +114,10 @@ export function CompletionEntryDialog({
     setError(undefined);
     try {
       const targets = multiplePartial ? cadets.filter((c) => selectedCadetIds.has(c.id)) : [cadet];
+      // With several cadets selected, refetching + re-rendering the whole completions collection
+      // after EVERY cadet (rather than once at the end) was slow enough on mobile to look like the
+      // app crashing -- skip the per-write refetch and do exactly one at the end instead.
+      const batched = targets.length > 1 && !!refetchCompletions;
       for (const target of targets) {
         const existing = target.id === cadet.id ? existingCompletion : findExistingCompletion?.(target.id);
         const input: CompletionInput = {
@@ -131,9 +138,10 @@ export function CompletionEntryDialog({
           // Not Covered is never a manual entry -- only the absence auto-fail hook sets it.
           notCovered: false,
         };
-        if (existing) await updateCompletion(existing.id, input);
-        else await createCompletion(input);
+        if (existing) await updateCompletion(existing.id, input, batched ? { refetch: false } : undefined);
+        else await createCompletion(input, batched ? { refetch: false } : undefined);
       }
+      if (batched) await refetchCompletions!(true);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save.");

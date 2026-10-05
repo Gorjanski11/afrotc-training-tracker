@@ -55,8 +55,21 @@ export function useAbsenceMemoAssignments() {
    * Rejected -- Rejected is final (project rule), so a fresh Absent mark after that starts a new
    * assignment; every other existing status (Assigned/Pending/Accepted/Returned) already covers it.
    */
+  // `opts.refetch === false` lets a bulk Accountability save skip the per-write refetch entirely
+  // and do exactly one at the end instead of one full-collection `getDocs` + full re-render per
+  // cadet -- same fix as useAttendance/useCompletions. Safe to batch because every lookup below
+  // (`alreadyCovered`, `retractAssignment`'s/`linkPreSubmittedAttendance`'s/
+  // `discardOrphanedPreSubmission`'s target search) is scoped to one cadetId, so one cadet's write
+  // earlier in the same save loop never needs to be visible to another cadet's lookup later in it.
   const assignAbsenceMemo = useCallback(
-    async (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => {
+    async (
+      cadet: Cadet,
+      pmtEvent: PmtEvent,
+      reason: AbsenceReason | undefined,
+      reasonOther: string | undefined,
+      attendanceId: string,
+      opts?: { refetch?: boolean }
+    ) => {
       if (new Date(pmtEvent.eventDate).getTime() < new Date(ABSENCE_MEMO_AUTO_ASSIGN_START).getTime()) return;
       const alreadyCovered = refs.some((m) => m.cadetId === cadet.id && m.pmtEventIds.includes(pmtEvent.id) && m.status !== "Rejected");
       if (alreadyCovered) return;
@@ -77,7 +90,7 @@ export function useAbsenceMemoAssignments() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refs, refetch]
   );
@@ -89,13 +102,13 @@ export function useAbsenceMemoAssignments() {
    * merged, submitted, or decided memo.
    */
   const retractAssignment = useCallback(
-    async (cadetId: string, pmtEventId: string) => {
+    async (cadetId: string, pmtEventId: string, opts?: { refetch?: boolean }) => {
       const target = refs.find(
         (m) => m.cadetId === cadetId && m.status === "Assigned" && m.pmtEventIds.length === 1 && m.pmtEventIds[0] === pmtEventId
       );
       if (!target) return;
       await deleteDoc(doc(db, COLLECTION, target.id));
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refs, refetch]
   );
@@ -109,7 +122,7 @@ export function useAbsenceMemoAssignments() {
    * "PE" (excuse already pending) instead of "A".
    */
   const linkPreSubmittedAttendance = useCallback(
-    async (cadetId: string, pmtEventId: string, attendanceId: string): Promise<boolean> => {
+    async (cadetId: string, pmtEventId: string, attendanceId: string, opts?: { refetch?: boolean }): Promise<boolean> => {
       const target = refs.find((m) => {
         if (m.cadetId !== cadetId || m.status !== "Pending") return false;
         const index = m.pmtEventIds.indexOf(pmtEventId);
@@ -123,7 +136,7 @@ export function useAbsenceMemoAssignments() {
       nextAttendanceIds[index] = attendanceId;
 
       await updateDoc(doc(db, COLLECTION, target.id), { attendanceIds: nextAttendanceIds, updatedAt: serverTimestamp() });
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
       return true;
     },
     [refs, refetch]
@@ -139,13 +152,13 @@ export function useAbsenceMemoAssignments() {
    * is now moot, so it's left alone.
    */
   const discardOrphanedPreSubmission = useCallback(
-    async (cadetId: string, pmtEventId: string) => {
+    async (cadetId: string, pmtEventId: string, opts?: { refetch?: boolean }) => {
       const target = refs.find(
         (m) => m.cadetId === cadetId && m.status === "Pending" && m.pmtEventIds.length === 1 && m.pmtEventIds[0] === pmtEventId && !m.attendanceIds[0]
       );
       if (!target) return;
       await deleteDoc(doc(db, COLLECTION, target.id));
-      await refetch(true);
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refs, refetch]
   );

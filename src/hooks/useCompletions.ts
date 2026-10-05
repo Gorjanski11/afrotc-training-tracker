@@ -43,8 +43,14 @@ export function useCompletions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
+  // `silent` skips the loading flip -- without it, a bulk save (Quick Log's multi-cadet "Save
+  // Changes", or CompletionEntryDialog's multi-cadet Partial complete) that calls createCompletion
+  // once per pending entry would flip `loading` true/false on every single entry, unmounting the
+  // whole grid to its skeleton and back N times in a row during one Save click -- on a phone this is
+  // slow enough to look like the app crashed. Mirrors the same fix already applied to
+  // useAttendance/useAbsenceMemoAssignments.
+  const refetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const snap = await getDocs(collection(db, COLLECTION));
       setCompletions(snap.docs.map((d) => mapCompletion(d.id, d.data())));
@@ -52,7 +58,7 @@ export function useCompletions() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load completions.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -60,28 +66,31 @@ export function useCompletions() {
     refetch();
   }, [refetch]);
 
+  // `opts.refetch === false` lets a bulk-save loop (same two call sites as above) skip the
+  // per-write refetch entirely and do exactly one at the end instead of one full-collection
+  // `getDocs` + full re-render per pending entry -- the other half of the same fix.
   const createCompletion = useCallback(
-    async (input: CompletionInput) => {
+    async (input: CompletionInput, opts?: { refetch?: boolean }) => {
       const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      await refetch();
+      if (opts?.refetch !== false) await refetch(true);
       return { id: ref.id, ...input } satisfies Completion;
     },
     [refetch]
   );
 
   const updateCompletion = useCallback(
-    async (id: string, input: CompletionInput) => {
+    async (id: string, input: CompletionInput, opts?: { refetch?: boolean }) => {
       await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
-      await refetch();
+      if (opts?.refetch !== false) await refetch(true);
       return { id, ...input } satisfies Completion;
     },
     [refetch]
   );
 
   const deleteCompletion = useCallback(
-    async (id: string) => {
+    async (id: string, opts?: { refetch?: boolean }) => {
       await deleteDoc(doc(db, COLLECTION, id));
-      await refetch();
+      if (opts?.refetch !== false) await refetch(true);
     },
     [refetch]
   );

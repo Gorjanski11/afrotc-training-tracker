@@ -16,15 +16,25 @@ interface Props {
   roster: Cadet[];
   events: PmtEvent[];
   attendance: Attendance[];
-  createAttendance: (input: AttendanceInput) => Promise<Attendance>;
-  updateAttendance: (id: string, input: AttendanceInput) => Promise<void>;
-  deleteAttendance: (id: string) => Promise<void>;
+  createAttendance: (input: AttendanceInput, opts?: { refetch?: boolean }) => Promise<Attendance>;
+  updateAttendance: (id: string, input: AttendanceInput, opts?: { refetch?: boolean }) => Promise<void>;
+  deleteAttendance: (id: string, opts?: { refetch?: boolean }) => Promise<void>;
   catalog: TrainingObjective[];
   applyAbsenceNotPass: (cadet: Cadet, pmtEvent: PmtEvent, catalogById: Map<string, TrainingObjective>) => Promise<void>;
-  assignAbsenceMemo: (cadet: Cadet, pmtEvent: PmtEvent, reason: AbsenceReason | undefined, reasonOther: string | undefined, attendanceId: string) => Promise<void>;
-  retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string) => Promise<void>;
-  linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string) => Promise<boolean>;
-  discardOrphanedPreSubmission: (cadetId: string, pmtEventId: string) => Promise<void>;
+  assignAbsenceMemo: (
+    cadet: Cadet,
+    pmtEvent: PmtEvent,
+    reason: AbsenceReason | undefined,
+    reasonOther: string | undefined,
+    attendanceId: string,
+    opts?: { refetch?: boolean }
+  ) => Promise<void>;
+  retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string, opts?: { refetch?: boolean }) => Promise<void>;
+  linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string, opts?: { refetch?: boolean }) => Promise<boolean>;
+  discardOrphanedPreSubmission: (cadetId: string, pmtEventId: string, opts?: { refetch?: boolean }) => Promise<void>;
+  /** Exactly one full refetch of each collection after a multi-cadet Save, instead of one per cadet (Section: mobile crash fix). */
+  refetchAttendance: (silent?: boolean) => Promise<void>;
+  refetchAbsenceMemoAssignments: (silent?: boolean) => Promise<void>;
   /** Set by the Dashboard's "Missed Accountability" card -- jumps straight to this PMT (and its Training Week) when it changes. */
   initialPmtEventId?: string;
   /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
@@ -50,6 +60,8 @@ export function AttendanceScreen({
   retractAbsenceMemoAssignment,
   linkPreSubmittedAttendance,
   discardOrphanedPreSubmission,
+  refetchAttendance,
+  refetchAbsenceMemoAssignments,
   initialPmtEventId,
   unitScope,
 }: Props) {
@@ -229,13 +241,17 @@ export function AttendanceScreen({
     try {
       for (const [cadetId, value] of Object.entries(pending)) {
         const existing = existingByCadet.get(cadetId);
-
+        // Every write below skips its own per-item refetch (`{ refetch: false }`) -- with a whole
+        // flight/group's worth of cadets pending at once, refetching + re-rendering the full
+        // attendance/absence-memo collections after EVERY single cadet (rather than once at the end
+        // of the loop) was slow enough on mobile to look like the app crashing. One explicit refetch
+        // of each collection happens after the loop instead.
         if (value.status === NONE) {
           // Clearing back to no input -- delete the saved record (if any) and unwind any downstream
           // side effects tied to it, same as correcting a mistaken Absent away to something else.
-          if (existing) await deleteAttendance(existing.id);
-          await retractAbsenceMemoAssignment(cadetId, selectedEventId);
-          await discardOrphanedPreSubmission(cadetId, selectedEventId);
+          if (existing) await deleteAttendance(existing.id, { refetch: false });
+          await retractAbsenceMemoAssignment(cadetId, selectedEventId, { refetch: false });
+          await discardOrphanedPreSubmission(cadetId, selectedEventId, { refetch: false });
           continue;
         }
 
@@ -250,10 +266,10 @@ export function AttendanceScreen({
         };
         let attendanceId: string;
         if (existing) {
-          await updateAttendance(existing.id, input);
+          await updateAttendance(existing.id, input, { refetch: false });
           attendanceId = existing.id;
         } else {
-          const created = await createAttendance(input);
+          const created = await createAttendance(input, { refetch: false });
           attendanceId = created.id;
         }
 
@@ -267,24 +283,27 @@ export function AttendanceScreen({
             // If the cadet already pre-submitted a memo for this PMT (they knew in advance they'd
             // miss it), link this real Attendance doc into it and promote straight to PE -- an
             // excuse is already in progress, so there's nothing new to assign.
-            const linked = await linkPreSubmittedAttendance(cadetId, selectedEventId, attendanceId);
+            const linked = await linkPreSubmittedAttendance(cadetId, selectedEventId, attendanceId, { refetch: false });
             if (linked) {
-              await updateAttendance(attendanceId, { ...input, status: "PE" });
+              await updateAttendance(attendanceId, { ...input, status: "PE" }, { refetch: false });
             } else {
               // An Absence Memo is assigned to the cadet the instant they're marked Absent -- the
               // cadet then picks it up from the Memo Submissions site.
-              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId);
+              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId, { refetch: false });
             }
           }
         } else {
           // A mistaken Absent entry corrected to something else before the cadet ever submitted a
           // memo for it -- retract the auto-assignment so it doesn't sit there needing action.
-          await retractAbsenceMemoAssignment(cadetId, selectedEventId);
+          await retractAbsenceMemoAssignment(cadetId, selectedEventId, { refetch: false });
           // The cadet actually showed up (Present/Late/etc.) despite having pre-submitted a future
           // memo for this PMT -- the excuse is no longer needed (Section F).
-          await discardOrphanedPreSubmission(cadetId, selectedEventId);
+          await discardOrphanedPreSubmission(cadetId, selectedEventId, { refetch: false });
         }
       }
+      // One explicit refetch of each collection, now that every cadet's writes are in -- not one
+      // per cadet (see the per-write `{ refetch: false }` calls above).
+      await Promise.all([refetchAttendance(true), refetchAbsenceMemoAssignments(true)]);
       setPending({});
       awaitingPostSaveDefaultRef.current = true;
     } catch (e) {

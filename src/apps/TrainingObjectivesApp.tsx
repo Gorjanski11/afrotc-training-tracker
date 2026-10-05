@@ -197,6 +197,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                   createCompletion={completionsState.createCompletion}
                   updateCompletion={completionsState.updateCompletion}
                   deleteCompletion={completionsState.deleteCompletion}
+                  refetchCompletions={completionsState.refetch}
                   onSelectCadet={goToCadet}
                   hideFlightFilter={unitScope.kind === "flight"}
                   userEmail={userEmail}

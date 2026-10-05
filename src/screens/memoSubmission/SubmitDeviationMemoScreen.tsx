@@ -61,11 +61,22 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
     setError(undefined);
     try {
       const uploaded = await uploadMemoPdf(file, "deviationMemos", memo.cadetId);
+      const now = new Date();
+      // A Returned memo gives the cadet 48 hours from `reviewedAt` to fix and resubmit (matches the
+      // Absence Memo Returned flow) -- past that, it's auto-marked Not Submitted instead of Submitted
+      // rather than silently accepting an arbitrarily late resubmission. There's no "Rejected" status
+      // on Deviation Memos, so this reuses the existing terminal "Not Submitted" status (same one the
+      // original-deadline auto-escalation already uses).
+      const deadline = memo.status === "Returned" && memo.reviewedAt ? new Date(new Date(memo.reviewedAt).getTime() + 48 * 3_600_000) : undefined;
+      const late = deadline !== undefined && now > deadline;
       await updateMemo(memo.id, {
         pdfUrl: uploaded.url,
         pdfFileName: uploaded.fileName,
-        status: "Submitted",
-        submittedAt: new Date().toISOString(),
+        status: late ? "Not Submitted" : "Submitted",
+        submittedAt: now.toISOString(),
+        ...(late
+          ? { reviewedAt: now.toISOString(), reviewedBy: "C/Maj Cortes Garay", reviewNotes: "Automatically marked Not Submitted -- resubmitted after the 48-hour Returned deadline." }
+          : {}),
       });
       setSubmittingId(undefined);
       setFile(undefined);

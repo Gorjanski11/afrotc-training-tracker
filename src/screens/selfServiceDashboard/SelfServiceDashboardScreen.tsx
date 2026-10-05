@@ -9,7 +9,8 @@ import { bucketForEventType, SEMESTER_PMT_TOTALS } from "../../domain/constants"
 import { computeCadetAttendanceSummary, computeCombinedPercent } from "../../domain/attendance";
 import { shortDate } from "../../domain/memoAnalytics";
 import { isCortesGaray } from "../../domain/access";
-import { accountabilityFlags, toFlags } from "../../domain/saeReviewDeadlines";
+import { formatCadetName } from "../../domain/nameUtils";
+import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
 import { Stepper } from "../../components/analytics/Stepper";
 import { WeekView } from "../../components/WeekView";
 import { CadetBucketStats, StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
@@ -81,6 +82,36 @@ export function SelfServiceDashboardScreen({
     if (!isSae || !fullRoster || !catalog || !completions) return undefined;
     return { acct: accountabilityFlags(events, fullRoster, attendance), to: toFlags(events, catalog, fullRoster, completions) };
   }, [isSae, fullRoster, catalog, completions, events, attendance]);
+
+  // Flat table version of the same two flag lists SAE Review groups by Training Week -- lets the
+  // SAE see every outstanding item right on the dashboard without opening the full page.
+  const saeFlagRows = useMemo(() => {
+    if (!saeFlags || !fullRoster) return [];
+    const nameFor = (email: string): string => {
+      const match = fullRoster.find((c) => c.email?.trim().toLowerCase() === email.trim().toLowerCase());
+      return match ? formatCadetName(match) : email;
+    };
+    const acctRows = saeFlags.acct.map((f: AccountabilityFlag) => ({
+      trainingWeek: f.event.trainingWeek,
+      kind: "Accountability" as const,
+      item: `${f.event.title} — ${new Date(f.event.eventDate).toLocaleDateString()}`,
+      unit: f.unitKind === "group" ? `${f.unitValue} Group` : `${f.unitValue} Flight`,
+      responsible: nameFor(f.responsibleEmail),
+      status: f.status,
+    }));
+    const toRows = saeFlags.to.map((f: ToFlag) => ({
+      trainingWeek: f.trainingWeek,
+      kind: "Training Objective" as const,
+      item: `${f.objective.number} ${f.objective.title}`,
+      unit: f.cohort === "GMC" ? `${f.unitValue} Flight` : "POC",
+      responsible: nameFor(f.responsibleEmail),
+      status: f.status,
+    }));
+    return [...acctRows, ...toRows].sort((a, b) => {
+      if (a.status !== b.status) return a.status === "missing" ? -1 : 1;
+      return (b.trainingWeek ?? 0) - (a.trainingWeek ?? 0);
+    });
+  }, [saeFlags, fullRoster]);
 
   const summary = useMemo(() => computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
 
@@ -155,19 +186,53 @@ export function SelfServiceDashboardScreen({
               {saeFlags.acct.length + saeFlags.to.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Nothing flagged right now.</p>
               ) : (
-                <div className="flex flex-wrap gap-3 text-sm">
-                  <span>
-                    Accountability: <strong>{saeFlags.acct.length}</strong> outstanding
-                  </span>
-                  <span>
-                    Training Objectives: <strong>{saeFlags.to.length}</strong> outstanding
-                  </span>
+                <>
+                  <div className="mb-3 flex flex-wrap gap-3 text-sm">
+                    <span>
+                      Accountability: <strong>{saeFlags.acct.length}</strong> outstanding
+                    </span>
+                    <span>
+                      Training Objectives: <strong>{saeFlags.to.length}</strong> outstanding
+                    </span>
+                  </div>
+                  <div className="max-h-80 overflow-auto rounded-md border border-input">
+                    <Table aria-label="SAE Review outstanding items">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>TW</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Unit</TableHead>
+                          <TableHead>Responsible</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {saeFlagRows.map((row, i) => (
+                          <TableRow key={i}>
+                            <TableCell>{row.trainingWeek ?? "—"}</TableCell>
+                            <TableCell className="whitespace-nowrap">{row.kind}</TableCell>
+                            <TableCell className="max-w-xs truncate" title={row.item}>
+                              {row.item}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{row.unit}</TableCell>
+                            <TableCell className="whitespace-nowrap">{row.responsible}</TableCell>
+                            <TableCell>
+                              <Badge variant={row.status === "missing" ? "destructive" : "warning"}>
+                                {row.status === "missing" ? "Missing" : "Late"}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                   {onOpenSaeReview && (
-                    <button type="button" className="text-primary underline underline-offset-2" onClick={onOpenSaeReview}>
+                    <button type="button" className="mt-3 text-sm text-primary underline underline-offset-2" onClick={onOpenSaeReview}>
                       Open full SAE Review →
                     </button>
                   )}
-                </div>
+                </>
               )}
             </CardContent>
           </Card>

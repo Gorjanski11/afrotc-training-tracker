@@ -155,7 +155,15 @@ export function computeCompletionByPlo(cadets: Cadet[], catalog: TrainingObjecti
     .sort((a, b) => a.ploOrder - b.ploOrder);
 }
 
-/** Every objective with at least one active cadet currently overdue on it, ranked by overdue count -- "Overdue objectives" (Section 6b), no longer capped to a top-N. */
+/**
+ * Every objective with at least one active cadet currently overdue on it, ranked by overdue count
+ * -- "Overdue objectives" (Section 6b), no longer capped to a top-N. Only counts a cadet/objective
+ * pair when NOTHING has been logged for it at all -- `bestCompletion` undefined. A completion that
+ * exists but didn't satisfy the requirement (Incomplete) or only vouches for one occurrence
+ * (Partial complete) already has a real judgment on record, so it's excluded here even though
+ * `getObjectiveStatus` still reads it as "missed" (that status only tracks whether a PASS was ever
+ * logged, not whether ANY judgment was).
+ */
 export function computeOverdueObjectives(cadets: Cadet[], catalog: TrainingObjective[], completions: Completion[], pmtEvents: PmtEvent[]): MissedObjectiveRow[] {
   const byCadet = completionsByCadetId(completions);
   const counts = new Map<string, number>();
@@ -165,7 +173,7 @@ export function computeOverdueObjectives(cadets: Cadet[], catalog: TrainingObjec
     for (const objective of catalog) {
       if (!objective.graded || objective.proficiencyByLevel[cadet.devLevel] === "") continue;
       const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, byCadet.get(cadet.id) ?? []);
-      if (isOverdue(info.status)) counts.set(objective.id, (counts.get(objective.id) ?? 0) + 1);
+      if (isOverdue(info.status) && !info.bestCompletion) counts.set(objective.id, (counts.get(objective.id) ?? 0) + 1);
     }
   }
 

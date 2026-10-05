@@ -96,8 +96,15 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
   const [overriding, setOverriding] = useState(false);
 
   // Section 7: a reviewOwnOnly viewer only ever sees memos they personally assigned (full review)
-  // or were CC'd on (view only) -- everyone else (Cortes Garay) sees everything.
-  const visibleMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, memos), [memos, roster, userEmail]);
+  // or were CC'd on (view only) -- everyone else (Cortes Garay, the only unrestricted reviewer today)
+  // sees everything by default, with a toggle to narrow that down to just what they personally
+  // assigned -- the one-way inverse of the toggle Cadre already have in Memorandums Analytics.
+  const [mineOnly, setMineOnly] = useState(false);
+  const visibleMemos = useMemo(() => {
+    const base = visibleDeviationMemos(userEmail, roster, memos);
+    if (rule.reviewOwnOnly || !mineOnly) return base;
+    return base.filter((m) => m.assignedByEmail?.trim().toLowerCase() === userEmail.trim().toLowerCase());
+  }, [memos, roster, userEmail, rule.reviewOwnOnly, mineOnly]);
 
   const canReview = (m: DeviationMemo) => !rule.reviewOwnOnly || m.assignedByEmail?.trim().toLowerCase() === userEmail.trim().toLowerCase();
 
@@ -269,15 +276,27 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
           <ClipboardList className="h-5 w-5 text-primary" />
           Deviation Memos
         </h2>
-        {rule.canAssign &&
-          (withinAssignWindow ? (
-            <Button onClick={() => setAssignDialogOpen(true)}>
-              <UserPlus className="h-3.5 w-3.5" />
-              Assign
+        <div className="flex items-center gap-2">
+          {!rule.reviewOwnOnly && (
+            <Button
+              variant={mineOnly ? "default" : "outline"}
+              size="sm"
+              title={mineOnly ? "Only showing memorandums you personally assigned" : "Showing every memorandum, including ones assigned by others"}
+              onClick={() => setMineOnly((v) => !v)}
+            >
+              {mineOnly ? "Mine only" : "Showing all"}
             </Button>
-          ) : (
-            <p className="text-sm text-muted-foreground">Assigning is only available Monday-Friday, 0400-2000.</p>
-          ))}
+          )}
+          {rule.canAssign &&
+            (withinAssignWindow ? (
+              <Button onClick={() => setAssignDialogOpen(true)}>
+                <UserPlus className="h-3.5 w-3.5" />
+                Assign
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">Assigning is only available Monday-Friday, 0400-2000.</p>
+            ))}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -301,6 +320,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                   <TableHead>Submitted</TableHead>
                   <TableHead>Cadet</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Assigned by</TableHead>
                   <TableHead>PDF</TableHead>
                   <TableHead />
                 </TableRow>
@@ -318,6 +338,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                       )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
+                    <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>
                       {m.pdfUrl ? (
                         <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
@@ -346,7 +367,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 ))}
                 {submitted.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
                       Nothing awaiting review.
                     </TableCell>
                   </TableRow>
@@ -433,7 +454,8 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 <TableRow>
                   <TableHead>Reviewed</TableHead>
                   <TableHead>Cadet</TableHead>
-                  <TableHead>By</TableHead>
+                  <TableHead>Assigned by</TableHead>
+                  <TableHead>Reviewed by</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>PDF</TableHead>
                   <TableHead>Notes</TableHead>
@@ -452,6 +474,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell>
                       <StatusBadge status={m.status} />
@@ -483,7 +506,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 ))}
                 {processed.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center text-muted-foreground">
                       Nothing processed yet.
                     </TableCell>
                   </TableRow>

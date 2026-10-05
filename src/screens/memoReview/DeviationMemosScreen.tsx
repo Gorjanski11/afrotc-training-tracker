@@ -360,7 +360,9 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                           </Button>
                         </div>
                       ) : (
-                        <span className="text-xs text-muted-foreground">View only (CC'd)</span>
+                        <span className="text-xs text-muted-foreground">
+                          View only{isDeviationMemoViaCc(userEmail, m) ? " (CC'd)" : ""}
+                        </span>
                       )}
                     </TableCell>
                   </TableRow>

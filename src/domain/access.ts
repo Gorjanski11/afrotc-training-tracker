@@ -345,12 +345,20 @@ export interface DeviationAssignRule {
   assignScope: DeviationAssignScope;
   /** True unless this person reviews everyone's (Cadre/Cortes Garay) -- when true, they only ever see memos they assigned or were CC'd on. */
   reviewOwnOnly: boolean;
+  /** Extra emails whose assigned memos this viewer can also SEE (not review/decide, just read) even under reviewOwnOnly -- e.g. Montalvo seeing every GMC Flight Commander's deviation memos. */
+  alsoVisibleAssignerEmails?: string[];
 }
 
 const RULE_EVERYONE: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: false };
 /** CWL -- assign to anyone like Cortes Garay/Cadre, but (per the user) only reviews what they personally assigned, not everyone's. */
 const RULE_EVERYONE_OWN_REVIEW: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: true };
-const RULE_ANY_GMC: DeviationAssignRule = { canAssign: true, assignScope: "any-gmc", reviewOwnOnly: true };
+/** Montalvo (CTO) -- assigns GMC-wide like any Flight Commander, but can also SEE (view only, never review/decide) every deviation memo any of the 4 GMC Flight Commanders assigned, not just his own. */
+const RULE_ANY_GMC: DeviationAssignRule = {
+  canAssign: true,
+  assignScope: "any-gmc",
+  reviewOwnOnly: true,
+  alsoVisibleAssignerEmails: Object.values(FLIGHT_COMMANDER_EMAIL),
+};
 const RULE_CANNOT_ASSIGN: DeviationAssignRule = { canAssign: false, assignScope: "any-gmc", reviewOwnOnly: true };
 
 function flightRule(flight: Flight): DeviationAssignRule {
@@ -409,7 +417,15 @@ export function visibleDeviationMemos(email: string | null | undefined, roster: 
   const rule = resolveDeviationAssignRule(email, roster);
   if (!rule.reviewOwnOnly) return memos;
   const normalized = (email ?? "").trim().toLowerCase();
-  return memos.filter((m) => m.assignedByEmail?.trim().toLowerCase() === normalized || m.cc.some((c) => c.email.trim().toLowerCase() === normalized));
+  const alsoVisible = new Set((rule.alsoVisibleAssignerEmails ?? []).map((e) => e.trim().toLowerCase()));
+  return memos.filter((m) => {
+    const assignedByEmail = m.assignedByEmail?.trim().toLowerCase();
+    return (
+      assignedByEmail === normalized ||
+      m.cc.some((c) => c.email.trim().toLowerCase() === normalized) ||
+      (!!assignedByEmail && alsoVisible.has(assignedByEmail))
+    );
+  });
 }
 /** True when `email` sees this Deviation Memo only because they were CC'd on it, not because they assigned it -- used to show a "CC'd" badge explaining why it's in their list. */
 export function isDeviationMemoViaCc(email: string | null | undefined, memo: DeviationMemo): boolean {

@@ -377,7 +377,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                   <TableBody>
                     {crosstabCadets.map((cadet) => (
                       <TableRow key={cadet.id}>
-                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetName(cadet)}</TableCell>
+                        <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetName(cadet)}</TableCell>
                         {crosstabPloGroups.flatMap((group) =>
                           group.objectives.map((objective, i) => {
                             const cell = !cadet.devLevel
@@ -390,7 +390,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                 key={objective.id}
                                 title={objective.title}
                                 className={cn(
-                                  "px-1 py-0.5 text-center text-[11px]",
+                                  "h-5 px-1 py-0.5 text-center text-[11px]",
                                   i === 0 && "border-l border-input",
                                   cell?.status === "complete" && "bg-success text-success-foreground font-medium",
                                   cell?.status === "partial" && "bg-warning text-warning-foreground font-medium",
@@ -398,10 +398,10 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                   cell?.status === "not-applicable" && "bg-foreground text-background font-medium"
                                 )}
                               >
-                                {/* Not Covered is folded into INC here too -- same red marker, no proficiency level, whether it's a genuine not-yet-met grade or an absence on a presence-based objective. Not-applicable (never evaluated at this cadet's level) is a solid black box, distinct from a blank "applicable but nothing logged yet" cell. */}
+                                {/* Not Covered is folded into INC here too -- same red marker, no proficiency level, whether it's a genuine not-yet-met grade or an absence on a presence-based objective. Not-applicable (never evaluated at this cadet's level) is a solid black box with no text, distinct from a blank "applicable but nothing logged yet" cell only by its fill color. */}
                                 {cell
                                   ? cell.status === "not-applicable"
-                                    ? "N/A"
+                                    ? ""
                                     : cell.status === "incomplete" || cell.status === "notCovered"
                                       ? "INC"
                                       : cell.status === "partial"

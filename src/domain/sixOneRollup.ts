@@ -37,15 +37,15 @@ const BLOCK_2_ID = "2-6.1.11";
 /**
  * The combined "6.1" status for one cadet, built from their 11 sub-objective completions -- same
  * shape as `crosstabCellFor` so it drops straight into the crosstab's existing cell rendering.
- * undefined when 6.1 isn't applicable at this cadet's dev level at all (e.g. SCL).
+ * "not-applicable" when 6.1 isn't applicable at this cadet's dev level at all (e.g. SCL).
  */
 export function computeSixOneRollup(catalog: TrainingObjective[], devLevel: DevLevel | undefined, cadetCompletions: Completion[]): CrosstabCell | undefined {
-  if (!devLevel) return undefined;
+  if (!devLevel) return { status: "not-applicable" };
   const catalogById = new Map(catalog.map((o) => [o.id, o]));
 
   const codeFor = (id: string): string => catalogById.get(id)?.proficiencyByLevel[devLevel] ?? "";
   const applicableSubIds: string[] = SIX_ONE_SUB_IDS.filter((id) => codeFor(id) !== "");
-  if (applicableSubIds.length === 0) return undefined;
+  if (applicableSubIds.length === 0) return { status: "not-applicable" };
 
   const isSubComplete = (id: string): boolean => {
     const required = codeFor(id);

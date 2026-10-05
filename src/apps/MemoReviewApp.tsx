@@ -8,7 +8,6 @@ import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useAttendanceLink } from "../hooks/useAttendanceLink";
-import { useAttendanceRecords } from "../hooks/useAttendanceRecords";
 import { useAuth } from "../hooks/useAuth";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
@@ -40,7 +39,6 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
   const attendanceLink = useAttendanceLink();
-  const attendanceRecordsState = useAttendanceRecords();
   const { reauthenticate } = useAuth();
 
   const [screen, setScreen] = useState<Screen>("dashboard");
@@ -52,10 +50,8 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreen]);
 
-  const dataLoading =
-    cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading || attendanceRecordsState.loading;
-  const loadError =
-    cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error || attendanceRecordsState.error;
+  const dataLoading = cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading;
+  const loadError = cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error;
 
   return (
     <div className="flex h-full flex-col">
@@ -98,13 +94,7 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, onConsume
             <>
               <TabsContent value="dashboard">
                 <AnimatedPanel>
-                  <DashboardScreen
-                    roster={cadetsState.cadets}
-                    events={eventsState.events}
-                    attendance={attendanceRecordsState.records}
-                    absenceMemos={absenceState.memos}
-                    deviationMemos={deviationState.memos}
-                  />
+                  <DashboardScreen events={eventsState.events} absenceMemos={absenceState.memos} deviationMemos={deviationState.memos} />
                 </AnimatedPanel>
               </TabsContent>
               {showAbsence && (

@@ -1,16 +1,13 @@
 import { useMemo } from "react";
 import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, UserX, CalendarClock } from "lucide-react";
+import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ABSENCE_MEMO_AUTO_ASSIGN_START, absenceMemoDeadline } from "../../domain/constants";
-import type { AbsenceMemo, DeviationMemo, PmtEvent, Cadet } from "../../domain/types";
-import type { AttendanceRecordRef } from "../../hooks/useAttendanceRecords";
+import { absenceMemoDeadline } from "../../domain/constants";
+import type { AbsenceMemo, DeviationMemo, PmtEvent } from "../../domain/types";
 
 interface Props {
-  roster: Cadet[];
   events: PmtEvent[];
-  attendance: AttendanceRecordRef[];
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
 }
@@ -38,7 +35,7 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
   );
 }
 
-export function DashboardScreen({ roster, events, attendance, absenceMemos, deviationMemos }: Props) {
+export function DashboardScreen({ events, absenceMemos, deviationMemos }: Props) {
   const pendingAbsence = useMemo(() => absenceMemos.filter((m) => m.status === "Pending"), [absenceMemos]);
   const awaitingSubmission = useMemo(() => deviationMemos.filter((m) => m.status === "Assigned"), [deviationMemos]);
   const overdueDeviations = useMemo(
@@ -58,20 +55,6 @@ export function DashboardScreen({ roster, events, attendance, absenceMemos, devi
       .map((m) => ({ memo: m, event: eventsById.get(m.pmtEventIds[0]) }))
       .filter((row): row is { memo: AbsenceMemo; event: PmtEvent } => !!row.event && absenceMemoDeadline(row.event.eventDate, row.event.eventType).getTime() < now);
   }, [absenceMemos, events]);
-
-  // Visual flag only (explicit project decision) -- absent on Accountability's shared attendance
-  // collection but no Absence Memo (any status) yet references that same cadet+PMT. Nothing is
-  // ever auto-created here; this is purely a reminder for cadre that a memo is owed.
-  const absentNoMemo = useMemo(() => {
-    const covered = new Set(absenceMemos.flatMap((m) => m.pmtEventIds.map((pmtEventId) => `${m.cadetId}__${pmtEventId}`)));
-    const rosterById = new Map(roster.map((p) => [p.id, p]));
-    const eventsById = new Map(events.map((e) => [e.id, e]));
-    return attendance
-      .filter((a) => a.status === "A" && !covered.has(`${a.cadetId}__${a.pmtEventId}`))
-      .map((a) => ({ record: a, cadet: rosterById.get(a.cadetId), event: eventsById.get(a.pmtEventId) }))
-      .filter((row) => row.cadet && row.event && row.event.eventDate >= ABSENCE_MEMO_AUTO_ASSIGN_START)
-      .sort((a, b) => (b.event!.eventDate ?? "").localeCompare(a.event!.eventDate ?? ""));
-  }, [attendance, absenceMemos, roster, events]);
 
   return (
     <div>
@@ -114,13 +97,6 @@ export function DashboardScreen({ roster, events, attendance, absenceMemos, devi
           value={String(awaitingReview.length)}
           tone={awaitingReview.length > 0 ? "critical" : undefined}
           index={4}
-        />
-        <HeroStat
-          icon={<UserX className="h-4.5 w-4.5" />}
-          label="Absent, no memo filed"
-          value={String(absentNoMemo.length)}
-          tone={absentNoMemo.length > 0 ? "critical" : undefined}
-          index={5}
         />
       </div>
 
@@ -189,31 +165,6 @@ export function DashboardScreen({ roster, events, attendance, absenceMemos, devi
                   <div key={m.id} className="flex items-center justify-between text-sm">
                     <span>{m.cadetName}</span>
                     <span className="text-muted-foreground">Due {new Date(m.dueDate!).toLocaleDateString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>
-              <UserX className="h-4 w-4 text-destructive" />
-              Absent, no Absence Memo filed yet
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {absentNoMemo.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing outstanding -- every Absent record on Accountability has a memo covering it.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {absentNoMemo.map(({ record, cadet, event }) => (
-                  <div key={record.id} className="flex items-center justify-between text-sm">
-                    <span>{cadet!.name}</span>
-                    <span className="text-muted-foreground">
-                      {event!.eventType} — {event!.title} ({new Date(event!.eventDate).toLocaleDateString()})
-                    </span>
                   </div>
                 ))}
               </div>

@@ -12,7 +12,7 @@ import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, proficiencyOp
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
-import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
+import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 /**
  * One grid column. Objectives covered by only one PMT get a single column (occurrence is that
@@ -42,6 +42,8 @@ interface Props {
   catalog: TrainingObjective[];
   completions: Completion[];
   pmtEvents: PmtEvent[];
+  /** Shown as a small P/L/A corner badge per cell -- that cadet's attendance status for the specific PMT occurrence that column grades. */
+  attendance: Attendance[];
   createCompletion: (input: CompletionInput) => Promise<Completion>;
   updateCompletion: (id: string, input: CompletionInput) => Promise<Completion>;
   deleteCompletion: (id: string) => Promise<void>;
@@ -73,6 +75,27 @@ function defaultNotPassCode(required: ProficiencyCode): ProficiencyCode {
   return below.reduce((best, p) => (PROFICIENCY_RANK[p] > PROFICIENCY_RANK[best] ? p : best));
 }
 
+const ATTENDANCE_BADGE: Record<Attendance["status"], string> = {
+  P: "bg-success/20 text-success",
+  L: "bg-warning/20 text-warning-foreground",
+  A: "bg-destructive/20 text-destructive",
+  AE: "bg-success/20 text-success",
+  PE: "bg-warning/20 text-warning-foreground",
+};
+
+/** Small corner badge on a Quick Log cell -- that cadet's attendance status for the specific PMT this column grades, so a grader can see at a glance whether they were even there. */
+function AttendanceCorner({ status }: { status: Attendance["status"] | undefined }) {
+  if (!status) return null;
+  return (
+    <span
+      className={cn("absolute right-0 top-0 rounded-bl px-1 text-[9px] font-semibold leading-tight", ATTENDANCE_BADGE[status])}
+      title={`Attendance: ${status}`}
+    >
+      {status}
+    </span>
+  );
+}
+
 function formatOccurrenceLabel(event: PmtEvent | undefined): string {
   if (!event) return "Not yet scheduled";
   const date = new Date(event.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -84,6 +107,7 @@ export function QuickLogScreen({
   catalog,
   completions,
   pmtEvents,
+  attendance,
   createCompletion,
   updateCompletion,
   deleteCompletion,
@@ -141,6 +165,14 @@ export function QuickLogScreen({
     }
     return map;
   }, [completions]);
+
+  // That cadet's attendance status for one specific PMT occurrence -- shown as a small corner badge
+  // on each grid cell so a grader can see at a glance whether the cadet was even there.
+  const attendanceByCadetEvent = useMemo(() => {
+    const map = new Map<string, Attendance["status"]>();
+    for (const a of attendance) map.set(`${a.cadetId}:${a.pmtEventId}`, a.status);
+    return map;
+  }, [attendance]);
 
   const cellKey = (cadetId: string, objectiveId: string, pmtEventId: string | undefined) => `${cadetId}:${objectiveId}:${pmtEventId ?? ""}`;
 
@@ -546,6 +578,7 @@ export function QuickLogScreen({
                     );
                   }
                   const pmtEventId = occurrence?.id;
+                  const attendanceStatus = pmtEventId ? attendanceByCadetEvent.get(`${cadet.id}:${pmtEventId}`) : undefined;
                   const key = cellKey(cadet.id, objective.id, pmtEventId);
                   const value = getCellValue(cadet.id, objective.id, pmtEventId, isMultiOccurrence);
                   const isDirty = key in pending;
@@ -583,7 +616,8 @@ export function QuickLogScreen({
                   const passOptions = proficiencyOptionsAtOrAbove(requiredCode);
                   const notPassCode = defaultNotPassCode(requiredCode);
                   return (
-                    <TableCell key={col.key} className={cn("p-1 text-center", tint)}>
+                    <TableCell key={col.key} className={cn("relative p-1 text-center", tint)}>
+                      <AttendanceCorner status={attendanceStatus} />
                       <div className="flex flex-col items-center gap-1">
                         <div className="flex items-center gap-1">
                           {passOptions.length > 1 ? (

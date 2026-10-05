@@ -83,17 +83,15 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
         const overall = standings.reduce((worst, s) => (STANDING_SEVERITY[s] > STANDING_SEVERITY[worst] ? s : worst));
         return { cadet, overall };
       })
-      .filter((row): row is { cadet: Cadet; overall: Standing } => !!row && row.overall === "Warning")
+      .filter((row): row is { cadet: Cadet; overall: Standing } => !!row && (row.overall === "Warning" || row.overall === "Hard Limit"))
       .sort((a, b) => a.cadet.name.localeCompare(b.cadet.name));
   }, [activeRoster, attendance, pmtEventsById]);
 
-  const unitRows = useMemo(
-    () =>
-      computeUnitComparison(activeRoster, attendance, pmtEventsById, (p) =>
-        deriveClass(p.asClass, p.isCadre) === "GMC" ? p.flight : p.group
-      ),
-    [activeRoster, attendance, pmtEventsById]
-  );
+  const UNIT_ORDER = ["CWL", "TRG", "OG", "MSG", "WSG", "M", "N", "O", "P"];
+  const unitRows = useMemo(() => {
+    const rows = computeUnitComparison(activeRoster, attendance, pmtEventsById, (p) => (deriveClass(p.asClass, p.isCadre) === "GMC" ? p.flight : p.group));
+    return [...rows].sort((a, b) => UNIT_ORDER.indexOf(a.unit) - UNIT_ORDER.indexOf(b.unit));
+  }, [activeRoster, attendance, pmtEventsById]);
 
   const memoHistory = useMemo(() => {
     const rows = [
@@ -135,7 +133,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
           index={1}
           onClick={() => navigateTo("memoReview", { kind: "memoReview", screen: "deviation" })}
         />
-        <HeroStat icon={<TriangleAlert className="h-4.5 w-4.5" />} label="Cadets on Warning" value={String(warningCadets.length)} index={2} />
+        <HeroStat icon={<TriangleAlert className="h-4.5 w-4.5" />} label="Cadets on Warning or lower" value={String(warningCadets.length)} index={2} />
         <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Active roster" value={String(activeRoster.length)} index={3} />
       </div>
 
@@ -144,15 +142,15 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
           <CardHeader>
             <CardTitle>
               <TriangleAlert className="h-4 w-4 text-warning" />
-              Cadets on Warning status
+              Cadets on Warning or lower
             </CardTitle>
           </CardHeader>
           <CardContent>
             {warningCadets.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No one is currently in Warning.</p>
+              <p className="text-sm text-muted-foreground">No one is currently Warning or lower.</p>
             ) : (
               <div className="space-y-1">
-                {warningCadets.map(({ cadet }) => (
+                {warningCadets.map(({ cadet, overall }) => (
                   <button
                     key={cadet.id}
                     type="button"
@@ -160,7 +158,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
                     onClick={() => goToCadetAccountability(cadet)}
                   >
                     <span>{formatCadetName(cadet)}</span>
-                    <Badge variant="warning">Warning</Badge>
+                    <Badge variant={overall === "Hard Limit" ? "destructive" : "warning"}>{overall}</Badge>
                   </button>
                 ))}
               </div>
@@ -193,8 +191,11 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
                         {row.unit} {isGmc ? "Flight" : "Group"} <span className="text-xs text-muted-foreground">({row.cadetCount})</span>
                       </span>
                       <span className="tabular-nums text-muted-foreground">
-                        PT {row.ptPercent === undefined ? "—" : `${Math.round(row.ptPercent * 100)}%`} · LLAB/FM/D&amp;C{" "}
-                        {row.llabFmPercent === undefined ? "—" : `${Math.round(row.llabFmPercent * 100)}%`}
+                        PT <strong className="font-bold text-foreground">{row.ptPercent === undefined ? "—" : `${Math.round(row.ptPercent * 100)}%`}</strong>{" "}
+                        · LLAB/FM/D&amp;C{" "}
+                        <strong className="font-bold text-foreground">
+                          {row.llabFmPercent === undefined ? "—" : `${Math.round(row.llabFmPercent * 100)}%`}
+                        </strong>
                       </span>
                     </button>
                   );

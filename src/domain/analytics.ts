@@ -88,27 +88,28 @@ export function computeCompletionByCadet(cadets: Cadet[], catalog: TrainingObjec
     .sort((a, b) => compareByLastName(a.name, b.name));
 }
 
-export type CrosstabStatus = "complete" | "partial" | "incomplete" | "notCovered";
+export type CrosstabStatus = "complete" | "partial" | "incomplete" | "notCovered" | "not-applicable";
 
 export interface CrosstabCell {
-  code: ProficiencyCode;
-  /** Mirrors Quick Log's own C/PC/INC states, plus notCovered for a presence-based absence (Section: crosstab C/PC/INC convention). */
+  /** Absent only for "not-applicable" (no proficiency code makes sense when the objective isn't evaluated at this cadet's level at all). */
+  code?: ProficiencyCode;
+  /** Mirrors Quick Log's own C/PC/INC states, plus notCovered for a presence-based absence, plus not-applicable when this objective isn't evaluated at this cadet's dev level at all (Section: crosstab C/PC/INC convention). */
   status: CrosstabStatus;
 }
 
 /**
- * One cadet's cell in the "Completed TO's by Cadet" crosstab (Section D) -- undefined for a blank
- * cell, either because this objective isn't evaluated at the cadet's dev level at all, or because
- * nothing has been logged against it yet. Otherwise picks the single best-standing completion
- * across every occurrence, in priority order: a genuine Complete (meets the requirement, not
- * Partial, not Not Covered) beats a Partial complete, which beats a plain Incomplete, which beats a
- * Not Covered placeholder -- e.g. a cadet with a qualifying Complete at one occurrence and a
- * Not Covered at another still shows Complete, not Not Covered. Ties within a tier go to the
- * highest-ranked code.
+ * One cadet's cell in the "Completed TO's by Cadet" crosstab (Section D) -- "not-applicable" when
+ * this objective isn't evaluated at the cadet's dev level at all (renders as a solid N/A box), plain
+ * `undefined` when it IS applicable but nothing's been logged against it yet (renders blank -- still
+ * outstanding, not yet due for a flag). Otherwise picks the single best-standing completion across
+ * every occurrence, in priority order: a genuine Complete (meets the requirement, not Partial, not
+ * Not Covered) beats a Partial complete, which beats a plain Incomplete, which beats a Not Covered
+ * placeholder -- e.g. a cadet with a qualifying Complete at one occurrence and a Not Covered at
+ * another still shows Complete, not Not Covered. Ties within a tier go to the highest-ranked code.
  */
 export function crosstabCellFor(objective: TrainingObjective, devLevel: DevLevel, cadetCompletions: Completion[]): CrosstabCell | undefined {
   const required = objective.proficiencyByLevel[devLevel];
-  if (required === "") return undefined;
+  if (required === "") return { status: "not-applicable" };
   const relevant = cadetCompletions.filter((c) => c.objectiveId === objective.id);
   if (relevant.length === 0) return undefined;
 

@@ -8,6 +8,7 @@ import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { usePmtEvents } from "../hooks/usePmtEvents";
+import { useAttendance } from "../hooks/useAttendance";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "../domain/constants";
 import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
 import { HomeScreen } from "../screens/HomeScreen";
@@ -48,6 +49,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   const catalogState = useTrainingObjectives();
   const completionsState = useCompletions();
   const pmtEventsState = usePmtEvents();
+  const attendanceState = useAttendance();
 
   const singleCohort = cohortAccess === "poc" || cohortAccess === "gmc" ? cohortAccess : undefined;
   const [topLevel, setTopLevel] = useState<TopLevel>(singleCohort ?? "home");
@@ -87,8 +89,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   // this cohort's cadets -- a POC evaluator must be selectable even while logging a GMC cadet.
   const fullRosterNoCadre = useMemo(() => excludeInactive(excludeCadre(cadetsState.cadets)), [cadetsState.cadets]);
 
-  const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading;
-  const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error;
+  const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading || attendanceState.loading;
+  const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error || attendanceState.error;
 
   return (
     <div className="flex h-full flex-col">
@@ -191,6 +193,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                   catalog={catalogState.catalog}
                   completions={completionsState.completions}
                   pmtEvents={pmtEventsState.events}
+                  attendance={attendanceState.attendance}
                   createCompletion={completionsState.createCompletion}
                   updateCompletion={completionsState.updateCompletion}
                   deleteCompletion={completionsState.deleteCompletion}

@@ -394,16 +394,19 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
                                   i === 0 && "border-l border-input",
                                   cell?.status === "complete" && "bg-success text-success-foreground font-medium",
                                   cell?.status === "partial" && "bg-warning text-warning-foreground font-medium",
-                                  (cell?.status === "incomplete" || cell?.status === "notCovered") && "bg-destructive text-destructive-foreground font-medium"
+                                  (cell?.status === "incomplete" || cell?.status === "notCovered") && "bg-destructive text-destructive-foreground font-medium",
+                                  cell?.status === "not-applicable" && "bg-foreground text-background font-medium"
                                 )}
                               >
-                                {/* Not Covered is folded into INC here too -- same red marker, no proficiency level, whether it's a genuine not-yet-met grade or an absence on a presence-based objective. */}
+                                {/* Not Covered is folded into INC here too -- same red marker, no proficiency level, whether it's a genuine not-yet-met grade or an absence on a presence-based objective. Not-applicable (never evaluated at this cadet's level) is a solid black box, distinct from a blank "applicable but nothing logged yet" cell. */}
                                 {cell
-                                  ? cell.status === "incomplete" || cell.status === "notCovered"
-                                    ? "INC"
-                                    : cell.status === "partial"
-                                      ? `PC-${cell.code}`
-                                      : `C-${cell.code}`
+                                  ? cell.status === "not-applicable"
+                                    ? "N/A"
+                                    : cell.status === "incomplete" || cell.status === "notCovered"
+                                      ? "INC"
+                                      : cell.status === "partial"
+                                        ? `PC-${cell.code}`
+                                        : `C-${cell.code}`
                                   : ""}
                               </TableCell>
                             );

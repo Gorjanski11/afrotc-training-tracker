@@ -139,6 +139,7 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                   <DeviationMemosScreen
                     roster={cadetsState.cadets}
                     memos={deviationState.memos}
+                    events={eventsState.events}
                     createMemo={deviationState.createMemo}
                     updateMemo={deviationState.updateMemo}
                     deleteMemo={deviationState.deleteMemo}

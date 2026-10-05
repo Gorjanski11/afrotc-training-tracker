@@ -23,12 +23,14 @@ import {
   visibleDeviationMemos,
 } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
-import type { DeviationMemo, Cadet, PersonRef } from "../../domain/types";
+import type { DeviationMemo, Cadet, PersonRef, PmtEvent } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
 interface Props {
   roster: Cadet[];
   memos: DeviationMemo[];
+  /** Resolves `relatedPmtEventId` (set only on memos auto-assigned for a missed Absence Memo deadline) to the PMT's title/date. */
+  events: PmtEvent[];
   createMemo: (input: DeviationMemoInput) => Promise<DeviationMemo>;
   updateMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
   deleteMemo: (id: string) => Promise<void>;
@@ -61,9 +63,14 @@ function reasonDisplay(memo: DeviationMemo): string {
 }
 
 /** Section 9 -- single view (no more Assign/Submissions-&-Review tabs): Submitted, then Awaiting submission, then Processed, top to bottom. Assign lives in a popup instead of its own tab. */
-export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, deleteMemo, reauthenticate, userEmail: userEmailRaw }: Props) {
+export function DeviationMemosScreen({ roster, memos, events, createMemo, updateMemo, deleteMemo, reauthenticate, userEmail: userEmailRaw }: Props) {
   const userEmail = userEmailRaw ?? "";
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
+  const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
+  const relatedPmtLabel = (memo: DeviationMemo): string | undefined => {
+    const event = memo.relatedPmtEventId ? eventsById.get(memo.relatedPmtEventId) : undefined;
+    return event ? `${event.title} — ${new Date(event.eventDate).toLocaleDateString()}` : undefined;
+  };
 
   const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
   // Checked once per render, not on a ticking clock -- matches how every other "now" check in this
@@ -320,6 +327,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                   <TableHead>Submitted</TableHead>
                   <TableHead>Cadet</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Related PMT</TableHead>
                   <TableHead>Assigned by</TableHead>
                   <TableHead>PDF</TableHead>
                   <TableHead />
@@ -338,6 +346,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                       )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>
                       {m.pdfUrl ? (
@@ -369,7 +378,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 ))}
                 {submitted.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nothing awaiting review.
                     </TableCell>
                   </TableRow>
@@ -392,6 +401,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 <TableRow>
                   <TableHead>Cadet</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Related PMT</TableHead>
                   <TableHead>Assigned by</TableHead>
                   <TableHead>Due</TableHead>
                   <TableHead>Status</TableHead>
@@ -410,6 +420,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                       )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
+                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
                       {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
@@ -434,7 +445,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 ))}
                 {assigned.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">
                       Nothing outstanding.
                     </TableCell>
                   </TableRow>
@@ -456,6 +467,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 <TableRow>
                   <TableHead>Reviewed</TableHead>
                   <TableHead>Cadet</TableHead>
+                  <TableHead>Related PMT</TableHead>
                   <TableHead>Assigned by</TableHead>
                   <TableHead>Reviewed by</TableHead>
                   <TableHead>Status</TableHead>
@@ -476,6 +488,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                         </Badge>
                       )}
                     </TableCell>
+                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell>
@@ -508,7 +521,7 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                 ))}
                 {processed.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground">
                       Nothing processed yet.
                     </TableCell>
                   </TableRow>
@@ -604,6 +617,11 @@ export function DeviationMemosScreen({ roster, memos, createMemo, updateMemo, de
                   {reviewing.purpose && (
                     <div>
                       <strong>Purpose:</strong> {reviewing.purpose}
+                    </div>
+                  )}
+                  {relatedPmtLabel(reviewing) && (
+                    <div>
+                      <strong>Related PMT:</strong> {relatedPmtLabel(reviewing)}
                     </div>
                   )}
                   {reviewing.pdfUrl && (

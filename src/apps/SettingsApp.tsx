@@ -165,6 +165,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 completions={completionsState.completions}
                 createCadet={cadetsState.createCadet}
                 updateCadet={cadetsState.updateCadet}
+                updateCadetFields={cadetsState.updateCadetFields}
                 deleteCadet={async (id) => {
                   await completionsState.deleteCompletionsForCadet(id);
                   await cadetsState.deleteCadet(id);

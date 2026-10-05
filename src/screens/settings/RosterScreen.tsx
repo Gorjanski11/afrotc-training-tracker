@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, UserCheck, UserX, Users } from "lucide-react";
 import { deriveClass, isCwlMember, FLIGHTS, GROUPS, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { computeCadetProgress } from "../../domain/progress";
@@ -23,9 +23,14 @@ interface Props {
   completions: Completion[];
   createCadet: (input: CadetInput) => Promise<Cadet>;
   updateCadet: (id: string, input: CadetInput) => Promise<Cadet>;
+  updateCadetFields: (id: string, input: Partial<CadetInput>) => Promise<void>;
   deleteCadet: (cadetId: string) => Promise<void>;
   /** A Flight/Group Commander only sees and looks up cadets in their own unit here (Section A4) -- no Add/Edit/Delete. */
   unitScope: UnitScope;
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function StandingBadge({ standing }: { standing: Standing | undefined }) {
@@ -40,8 +45,13 @@ function StandingBadge({ standing }: { standing: Standing | undefined }) {
  * one edit dialog. Deliberately shows everyone including Cadre -- this is the "account database"
  * view (Section 4's one exception to Cadre being non-trackable everywhere else).
  */
-export function RosterScreen({ roster, events, attendance, catalog, completions, createCadet, updateCadet, deleteCadet, unitScope }: Props) {
+export function RosterScreen({ roster, events, attendance, catalog, completions, createCadet, updateCadet, updateCadetFields, deleteCadet, unitScope }: Props) {
   const scoped = unitScope.kind !== "all";
+  // Flight Commanders, Group Commanders, and Santiago (TRG Group Commander + all-GMC visibility) can
+  // set Active/Inactive for cadets in their own unit -- everything else about the roster (name,
+  // level, flight/group, position, Add/Delete) stays Cadre/Cortes-Garay/CWL-only. The bare "gmc"
+  // scope (Montalvo, CTO -- not a Group Commander) is deliberately excluded.
+  const canInactivate = unitScope.kind === "flight" || unitScope.kind === "group" || unitScope.kind === "group-and-gmc";
   const scopedRoster = useMemo(() => applyUnitScope(unitScope, roster), [unitScope, roster]);
   const [search, setSearch] = useState("");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
@@ -49,6 +59,7 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
   const [formOpen, setFormOpen] = useState(false);
   const [editingCadet, setEditingCadet] = useState<Cadet | undefined>();
   const [deletingCadet, setDeletingCadet] = useState<Cadet | undefined>();
+  const [deactivatingCadet, setDeactivatingCadet] = useState<Cadet | undefined>();
 
   const handleFlightChange = (v: string) => {
     setFlightFilter(v as Flight | "All");
@@ -209,6 +220,22 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
                       </Button>
                     </div>
                   )}
+                  {scoped && canInactivate && !person.isCadre && (
+                    person.status === "Inactive" ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Reactivate"
+                        onClick={() => updateCadetFields(person.id, { status: "Active", statusChangedDate: todayIso() })}
+                      >
+                        <UserCheck className="h-3.5 w-3.5 text-success" />
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="icon" title="Set Inactive" onClick={() => setDeactivatingCadet(person)}>
+                        <UserX className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    )
+                  )}
                 </TableCell>
               </TableRow>
             ))}
@@ -244,6 +271,16 @@ export function RosterScreen({ roster, events, attendance, catalog, completions,
             deletingCompletionCount > 0 ? ` along with their ${deletingCompletionCount} logged Training Objective completion(s)` : ""
           }. This cannot be undone.`}
           onConfirm={() => deleteCadet(deletingCadet.id)}
+        />
+      )}
+
+      {deactivatingCadet && (
+        <ConfirmDialog
+          open
+          onClose={() => setDeactivatingCadet(undefined)}
+          title={`Set ${formatCadetName(deactivatingCadet)} Inactive?`}
+          description="They'll stop appearing in Accountability and Training Objectives tracking until reactivated. This can be undone at any time."
+          onConfirm={() => updateCadetFields(deactivatingCadet.id, { status: "Inactive", statusChangedDate: todayIso() })}
         />
       )}
     </div>

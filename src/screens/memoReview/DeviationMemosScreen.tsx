@@ -100,6 +100,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
   const [overrideId, setOverrideId] = useState<string | undefined>();
   const [overrideStatus, setOverrideStatus] = useState<DeviationMemoStatus>("Assigned");
   const [overrideNotes, setOverrideNotes] = useState("");
+  const [overrideDueDate, setOverrideDueDate] = useState("");
   const [overriding, setOverriding] = useState(false);
 
   // Section 7: a reviewOwnOnly viewer only ever sees memos they personally assigned (full review)
@@ -216,12 +217,14 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
     }
   };
 
-  // Section 2b: cadre can override any memo's status at any time, not just from the Pending/Assigned
-  // quick-action flow -- no status here is truly final.
+  // Section 2b: cadre can override any memo's status (or its due date) at any time, not just from
+  // the Pending/Assigned quick-action flow -- no status here is truly final, and a due date set at
+  // assign time isn't either (e.g. the cadet needs more time, or it was mis-entered).
   const openOverride = (memo: DeviationMemo) => {
     setOverrideId(memo.id);
     setOverrideStatus(memo.status);
     setOverrideNotes(memo.reviewNotes);
+    setOverrideDueDate(memo.dueDate ? memo.dueDate.slice(0, 10) : "");
   };
 
   const applyOverride = async (memo: DeviationMemo) => {
@@ -232,6 +235,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
         reviewedAt: new Date().toISOString(),
         reviewedBy: me ? formatCadetName(me) : userEmail,
         reviewNotes: overrideNotes || memo.reviewNotes,
+        dueDate: overrideDueDate ? endOfDay(overrideDueDate).toISOString() : undefined,
       });
       setOverrideId(undefined);
     } finally {
@@ -432,7 +436,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                     <TableCell>
                       {canReview(m) && (
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                          <Button size="sm" variant="ghost" title="Edit (status, due date, notes)" onClick={() => openOverride(m)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="sm" variant="ghost" title="Revoke" onClick={() => openRevoke(m)}>
@@ -508,7 +512,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                     <TableCell>
                       {canReview(m) && (
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => openOverride(m)}>
+                          <Button size="sm" variant="ghost" title="Edit (status, due date, notes)" onClick={() => openOverride(m)}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button size="sm" variant="ghost" title="Revoke" onClick={() => openRevoke(m)}>
@@ -658,7 +662,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
           {overriding_ && (
             <>
               <DialogHeader>
-                <DialogTitle>Override status — {overriding_.cadetName}</DialogTitle>
+                <DialogTitle>Edit deviation memo — {overriding_.cadetName}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-1.5">
@@ -675,6 +679,13 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Due date</Label>
+                  <Input type="date" value={overrideDueDate} onChange={(e) => setOverrideDueDate(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">
+                    No minimum here (unlike assigning) -- use this to extend or correct a deadline that's already set.
+                  </p>
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Notes</Label>

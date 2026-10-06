@@ -22,8 +22,11 @@ const REQUIREMENTS_LIST = (
   </ul>
 );
 
+// Pure due-date check, not status-gated -- this doubles as the "still actually overdue" signal for
+// a Late-status memo too, so it self-corrects back to not-overdue the moment cadre pushes the due
+// date into the future, with no need to also flip status back for the display to be accurate.
 function isOverdue(memo: DeviationMemo): boolean {
-  return memo.status === "Assigned" && !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
+  return !!memo.dueDate && new Date(memo.dueDate).getTime() < Date.now();
 }
 
 function reasonDisplay(memo: DeviationMemo): string {
@@ -39,8 +42,15 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [confirmingMemo, setConfirmingMemo] = useState<DeviationMemo | undefined>();
 
+  // "Late" is still submittable (checkDeviationMemoDeadlines only hides the terminal "Not
+  // Submitted", 24h further on) -- it was previously missing here, so any memo that went overdue
+  // disappeared from this table entirely and sat unsubmittable under "Already submitted" instead,
+  // even after cadre extended its due date.
   const myAssigned = useMemo(
-    () => memos.filter((m) => m.cadetId === cadetId && m.status === "Assigned").sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
+    () =>
+      memos
+        .filter((m) => m.cadetId === cadetId && (m.status === "Assigned" || m.status === "Late"))
+        .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
     [memos, cadetId]
   );
   const myReturned = useMemo(
@@ -50,7 +60,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
   const mySubmitted = useMemo(
     () =>
       memos
-        .filter((m) => m.cadetId === cadetId && m.status !== "Assigned" && m.status !== "Returned")
+        .filter((m) => m.cadetId === cadetId && m.status !== "Assigned" && m.status !== "Late" && m.status !== "Returned")
         .sort((a, b) => (b.submittedAt ?? "").localeCompare(a.submittedAt ?? "")),
     [memos, cadetId]
   );

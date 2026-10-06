@@ -682,9 +682,23 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Due date</Label>
-                  <Input type="date" value={overrideDueDate} onChange={(e) => setOverrideDueDate(e.target.value)} />
+                  <Input
+                    type="date"
+                    value={overrideDueDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setOverrideDueDate(next);
+                      // Pushing the deadline into the future reopens a Late/Not Submitted memo --
+                      // otherwise the cadet's own submit screen (and this one's Status badge) would
+                      // keep showing it as late even though it no longer actually is one.
+                      if (next && endOfDay(next).getTime() > Date.now() && (overrideStatus === "Late" || overrideStatus === "Not Submitted")) {
+                        setOverrideStatus("Assigned");
+                      }
+                    }}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    No minimum here (unlike assigning) -- use this to extend or correct a deadline that's already set.
+                    No minimum here (unlike assigning) -- use this to extend or correct a deadline that's already set. Pushing it into the future
+                    reopens a Late/Not Submitted memo back to Assigned.
                   </p>
                 </div>
                 <div className="grid gap-1.5">

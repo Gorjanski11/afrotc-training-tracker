@@ -5,11 +5,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Users, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { bucketForEventType, SEMESTER_PMT_TOTALS } from "../../domain/constants";
+import { bucketForEventType, SEMESTER_PMT_TOTALS, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent } from "../../domain/attendance";
 import { shortDate } from "../../domain/memoAnalytics";
 import { isCortesGaray } from "../../domain/access";
-import { formatCadetName } from "../../domain/nameUtils";
+import { formatCadetNameCompact } from "../../domain/nameUtils";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
 import { Stepper } from "../../components/analytics/Stepper";
 import { WeekView } from "../../components/WeekView";
@@ -84,37 +84,83 @@ export function SelfServiceDashboardScreen({
   }, [isSae, fullRoster, catalog, completions, events, attendance]);
 
   // Flat table version of the same two flag lists SAE Review groups by Training Week -- lets the
-  // SAE see every outstanding item right on the dashboard without opening the full page.
+  // SAE see every outstanding item right on the dashboard without opening the full page. Flags that
+  // land on the same calendar day, for the same unit/responsible/status, are folded into one row
+  // (e.g. a unit missing both PT and LLAB attendance the same day shows "PT + LLAB" / "4 + 2"),
+  // since each would otherwise be a near-duplicate row differing only in which PMT/objective.
   const saeFlagRows = useMemo(() => {
     if (!saeFlags || !fullRoster) return [];
     const nameFor = (email: string): string => {
       const match = fullRoster.find((c) => c.email?.trim().toLowerCase() === email.trim().toLowerCase());
-      return match ? formatCadetName(match) : email;
+      return match ? formatCadetNameCompact(match) : email;
     };
-    const acctRows = saeFlags.acct.map((f: AccountabilityFlag) => ({
-      trainingWeek: f.event.trainingWeek,
-      kind: "Accountability" as const,
-      item: `${f.event.title} — ${new Date(f.event.eventDate).toLocaleDateString()}`,
-      unit: f.unitKind === "group" ? `${f.unitValue} Group` : `${f.unitValue} Flight`,
-      responsible: nameFor(f.responsibleEmail),
-      status: f.status,
-      missing: `${f.missing}/${f.total}`,
-    }));
-    const toRows = saeFlags.to.map((f: ToFlag) => ({
-      trainingWeek: f.trainingWeek,
-      kind: "Training Objective" as const,
-      item: `${f.objective.number} ${f.objective.title}`,
-      unit: f.cohort === "GMC" ? `${f.unitValue} Flight` : "POC",
-      responsible: nameFor(f.responsibleEmail),
-      status: f.status,
-      // Training Objectives are graded pass/fail per cohort, not per-cadet like Accountability --
-      // no "N missing" count exists for these, same as the full SAE Review page's own ToRow.
-      missing: "—",
-    }));
-    return [...acctRows, ...toRows].sort((a, b) => {
-      if (a.status !== b.status) return a.status === "missing" ? -1 : 1;
-      return (b.trainingWeek ?? 0) - (a.trainingWeek ?? 0);
-    });
+
+    interface Raw {
+      trainingWeek: number | undefined;
+      dateKey: string;
+      type: "PMT" | "TO";
+      item: string;
+      missing: number;
+      unit: string;
+      responsible: string;
+      status: AccountabilityFlag["status"];
+    }
+
+    const raw: Raw[] = [
+      ...saeFlags.acct.map((f: AccountabilityFlag): Raw => ({
+        trainingWeek: f.event.trainingWeek,
+        dateKey: f.event.eventDate.slice(0, 10),
+        type: "PMT",
+        item: f.event.eventType,
+        missing: f.missing,
+        unit: f.unitValue,
+        responsible: nameFor(f.responsibleEmail),
+        status: f.status,
+      })),
+      ...saeFlags.to.map((f: ToFlag): Raw => ({
+        trainingWeek: f.trainingWeek,
+        dateKey: f.event.eventDate.slice(0, 10),
+        type: "TO",
+        item: `${PLO_SHORT_CODE[f.objective.plo as PloSection]}-${f.objective.number}`,
+        missing: f.missing,
+        unit: f.cohort === "GMC" ? f.unitValue! : "POC",
+        responsible: nameFor(f.responsibleEmail),
+        status: f.status,
+      })),
+    ];
+
+    const groups = new Map<
+      string,
+      { trainingWeek: number | undefined; dateKey: string; type: "PMT" | "TO"; unit: string; responsible: string; status: AccountabilityFlag["status"]; items: string[]; missing: number[] }
+    >();
+    for (const r of raw) {
+      const key = `${r.dateKey}|${r.type}|${r.unit}|${r.responsible}|${r.status}`;
+      const existing = groups.get(key);
+      if (existing) {
+        if (!existing.items.includes(r.item)) {
+          existing.items.push(r.item);
+          existing.missing.push(r.missing);
+        }
+      } else {
+        groups.set(key, { trainingWeek: r.trainingWeek, dateKey: r.dateKey, type: r.type, unit: r.unit, responsible: r.responsible, status: r.status, items: [r.item], missing: [r.missing] });
+      }
+    }
+
+    return [...groups.values()]
+      .map((g) => ({
+        trainingWeek: g.trainingWeek,
+        twDate: `TW${g.trainingWeek ?? "—"} — ${shortDate(g.dateKey)}`,
+        type: g.type,
+        item: g.items.join(" + "),
+        unit: g.unit,
+        responsible: g.responsible,
+        missing: g.missing.join(" + "),
+        status: g.status,
+      }))
+      .sort((a, b) => {
+        if (a.status !== b.status) return a.status === "missing" ? -1 : 1;
+        return (b.trainingWeek ?? 0) - (a.trainingWeek ?? 0);
+      });
   }, [saeFlags, fullRoster]);
 
   const summary = useMemo(() => computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
@@ -177,7 +223,7 @@ export function SelfServiceDashboardScreen({
             <CardHeader>
               <CardTitle>
                 <ShieldAlert className="h-4 w-4 text-primary" />
-                SAE Review
+                Missing Records
                 {saeFlags.acct.length + saeFlags.to.length > 0 && (
                   <Badge variant="destructive" className="ml-1.5">
                     {saeFlags.acct.length + saeFlags.to.length}
@@ -199,10 +245,10 @@ export function SelfServiceDashboardScreen({
                     </span>
                   </div>
                   <div className="max-h-80 overflow-auto rounded-md border border-input">
-                    <Table aria-label="SAE Review outstanding items">
+                    <Table aria-label="Missing records">
                       <TableHeader>
                         <TableRow>
-                          <TableHead>TW</TableHead>
+                          <TableHead>TW-Date</TableHead>
                           <TableHead>Type</TableHead>
                           <TableHead>Item</TableHead>
                           <TableHead>Unit</TableHead>
@@ -214,8 +260,8 @@ export function SelfServiceDashboardScreen({
                       <TableBody>
                         {saeFlagRows.map((row, i) => (
                           <TableRow key={i}>
-                            <TableCell>{row.trainingWeek ?? "—"}</TableCell>
-                            <TableCell className="whitespace-nowrap">{row.kind}</TableCell>
+                            <TableCell className="whitespace-nowrap">{row.twDate}</TableCell>
+                            <TableCell className="whitespace-nowrap">{row.type}</TableCell>
                             <TableCell className="max-w-xs truncate" title={row.item}>
                               {row.item}
                             </TableCell>

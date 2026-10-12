@@ -91,21 +91,37 @@ function firstRequiredCode(cell: string): ProficiencyCode | undefined {
   return (PROFICIENCY_CODES as readonly string[]).includes(first) ? (first as ProficiencyCode) : undefined;
 }
 
-/** Same "any of Complete/Partial complete/Incompleted counts as handled" rule Quick Log's column-hiding uses, evaluated for one event against a given roster slice instead of the whole grid. */
+/** Same "any of Complete/Partial complete/Incompleted counts as handled" rule Quick Log's column-hiding uses, for one cadet against one event. Shared by the all-or-nothing check below and the ungraded-count used for the SAE Review "Missing" column. */
+function cadetIsGradedFor(cadet: Cadet, objective: TrainingObjective, event: PmtEvent, isMulti: boolean, completions: Completion[]): boolean {
+  const required = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]);
+  if (!required) return true;
+  const cadetCompletions = completions.filter((c) => c.cadetId === cadet.id && c.objectiveId === objective.id);
+  if (isMulti) {
+    if (cadetCompletions.some((c) => meetsRequirement(c, required))) return true;
+    return cadetCompletions.some((c) => c.pmtEventId === event.id);
+  }
+  return cadetCompletions.length > 0;
+}
+
 function isObjectiveGradedFor(objective: TrainingObjective, event: PmtEvent, occurrences: PmtEvent[], roster: Cadet[], completions: Completion[]): boolean {
   const isMulti = occurrences.length > 1;
   const relevant = roster.filter((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "");
   if (relevant.length === 0) return true;
-  return relevant.every((cadet) => {
-    const required = firstRequiredCode(objective.proficiencyByLevel[cadet.devLevel!]);
-    if (!required) return true;
-    const cadetCompletions = completions.filter((c) => c.cadetId === cadet.id && c.objectiveId === objective.id);
-    if (isMulti) {
-      if (cadetCompletions.some((c) => meetsRequirement(c, required))) return true;
-      return cadetCompletions.some((c) => c.pmtEventId === event.id);
-    }
-    return cadetCompletions.length > 0;
-  });
+  return relevant.every((cadet) => cadetIsGradedFor(cadet, objective, event, isMulti, completions));
+}
+
+/** How many of the relevant cadets are still ungraded for this objective/event/roster slice -- the TO analog of `accountabilityFlags`' missing/total. */
+function countUngradedForObjective(
+  objective: TrainingObjective,
+  event: PmtEvent,
+  occurrences: PmtEvent[],
+  roster: Cadet[],
+  completions: Completion[]
+): { missing: number; total: number } {
+  const isMulti = occurrences.length > 1;
+  const relevant = roster.filter((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "");
+  const missing = relevant.filter((cadet) => !cadetIsGradedFor(cadet, objective, event, isMulti, completions)).length;
+  return { missing, total: relevant.length };
 }
 
 export interface ToFlag {
@@ -117,6 +133,8 @@ export interface ToFlag {
   unitValue?: Flight;
   responsibleEmail: string;
   status: DeadlineStatus;
+  missing: number;
+  total: number;
 }
 
 /** Every (Training Week, PMT, objective, unit) still not fully graded, for every week whose own Friday-2000 deadline has passed. */
@@ -147,14 +165,16 @@ export function toFlags(events: PmtEvent[], catalog: TrainingObjective[], roster
 
         if (pocRoster.some((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "")) {
           if (!isObjectiveGradedFor(objective, event, occurrences, pocRoster, completions)) {
-            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "POC", responsibleEmail: SAE_EMAIL, status });
+            const { missing, total } = countUngradedForObjective(objective, event, occurrences, pocRoster, completions);
+            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "POC", responsibleEmail: SAE_EMAIL, status, missing, total });
           }
         }
         for (const flight of FLIGHTS) {
           const flightRoster = gmcByFlight.get(flight) ?? [];
           if (flightRoster.length === 0 || !flightRoster.some((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "")) continue;
           if (!isObjectiveGradedFor(objective, event, occurrences, flightRoster, completions)) {
-            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "GMC", unitValue: flight, responsibleEmail: FLIGHT_COMMANDER_EMAIL[flight], status });
+            const { missing, total } = countUngradedForObjective(objective, event, occurrences, flightRoster, completions);
+            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "GMC", unitValue: flight, responsibleEmail: FLIGHT_COMMANDER_EMAIL[flight], status, missing, total });
           }
         }
       }

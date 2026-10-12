@@ -32,10 +32,6 @@ export function MaintenanceScreen() {
         <Wrench className="h-5 w-5 text-primary" />
         Maintenance Mode
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Blocks everyone except you out of the site with a message, so you can fix bugs or make changes without anyone else mid-action. You always keep
-        normal access and can turn it off early at any time.
-      </p>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
@@ -67,7 +63,6 @@ export function MaintenanceScreen() {
             <Card>
               <CardHeader>
                 <CardTitle>Turn it on</CardTitle>
-                <CardDescription>Starts immediately. Pick a duration (auto-turns off on its own), or turn it on indefinitely.</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 {DURATIONS.map((d) => (

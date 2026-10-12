@@ -55,9 +55,6 @@ export function MemorandumTemplatesScreen() {
         <LibraryBig className="h-5 w-5 text-primary" />
         Memorandum Templates
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Reference templates to help you write your own memorandums and emails. Download a copy -- these master copies can't be edited here.
-      </p>
 
       <Card>
         <CardHeader>

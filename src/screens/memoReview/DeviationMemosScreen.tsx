@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -321,7 +321,6 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                 </Badge>
               )}
             </CardTitle>
-            <CardDescription>Awaiting your review.</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             <div className="overflow-x-auto">
@@ -396,7 +395,6 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
         <Card>
           <CardHeader>
             <CardTitle>Awaiting submission</CardTitle>
-            <CardDescription>Read-only here -- the cadet submits their PDF from the Memo Submission tab.</CardDescription>
           </CardHeader>
           <CardContent className="pt-2">
             <div className="overflow-x-auto">

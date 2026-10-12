@@ -19,11 +19,14 @@ import {
   Smartphone,
   ChevronDown,
   Wrench,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { useViewMode } from "./hooks/useViewMode";
+import { useTheme } from "./hooks/useTheme";
 import { resolveTabAccess, isCortesGaray } from "./domain/access";
 import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { SignInScreen } from "./components/SignInScreen";
@@ -84,6 +87,7 @@ function App() {
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
   const { mode: viewMode, toggle: toggleViewMode } = useViewMode();
+  const { theme, toggleTheme } = useTheme();
   const maintenance = useMaintenanceMode();
 
   const handleSignIn = async (email: string, password: string) => {
@@ -185,6 +189,9 @@ function App() {
           <span className="hidden truncate text-sm text-muted-foreground md:inline">{user.email}</span>
           <Button variant="ghost" size="icon" onClick={toggleViewMode} aria-label={viewMode === "desktop" ? "Switch to mobile view" : "Switch to desktop view"}>
             {viewMode === "desktop" ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
           <Button variant="ghost" size="icon" onClick={() => setChangePasswordOpen(true)} aria-label="Change password">
             <KeyRound className="h-4 w-4" />

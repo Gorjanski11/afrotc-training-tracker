@@ -62,10 +62,6 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
         <BookOpen className="h-5 w-5 text-primary" />
         Reference Library
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        The complete AFROTCI 36-2011 Vol 1 Training Objectives catalog, independent of any cadet. "Reference only — not graded" objectives
-        are shown for context but are never tracked toward completion.
-      </p>
 
       <div className="relative mb-4 w-80">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

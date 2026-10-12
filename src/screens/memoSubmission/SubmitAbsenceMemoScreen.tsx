@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -348,7 +348,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
             <Card className="border-warning/50">
               <CardHeader>
                 <CardTitle className="text-warning-foreground">Returned -- needs fixing</CardTitle>
-                <CardDescription>Cadre sent these back. Attach a corrected PDF and resubmit within 48 hours.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {myReturned.map((m) => (
@@ -394,9 +393,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
           <Card>
             <CardHeader>
               <CardTitle>New Absence Memo</CardTitle>
-              <CardDescription>
-                Check off every absence this memo covers, and/or add an AS-Class absence below (not tracked automatically), then attach one PDF.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1.5">
@@ -497,10 +493,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                 <CalendarClock className="h-4 w-4 text-primary" />
                 Know you'll miss an upcoming PMT?
               </CardTitle>
-              <CardDescription>
-                This is only for a PMT that hasn't happened yet -- if you already missed one, use "New Absence Memo" above instead. Cadre will still
-                confirm the absence once that PMT actually occurs.
-              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {futureJustSubmitted && (

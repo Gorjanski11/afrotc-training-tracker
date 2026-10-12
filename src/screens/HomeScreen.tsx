@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,6 @@ interface HomeCard {
   key: string;
   icon: React.ReactNode;
   title: string;
-  description: string;
   onClick?: () => void;
   disabled?: boolean;
 }
@@ -23,22 +22,19 @@ export function HomeScreen({ onEnterPoc, onEnterGmc }: Props) {
       key: "poc",
       icon: <GraduationCap className="h-7 w-7" />,
       title: "POC TO's",
-      description: "Training Objective tracking for Professional Officer Course cadets (ICL/SCL).",
       onClick: onEnterPoc,
     },
     {
       key: "gmc",
       icon: <Users className="h-7 w-7" />,
       title: "GMC TO's",
-      description: "Training Objective tracking for General Military Course cadets (BC/BCL).",
       onClick: onEnterGmc,
     },
   ];
 
   return (
     <div className="mx-auto max-w-4xl py-8">
-      <h2 className="mb-2 text-center text-2xl font-semibold">AFROTC Training Objective Tracker</h2>
-      <p className="mb-8 text-center text-sm text-muted-foreground">Pick an area to open.</p>
+      <h2 className="mb-8 text-center text-2xl font-semibold">AFROTC Training Objective Tracker</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {cards.map((card, i) => (
           <motion.div key={card.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: i * 0.05 }}>
@@ -54,12 +50,9 @@ export function HomeScreen({ onEnterPoc, onEnterGmc }: Props) {
                 card.disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring"
               )}
             >
-              <CardHeader className="flex-row items-start gap-4 space-y-0 pb-4">
+              <CardHeader className="flex-row items-center gap-4 space-y-0">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">{card.icon}</span>
-                <div className="grid gap-1">
-                  <CardTitle className="text-lg">{card.title}</CardTitle>
-                  <CardDescription>{card.description}</CardDescription>
-                </div>
+                <CardTitle className="text-lg">{card.title}</CardTitle>
               </CardHeader>
             </Card>
           </motion.div>

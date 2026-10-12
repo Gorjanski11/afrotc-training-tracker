@@ -422,19 +422,11 @@ export function NewSemesterScreen({
         <CalendarPlus className="h-5 w-5 text-primary" />
         New Semester
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Reverifies the roster, calendar, and cadet logins against 3 new tab-delimited files, backs up everything first, then wipes attendance,
-        memos, Training Objective progress, and the PMT calendar for the new semester.
-      </p>
 
       {step === "upload" && (
         <Card>
           <CardHeader>
             <CardTitle>1. Upload the 3 files</CardTitle>
-            <CardDescription>
-              Build each in Excel with columns in this exact order, then save as "Text (Tab delimited) (*.txt)". Download a blank template
-              below to get the header row right.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <FileUploadRow label="Cadet Roster" columns={CADET_ROSTER_COLUMNS} templateFilename="cadet-roster-template.txt" file={cadetFile} onFile={setCadetFile} />
@@ -761,10 +753,6 @@ export function NewSemesterScreen({
         <Card>
           <CardHeader>
             <CardTitle>3. Export a backup, then confirm</CardTitle>
-            <CardDescription>
-              Downloads a full Excel backup (roster, attendance, Training Objectives, memorandums) and a .zip of every memo PDF currently in
-              storage. Nothing is deleted until you confirm below.
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button onClick={handleExport} disabled={exporting}>

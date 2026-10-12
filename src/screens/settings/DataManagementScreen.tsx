@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -139,7 +139,6 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
       <Card>
         <CardHeader>
           <CardTitle>Export</CardTitle>
-          <CardDescription>Pick which data to include -- everything selected lands in one organized workbook, one sheet per collection.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-4">
@@ -162,7 +161,6 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle>Submitted PDFs</CardTitle>
-            <CardDescription>Every Absence/Deviation Memo PDF in storage -- download or free up space by deleting old ones.</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             {canDelete && pdfs && selectedPaths.size > 0 && (

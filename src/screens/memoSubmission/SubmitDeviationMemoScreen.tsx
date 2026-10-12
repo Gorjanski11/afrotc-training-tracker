@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { ClipboardList, Upload, CheckCircle2 } from "lucide-react";
@@ -190,7 +190,6 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
           <Card className="border-warning/50">
             <CardHeader>
               <CardTitle className="text-warning-foreground">Returned -- needs fixing</CardTitle>
-              <CardDescription>Cadre sent these back. Attach a corrected PDF and resubmit within 48 hours.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               {myReturned.map((m) => (

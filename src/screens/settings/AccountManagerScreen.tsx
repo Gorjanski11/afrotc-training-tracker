@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -145,13 +145,6 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
         <UserCog className="h-5 w-5 text-primary" />
         Account Manager
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Every account is created individually in the Firebase Console -- this only manages the roster fields (Cadre flag, position, group, flight) that
-        decide what a signed-in person can see. The ~15 named exceptions (Cadre, Cortes Garay, Group/Flight Commanders, etc.) are defined in code and
-        aren't editable from here.
-        {canResetPasswords && " You can also reset anyone's password here if they get locked out -- that always requires your own current password first."}
-        {canImpersonate && " You can also sign in directly as anyone, including Cadre, without touching their password -- also confirmed with your own password first."}
-      </p>
 
       {justReset && (
         <div className="mb-4 flex items-center justify-between gap-3 rounded-md border border-success/50 bg-success/10 p-3 text-sm">
@@ -175,7 +168,6 @@ export function AccountManagerScreen({ roster, updateCadetFields, userEmail, rea
       <Card>
         <CardHeader>
           <CardTitle>Roster accounts</CardTitle>
-          <CardDescription>Search by name or email.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />

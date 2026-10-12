@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, Users, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
@@ -184,7 +184,6 @@ export function SelfServiceDashboardScreen({
                   </Badge>
                 )}
               </CardTitle>
-              <CardDescription>Accountability and Training Objectives not yet submitted/graded past their deadline.</CardDescription>
             </CardHeader>
             <CardContent>
               {saeFlags.acct.length + saeFlags.to.length === 0 ? (

@@ -78,11 +78,6 @@ export function SaeReviewScreen({ roster, events, attendance, catalog, completio
         <ShieldAlert className="h-5 w-5 text-primary" />
         SAE Review
       </h2>
-      <p className="mb-4 text-sm text-muted-foreground">
-        Compliance flags from the Det 756 HUB SOP (1 Oct 2026), organized by Training Week -- Accountability (Section 3) and Training Objectives
-        (Section 4) not yet submitted/graded past their deadline, who's responsible, and whether it's Late (within the 2-hour grace window) or Missing
-        (past it). Informational only; nothing here is auto-corrected.
-      </p>
 
       {weekNumbers.length === 0 ? (
         <Card>

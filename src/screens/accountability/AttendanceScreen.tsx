@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Save, TriangleAlert, ClipboardCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
-import { isPostAccountabilityWindowClosed } from "../../domain/attendance";
+import { isEventFullyRecorded, isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
@@ -76,6 +76,10 @@ export function AttendanceScreen({
   const hideGroupFilter = unitScope.kind !== "all" && unitScope.kind !== "group-and-gmc";
   const hideFlightFilter = unitScope.kind === "flight" || unitScope.kind === "group";
   const scopedGroupOptions = unitScope.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
+  // SAE/CWL (unrestricted, "all") and Santiago-shaped group-and-gmc commanders get a GMC/Group lit-
+  // button toggle instead of the plain dropdowns -- scope-shape-driven, same convention as the two
+  // consts above (never an email check).
+  const showCohortToggle = unitScope.kind === "all" || unitScope.kind === "group-and-gmc";
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 
@@ -134,8 +138,16 @@ export function AttendanceScreen({
   >({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
-  const [groupFilter, setGroupFilter] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
+  const [groupFilter, setGroupFilter] = useState<Group | "All">(
+    unitScope.kind === "group" ? unitScope.group : showCohortToggle ? scopedGroupOptions[0] : "All"
+  );
   const [flightFilter, setFlightFilter] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
+  // Which side of the GMC/Group toggle is showing, for showCohortToggle viewers only (Section 3) --
+  // defaults to the group side (closest to today's implicit all-groups starting point).
+  const [cohortView, setCohortView] = useState<"group" | "gmc">("group");
+  // Already-happened PMTs split into "Current" (not every expected cadet has a status yet) and
+  // "Past" (fully recorded) -- default Current, since that's the work still owed.
+  const [recordedFilter, setRecordedFilter] = useState<"current" | "past">("current");
 
   // Dashboard's "Accountability" card jumping here with a specific PMT -- select its Training Week
   // (so it actually appears in the filtered dropdown) and the PMT itself.
@@ -165,6 +177,16 @@ export function AttendanceScreen({
     if (v !== "All") setGroupFilter("All");
   };
 
+  // Switching sides of the GMC/Group toggle also re-picks a concrete default on that side (M-FLT, or
+  // the group side's first option -- CWL for SAE/CWL, the lone TRG for Santiago) -- writes straight
+  // into the existing group/flight filter state via the handlers above, so every downstream consumer
+  // (activeCadets, expectedCadetIds, etc.) needs no changes at all.
+  const handleCohortViewChange = (view: "group" | "gmc") => {
+    setCohortView(view);
+    if (view === "gmc") handleFlightChange(FLIGHTS[0]);
+    else handleGroupChange(scopedGroupOptions[0]);
+  };
+
   const selectedEvent = sortedEvents.find((e) => e.id === selectedEventId);
   // Scoped to whichever Group/Flight is selected -- only that commander's own people, so a Flight
   // or Group commander can't accidentally edit accountability outside their own unit.
@@ -177,6 +199,29 @@ export function AttendanceScreen({
         .sort((a, b) => compareByLastName(a.name, b.name)),
     [roster, groupFilter, flightFilter]
   );
+
+  // Current/Past split (Section 3): "Past" is every already-happened PMT where every one of the
+  // viewer's currently-scoped cadets already has a status; "Current" is everything else, including
+  // not-yet-happened PMTs (zero attendance rows -> never "fully recorded"), preserving today's
+  // ability to pre-browse an upcoming PMT.
+  const expectedCadetIds = useMemo(() => activeCadets.map((c) => c.id), [activeCadets]);
+  const visibleWeekEvents = useMemo(() => {
+    const now = Date.now();
+    return weekEvents.filter((e) => {
+      const passed = new Date(e.eventDate).getTime() <= now;
+      const fullyRecorded = isEventFullyRecorded(e, expectedCadetIds, attendance);
+      return recordedFilter === "past" ? passed && fullyRecorded : !passed || !fullyRecorded;
+    });
+  }, [weekEvents, recordedFilter, expectedCadetIds, attendance]);
+
+  // The selected PMT can fall outside the visible list the moment the Current/Past toggle, the TW,
+  // or the unit filters change -- fall back to the first still-visible event rather than leaving the
+  // dropdown pointed at something that's no longer an option.
+  useEffect(() => {
+    if (selectedEventId && visibleWeekEvents.some((e) => e.id === selectedEventId)) return;
+    setSelectedEventId(visibleWeekEvents[0]?.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectedEventId intentionally excluded, same pattern as the initialPmtEventId effect above
+  }, [visibleWeekEvents]);
 
   const existingByCadet = useMemo(() => {
     const map = new Map<string, Attendance>();
@@ -330,6 +375,20 @@ export function AttendanceScreen({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
+        <div className="flex gap-1">
+          {(["current", "past"] as const).map((v) => (
+            <Button
+              key={v}
+              type="button"
+              size="sm"
+              variant="outline"
+              className={cn(recordedFilter === v && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+              onClick={() => setRecordedFilter(v)}
+            >
+              {v === "current" ? "Current" : "Past"}
+            </Button>
+          ))}
+        </div>
         <Select value={twFilter === undefined ? "All" : String(twFilter)} onValueChange={handleTwChange}>
           <SelectTrigger className="w-32">
             <SelectValue placeholder="Training Week" />
@@ -348,45 +407,98 @@ export function AttendanceScreen({
             <SelectValue placeholder="Select a PMT" />
           </SelectTrigger>
           <SelectContent>
-            {weekEvents.map((e) => (
+            {visibleWeekEvents.map((e) => (
               <SelectItem key={e.id} value={e.id}>
                 {e.title} — {new Date(e.eventDate).toLocaleString()} ({e.eventType})
               </SelectItem>
             ))}
-            {weekEvents.length === 0 && (
-              <div className="px-2 py-1.5 text-sm text-muted-foreground">No PMTs in this Training Week.</div>
+            {visibleWeekEvents.length === 0 && (
+              <div className="px-2 py-1.5 text-sm text-muted-foreground">No PMTs match this view.</div>
             )}
           </SelectContent>
         </Select>
-        {!hideGroupFilter && (
-          <Select value={groupFilter} onValueChange={handleGroupChange}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All groups</SelectItem>
-              {scopedGroupOptions.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
+        {showCohortToggle ? (
+          <>
+            <div className="flex gap-1">
+              {(["group", "gmc"] as const).map((v) => (
+                <Button
+                  key={v}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={cn(cohortView === v && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+                  onClick={() => handleCohortViewChange(v)}
+                >
+                  {v === "gmc" ? "GMC" : unitScope.kind === "group-and-gmc" ? unitScope.group : "POC"}
+                </Button>
               ))}
-            </SelectContent>
-          </Select>
-        )}
-        {!hideFlightFilter && (
-          <Select value={flightFilter} onValueChange={handleFlightChange}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Flight" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All flights</SelectItem>
-              {FLIGHTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} Flight
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            </div>
+            {cohortView === "group" && scopedGroupOptions.length > 1 && (
+              <div className="flex gap-1">
+                {scopedGroupOptions.map((g) => (
+                  <Button
+                    key={g}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={cn(groupFilter === g && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+                    onClick={() => handleGroupChange(g)}
+                  >
+                    {g}
+                  </Button>
+                ))}
+              </div>
+            )}
+            {cohortView === "gmc" && (
+              <div className="flex gap-1">
+                {FLIGHTS.map((f) => (
+                  <Button
+                    key={f}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={cn(flightFilter === f && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+                    onClick={() => handleFlightChange(f)}
+                  >
+                    {f}-FLT
+                  </Button>
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {!hideGroupFilter && (
+              <Select value={groupFilter} onValueChange={handleGroupChange}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {scopedGroupOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!hideFlightFilter && (
+              <Select value={flightFilter} onValueChange={handleFlightChange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All flights</SelectItem>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} Flight
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </>
         )}
         {selectedEvent && windowClosed && (
           <span className="flex items-center gap-1.5 text-sm text-warning-foreground">

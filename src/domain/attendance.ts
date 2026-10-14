@@ -113,6 +113,15 @@ export function isPostAccountabilityWindowClosed(event: PmtEvent, now: Date = ne
   return now.getTime() > close.getTime();
 }
 
+/** True once every cadet expected to be accounted for at this PMT (the viewer's currently scoped+filtered
+ * roster) already has an Attendance row for it. An empty expected-roster never counts as fully recorded --
+ * there's nothing to confirm yet. Drives the Accountability screen's Current/Past toggle. */
+export function isEventFullyRecorded(event: PmtEvent, expectedCadetIds: string[], attendance: Attendance[]): boolean {
+  if (expectedCadetIds.length === 0) return false;
+  const recordedIds = new Set(attendance.filter((a) => a.pmtEventId === event.id).map((a) => a.cadetId));
+  return expectedCadetIds.every((id) => recordedIds.has(id));
+}
+
 /** True once a Post-Accountability entry lands after its window has already closed -- a visible flag, never a block. */
 export function isEntryOutsideWindow(event: PmtEvent, recordedAt: string): boolean {
   return new Date(recordedAt).getTime() > isPostAccountabilityCloseTime(event).getTime();

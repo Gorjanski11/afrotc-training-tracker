@@ -41,6 +41,10 @@ function coverageSummary(m: AbsenceMemo, eventLabel: (id: string) => string): st
   return parts.join(" + ") || "—";
 }
 
+function reasonDisplay(m: AbsenceMemo): string {
+  return m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason;
+}
+
 // Only OFC reviews Absence Memos -- there's no other reviewer to pick, so this is fixed rather than a free-text field.
 const OFC_REVIEWER = "Capt Deaton";
 
@@ -222,7 +226,9 @@ export function AbsenceMemosScreen({
                 <TableCell className="max-w-xs truncate" title={coverageSummary(m, eventLabel)}>
                   {coverageSummary(m, eventLabel)}
                 </TableCell>
-                <TableCell>{m.reason}</TableCell>
+                <TableCell className="max-w-xs truncate" title={reasonDisplay(m)}>
+                  {reasonDisplay(m)}
+                </TableCell>
                 <TableCell>
                   {m.pdfUrl ? (
                     <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">

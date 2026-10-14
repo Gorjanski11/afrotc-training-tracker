@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { shortDate } from "../domain/memoAnalytics";
 import type { PmtEvent } from "../domain/types";
 
 function isoWeekStart(d: Date): Date {
@@ -18,11 +19,11 @@ const EVENT_TYPE_STYLES: Record<string, string> = {
   "D&C": "bg-secondary text-secondary-foreground",
 };
 
-/** This calendar week's PMTs, Mon-Sun -- shared by the GMC/POC self-service Dashboard (Section 13). Used to live in the (now-deleted) Accountability Dashboard screen. */
+/** This calendar week's PMTs, Mon-Fri -- shared by the GMC/POC self-service Dashboard (Section 13). Used to live in the (now-deleted) Accountability Dashboard screen. */
 export function WeekView({ events }: { events: PmtEvent[] }) {
   const days = useMemo(() => {
     const start = isoWeekStart(new Date());
-    return Array.from({ length: 7 }, (_, i) => {
+    return Array.from({ length: 5 }, (_, i) => {
       const day = new Date(start);
       day.setDate(start.getDate() + i);
       return day;
@@ -67,7 +68,7 @@ export function WeekView({ events }: { events: PmtEvent[] }) {
                 className={cn("w-40 shrink-0 rounded-md border border-input p-2", isToday && "border-primary bg-primary/5")}
               >
                 <div className={cn("mb-1.5 text-xs font-medium", isToday ? "text-primary" : "text-muted-foreground")}>
-                  {day.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  {day.toLocaleDateString(undefined, { weekday: "short" })}, {shortDate(day.toISOString())}
                 </div>
                 {dayEvents.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground">—</p>

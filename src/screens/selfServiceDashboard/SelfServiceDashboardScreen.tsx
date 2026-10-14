@@ -3,17 +3,17 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Users, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { bucketForEventType, SEMESTER_PMT_TOTALS, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
-import { computeCadetAttendanceSummary, computeCombinedPercent } from "../../domain/attendance";
-import { shortDate } from "../../domain/memoAnalytics";
+import { bucketForEventType, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
+import { computeCadetAttendanceSummary } from "../../domain/attendance";
+import { memoStatusVariant, shortDate } from "../../domain/memoAnalytics";
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetNameCompact } from "../../domain/nameUtils";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
 import { Stepper } from "../../components/analytics/Stepper";
 import { WeekView } from "../../components/WeekView";
-import { CadetBucketStats, StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
+import { StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
 import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
@@ -30,22 +30,25 @@ interface Props {
   onOpenSaeReview?: () => void;
 }
 
-function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
+const TONE_CLASSES: Record<"success" | "warning" | "critical", { badge: string; value: string }> = {
+  success: { badge: "bg-success/10 text-success", value: "text-success" },
+  warning: { badge: "bg-warning/10 text-warning-foreground", value: "text-warning-foreground" },
+  critical: { badge: "bg-destructive/10 text-destructive", value: "text-destructive" },
+};
+
+/** Condensed top-row stat box -- colored by `tone` (Good/Warning/Hard Limit-style severity), not just a plain critical/neutral split. */
+function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "success" | "warning" | "critical"; index: number }) {
+  const toneClasses = tone ? TONE_CLASSES[tone] : undefined;
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05 }}>
       <Card className="hover:shadow-md">
         <CardContent className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-              tone === "critical" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
-            )}
-          >
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", toneClasses?.badge ?? "bg-primary/10 text-primary")}>
             {icon}
           </span>
           <div>
             <div className="text-xs font-medium text-muted-foreground">{label}</div>
-            <div className={cn("text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+            <div className={cn("text-2xl font-semibold tabular-nums", toneClasses?.value)}>{value}</div>
           </div>
         </CardContent>
       </Card>
@@ -53,8 +56,11 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
   );
 }
 
-function pct(n: number | undefined): string {
-  return n === undefined ? "—" : `${Math.round(n * 100)}%`;
+function standingTone(standing: string | undefined): "success" | "warning" | "critical" | undefined {
+  if (standing === "Good") return "success";
+  if (standing === "Warning") return "warning";
+  if (standing === "Hard Limit") return "critical";
+  return undefined;
 }
 
 // "Pending"/"Submitted" (already turned in, awaiting cadre review) deliberately excluded -- reviewing
@@ -165,8 +171,6 @@ export function SelfServiceDashboardScreen({
 
   const summary = useMemo(() => computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
 
-  const myCombinedPercent = useMemo(() => computeCombinedPercent(cadet.id, attendance, pmtEventsById), [cadet.id, attendance, pmtEventsById]);
-
   const myAbsenceMemos = useMemo(() => absenceMemos.filter((m) => m.cadetId === cadet.id), [absenceMemos, cadet.id]);
   const myDeviationMemos = useMemo(() => deviationMemos.filter((m) => m.cadetId === cadet.id), [deviationMemos, cadet.id]);
   const missingMemosCount =
@@ -204,17 +208,22 @@ export function SelfServiceDashboardScreen({
         My Dashboard
       </h2>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <HeroStat icon={<Gauge className="h-4.5 w-4.5" />} label="PT Standing" value={summary.pt.standing ?? "—"} index={0} />
-        <HeroStat icon={<Gauge className="h-4.5 w-4.5" />} label="LLAB/FM/D&C Standing" value={summary.llabFm.standing ?? "—"} index={1} />
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <HeroStat icon={<Gauge className="h-4.5 w-4.5" />} label="PT Standing" value={summary.pt.standing ?? "—"} tone={standingTone(summary.pt.standing)} index={0} />
+        <HeroStat
+          icon={<Gauge className="h-4.5 w-4.5" />}
+          label="LLAB/FM/D&C Standing"
+          value={summary.llabFm.standing ?? "—"}
+          tone={standingTone(summary.llabFm.standing)}
+          index={1}
+        />
         <HeroStat
           icon={<FileText className="h-4.5 w-4.5" />}
-          label="Missing memorandums"
+          label="Missing Memos"
           value={String(missingMemosCount)}
-          tone={missingMemosCount > 0 ? "critical" : undefined}
+          tone={missingMemosCount > 0 ? "critical" : "success"}
           index={2}
         />
-        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Combined %" value={pct(myCombinedPercent)} index={3} />
       </div>
 
       {isSae ? (
@@ -223,7 +232,7 @@ export function SelfServiceDashboardScreen({
             <CardHeader>
               <CardTitle>
                 <ShieldAlert className="h-4 w-4 text-primary" />
-                Missing Records
+                Missing Status
                 {saeFlags.acct.length + saeFlags.to.length > 0 && (
                   <Badge variant="destructive" className="ml-1.5">
                     {saeFlags.acct.length + saeFlags.to.length}
@@ -245,7 +254,7 @@ export function SelfServiceDashboardScreen({
                     </span>
                   </div>
                   <div className="max-h-80 overflow-auto rounded-md border border-input">
-                    <Table aria-label="Missing records">
+                    <Table aria-label="Missing status">
                       <TableHeader>
                         <TableRow>
                           <TableHead>TW-Date</TableHead>
@@ -301,11 +310,6 @@ export function SelfServiceDashboardScreen({
               <WeekView events={events} />
             </CardContent>
           </Card>
-
-          <div className="mb-6 grid gap-4 sm:grid-cols-2">
-            <CadetBucketStats label="PT" tally={summary.pt} fixedTotal={SEMESTER_PMT_TOTALS.PT} />
-            <CadetBucketStats label="LLAB/FM/D&C" tally={summary.llabFm} fixedTotal={SEMESTER_PMT_TOTALS.LLAB_FM} />
-          </div>
         </>
       )}
 
@@ -381,10 +385,12 @@ export function SelfServiceDashboardScreen({
                   <TableRow key={i}>
                     <TableCell>{shortDate(m.date)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{m.kind}</Badge>
+                      <Badge variant={m.kind === "Absence" ? "secondary" : "outline"}>{m.kind}</Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
-                    <TableCell>{m.status}</TableCell>
+                    <TableCell>
+                      <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

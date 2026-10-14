@@ -90,13 +90,28 @@ export function filterByRosterScope<T extends { cadetId: string }>(
   });
 }
 
-/** "22 Sep 26" */
+/** "9 Sep 26" -- the one date format used everywhere in this app, no zero-padded day. */
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function shortDate(iso: string | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
-  const day = String(d.getDate()).padStart(2, "0");
   const month = MONTHS_SHORT[d.getMonth()];
   const year = String(d.getFullYear()).slice(-2);
-  return `${day} ${month} ${year}`;
+  return `${d.getDate()} ${month} ${year}`;
+}
+
+/** "9 Sep 26, 3:45 PM" -- `shortDate` plus a local time, for the handful of displays that show both. */
+export function shortDateTime(iso: string | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${shortDate(iso)}, ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
+}
+
+/** Badge color convention for every status literal across both Absence and Deviation memos. */
+export function memoStatusVariant(status: string): "success" | "destructive" | "warning" | "secondary" | "outline" {
+  if (status === "Accepted") return "success";
+  if (status === "Rejected" || status === "Not Submitted") return "destructive";
+  if (status === "Returned" || status === "Late") return "warning";
+  if (status === "Pending" || status === "Submitted" || status === "Assigned") return "secondary";
+  return "outline";
 }

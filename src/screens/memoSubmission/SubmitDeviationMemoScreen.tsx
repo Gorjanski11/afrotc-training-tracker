@@ -116,7 +116,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Assigned to you -- needs submission</CardTitle>
+            <CardTitle>Assigned</CardTitle>
           </CardHeader>
           <CardContent className="pt-2">
             <div className="overflow-x-auto">
@@ -233,7 +233,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
         {mySubmitted.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>Already submitted</CardTitle>
+              <CardTitle>Submitted</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
               <div className="overflow-x-auto">

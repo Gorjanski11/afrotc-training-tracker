@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "af";
+export const THEMES: readonly Theme[] = ["light", "dark", "af"];
 
 const STORAGE_KEY = "theme";
 
 function getInitialTheme(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark") return stored;
+    if ((THEMES as readonly string[]).includes(stored ?? "")) return stored as Theme;
   } catch {
     // localStorage unavailable -- fall through to default.
   }
@@ -15,10 +16,11 @@ function getInitialTheme(): Theme {
 }
 
 function applyTheme(theme: Theme) {
-  document.documentElement.classList.toggle("dark", theme === "dark");
+  if (theme === "light") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
 }
 
-/** Manually toggled (not OS-driven) dark mode, persisted so it survives a reload. */
+/** Manually picked (not OS-driven) theme -- light, dark, or "AF mode" -- persisted so it survives a reload. */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
@@ -31,9 +33,5 @@ export function useTheme() {
     }
   }, [theme]);
 
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-  }, []);
-
-  return { theme, toggleTheme };
+  return { theme, setTheme };
 }

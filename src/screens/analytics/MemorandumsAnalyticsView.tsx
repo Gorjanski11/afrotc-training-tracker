@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileText, FileDown, ArrowUpDown, Pencil } from "lucide-react";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
-import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
+import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, memoStatusVariant, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetBucketStats } from "./AccountabilityAnalyticsView";
@@ -51,14 +51,6 @@ type ViewMode = "all" | "absence" | "deviation";
 
 const ABSENCE_STATUS_OPTIONS: AbsenceMemoStatus[] = ["Assigned", "Pending", "Accepted", "Rejected", "Returned"];
 const DEVIATION_STATUS_OPTIONS: DeviationMemoStatus[] = ["Assigned", "Submitted", "Late", "Accepted", "Returned", "Not Submitted"];
-
-function statusVariant(status: string): "success" | "destructive" | "warning" | "secondary" | "outline" {
-  if (status === "Accepted") return "success";
-  if (status === "Rejected" || status === "Not Submitted") return "destructive";
-  if (status === "Returned" || status === "Late") return "warning";
-  if (status === "Pending" || status === "Submitted") return "secondary";
-  return "outline";
-}
 
 function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | undefined }) {
   if (!lateSubmission) return null;
@@ -416,7 +408,7 @@ function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; rost
             <TableCell>{shortDate(row.submittedAt)}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
-                <Badge variant={statusVariant(row.status)}>{row.status}</Badge>
+                <Badge variant={memoStatusVariant(row.status)}>{row.status}</Badge>
                 <LateBadge lateSubmission={row.lateSubmission} />
               </span>
             </TableCell>
@@ -477,7 +469,7 @@ function AbsenceTable({
             </TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
-                <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
+                <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
                 <LateBadge lateSubmission={m.lateSubmission} />
               </span>
             </TableCell>
@@ -546,7 +538,7 @@ function DeviationTable({
               )}
             </TableCell>
             <TableCell>
-              <Badge variant={statusVariant(m.status)}>{m.status}</Badge>
+              <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
             </TableCell>
             <TableCell>
               <PdfButton url={m.pdfUrl} name={m.pdfFileName} />

@@ -491,7 +491,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
             <CardHeader>
               <CardTitle>
                 <CalendarClock className="h-4 w-4 text-primary" />
-                Know you'll miss an upcoming PMT?
+                Future PMT's
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

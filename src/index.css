@@ -1,7 +1,9 @@
 @import "tailwindcss";
 
-/* Dark mode is toggled by a `.dark` class on <html> (see useTheme.ts), not by OS preference. */
-@custom-variant dark (&:where(.dark, .dark *));
+/* Theme is a `data-theme="dark"|"af"` attribute on <html> (see useTheme.ts), not OS preference --
+   no attribute at all means light, which is just :root with no override. There is no `dark:`
+   Tailwind variant anywhere in this codebase (confirmed), so there's no need for a @custom-variant
+   here -- every themed value is a CSS custom property swapped per data-theme block below. */
 
 :root {
   --background: oklch(1 0 0);
@@ -54,7 +56,7 @@
   --chart-ink-muted: #898781;
 }
 
-.dark {
+[data-theme="dark"] {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -98,6 +100,54 @@
   --chart-grid: #3a3a37;
   --chart-axis: #5c5b55;
   --chart-ink-muted: #a4a29b;
+}
+
+/* "AF mode" -- Air Force blue + silver/gunmetal on a near-black, slightly cool-toned background.
+   Same --primary hue (258) as light/dark so the brand color reads consistently across all 3 themes;
+   only the surrounding palette (background/secondary/accent) differentiates this one. */
+[data-theme="af"] {
+  --background: oklch(0.16 0.012 255);
+  --foreground: oklch(0.95 0.004 255);
+  --card: oklch(0.21 0.014 255);
+  --card-foreground: oklch(0.95 0.004 255);
+  --popover: oklch(0.21 0.014 255);
+  --popover-foreground: oklch(0.95 0.004 255);
+  --primary: oklch(0.62 0.13 258);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.52 0.012 255);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.28 0.012 255);
+  --muted-foreground: oklch(0.72 0.01 255);
+  --accent: oklch(0.58 0.014 255);
+  --accent-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.68 0.19 25);
+  --destructive-foreground: oklch(0.15 0 0);
+  --success: oklch(0.68 0.15 145);
+  --success-foreground: oklch(0.15 0 0);
+  --warning: oklch(0.78 0.14 75);
+  --warning-foreground: oklch(0.15 0 0);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+  --ring: oklch(0.62 0.13 258);
+  color-scheme: dark;
+
+  --accent-gold: oklch(0.78 0.13 85);
+
+  --chart-series-1: #5b9bdf;
+  --chart-series-2: #f08a56;
+  --chart-series-3: #3bd0a0;
+  --chart-series-4: #f0b840;
+  --chart-series-5: #f09dbd;
+  --chart-series-6: #3fbf3f;
+  --chart-series-7: #8c7ad1;
+  --chart-series-8: #ea7372;
+  --chart-good: #3fcf3f;
+  --chart-warning: #fbc44c;
+  --chart-serious: #f2a37e;
+  --chart-critical: #e36a6a;
+  --chart-grid: #3f3f3c;
+  --chart-axis: #6a6964;
+  --chart-ink-muted: #a9a7a1;
 }
 
 @theme inline {

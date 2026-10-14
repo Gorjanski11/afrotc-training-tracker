@@ -21,12 +21,13 @@ import {
   Wrench,
   Sun,
   Moon,
+  ShieldHalf,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { useViewMode } from "./hooks/useViewMode";
-import { useTheme } from "./hooks/useTheme";
+import { useTheme, THEMES, type Theme } from "./hooks/useTheme";
 import { resolveTabAccess, isCortesGaray } from "./domain/access";
 import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { SignInScreen } from "./components/SignInScreen";
@@ -53,6 +54,13 @@ const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> 
   memoReview: { label: "Memo Review", icon: FileText },
   analytics: { label: "Analytics", icon: BarChart2 },
   settings: { label: "Settings", icon: Settings },
+};
+
+/** Label + icon per theme, shared by the header picker's trigger and its option list. */
+const THEME_META: Record<Theme, { label: string; icon: typeof Sun }> = {
+  light: { label: "Light", icon: Sun },
+  dark: { label: "Dark", icon: Moon },
+  af: { label: "AF Mode", icon: ShieldHalf },
 };
 
 /**
@@ -87,7 +95,8 @@ function App() {
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
   const { mode: viewMode, toggle: toggleViewMode } = useViewMode();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
   const maintenance = useMaintenanceMode();
 
   const handleSignIn = async (email: string, password: string) => {
@@ -190,9 +199,39 @@ function App() {
           <Button variant="ghost" size="icon" onClick={toggleViewMode} aria-label={viewMode === "desktop" ? "Switch to mobile view" : "Switch to desktop view"}>
             {viewMode === "desktop" ? <Smartphone className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>
-            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <Popover open={themeMenuOpen} onOpenChange={setThemeMenuOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Change theme">
+                {(() => {
+                  const Icon = THEME_META[theme].icon;
+                  return <Icon className="h-4 w-4" />;
+                })()}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-36 p-1">
+              <div className="flex flex-col">
+                {THEMES.map((t) => {
+                  const { label, icon: Icon } = THEME_META[t];
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setTheme(t);
+                        setThemeMenuOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-sm px-3 py-2 text-left text-sm hover:bg-accent",
+                        t === theme && "bg-accent font-medium"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" /> {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="ghost" size="icon" onClick={() => setChangePasswordOpen(true)} aria-label="Change password">
             <KeyRound className="h-4 w-4" />
           </Button>

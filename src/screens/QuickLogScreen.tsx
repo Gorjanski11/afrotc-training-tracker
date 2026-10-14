@@ -9,6 +9,7 @@ import { meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, proficiencyOptionsAtOrAbove, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import { shortDate } from "../domain/memoAnalytics";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
 import type { CompletionInput } from "../hooks/useCompletions";
@@ -100,8 +101,7 @@ function AttendanceCorner({ status }: { status: Attendance["status"] | undefined
 
 function formatOccurrenceLabel(event: PmtEvent | undefined): string {
   if (!event) return "Not yet scheduled";
-  const date = new Date(event.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return `${event.title} · ${date}`;
+  return `${event.title} · ${shortDate(event.eventDate)}`;
 }
 
 export function QuickLogScreen({

@@ -11,6 +11,7 @@ import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
 import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTOR_BY_AS_CLASS, absenceMemoDeadline } from "../../domain/constants";
 import { formatCadetName } from "../../domain/nameUtils";
+import { shortDate } from "../../domain/memoAnalytics";
 import type { AbsenceAsClass, AbsenceReason } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent, Cadet } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
@@ -53,7 +54,7 @@ const REQUIREMENTS_LIST = (
 function eventLabel(events: PmtEvent[], id: string): string {
   const e = events.find((ev) => ev.id === id);
   if (!e) return "a PMT";
-  return `${e.eventType} — ${e.title} (${new Date(e.eventDate).toLocaleDateString()})`;
+  return `${e.eventType} — ${e.title} (${shortDate(e.eventDate)})`;
 }
 
 export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, updateMemo, deleteMemo }: Props) {

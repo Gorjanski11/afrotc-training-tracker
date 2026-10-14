@@ -28,6 +28,7 @@ import { useCadets } from "./hooks/useCadets";
 import { useAuth } from "./hooks/useAuth";
 import { useViewMode } from "./hooks/useViewMode";
 import { useTheme, THEMES, type Theme } from "./hooks/useTheme";
+import { shortDateTime } from "./domain/memoAnalytics";
 import { resolveTabAccess, isCortesGaray } from "./domain/access";
 import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { SignInScreen } from "./components/SignInScreen";
@@ -177,7 +178,7 @@ function App() {
         <p className="max-w-sm text-sm text-muted-foreground">
           The site is temporarily unavailable while updates are made.
           {maintenance.doc?.until
-            ? ` Expected back up by ${new Date(maintenance.doc.until).toLocaleString()}.`
+            ? ` Expected back up by ${shortDateTime(maintenance.doc.until)}.`
             : " Check back shortly."}
         </p>
         <Button variant="outline" onClick={() => void signOut()}>

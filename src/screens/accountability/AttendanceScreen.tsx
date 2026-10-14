@@ -7,6 +7,7 @@ import { Save, TriangleAlert, ClipboardCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
 import { isEventFullyRecorded, isPostAccountabilityWindowClosed } from "../../domain/attendance";
+import { shortDateTime } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
@@ -409,7 +410,7 @@ export function AttendanceScreen({
           <SelectContent>
             {visibleWeekEvents.map((e) => (
               <SelectItem key={e.id} value={e.id}>
-                {e.title} — {new Date(e.eventDate).toLocaleString()} ({e.eventType})
+                {e.title} — {shortDateTime(e.eventDate)} ({e.eventType})
               </SelectItem>
             ))}
             {visibleWeekEvents.length === 0 && (

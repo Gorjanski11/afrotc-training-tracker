@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { shortDateTime } from "../domain/memoAnalytics";
 import type { PmtEvent, TrainingObjective } from "../domain/types";
 
 interface Props {
@@ -35,7 +36,7 @@ export function EventDetailDialog({ open, onClose, event, catalog, onEdit, onDel
           <div className="grid gap-2 text-sm">
             <div>
               <span className="font-medium">When: </span>
-              {new Date(event.eventDate).toLocaleString(undefined, { dateStyle: "full", timeStyle: "short" })}
+              {shortDateTime(event.eventDate)}
             </div>
             {event.location && (
               <div>

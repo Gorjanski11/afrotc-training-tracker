@@ -242,7 +242,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
                   onClick={() => navigateTo("memoReview", { kind: "memoReview", screen: "absence", openMemoId: m.id })}
                 >
                   <span>{m.cadetName}</span>
-                  <span className="text-xs text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                  <span className="text-xs text-muted-foreground">{shortDate(m.submittedAt)}</span>
                 </button>
               ))}
             </div>

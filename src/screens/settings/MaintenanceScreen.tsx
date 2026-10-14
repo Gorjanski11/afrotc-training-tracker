@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Wrench } from "lucide-react";
 import { useMaintenanceMode } from "../../hooks/useMaintenanceMode";
+import { shortDateTime } from "../../domain/memoAnalytics";
 
 const DURATIONS = [
   { label: "15 minutes", minutes: 15 },
@@ -45,8 +46,8 @@ export function MaintenanceScreen() {
               </CardTitle>
               {inEffect && doc && (
                 <CardDescription>
-                  Enabled {new Date(doc.enabledAt).toLocaleString()}
-                  {doc.until ? ` — until ${new Date(doc.until).toLocaleString()}` : " — indefinitely, until you turn it off"}.
+                  Enabled {shortDateTime(doc.enabledAt)}
+                  {doc.until ? ` — until ${shortDateTime(doc.until)}` : " — indefinitely, until you turn it off"}.
                 </CardDescription>
               )}
             </CardHeader>

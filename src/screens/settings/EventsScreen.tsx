@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { findTrainingWeekConflicts } from "../../domain/attendance";
+import { shortDateTime } from "../../domain/memoAnalytics";
 import { buildMonthGrid, isSameDay, isSameMonth, addMonths } from "../../domain/calendarUtils";
 import { PmtEventFormDialog } from "../../components/accountability/PmtEventFormDialog";
 import { ExtraEventFormDialog } from "../../components/accountability/ExtraEventFormDialog";
@@ -158,7 +159,7 @@ export function EventsScreen({
             <TableBody>
               {sortedEvents.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell>{new Date(event.eventDate).toLocaleString()}</TableCell>
+                  <TableCell>{shortDateTime(event.eventDate)}</TableCell>
                   <TableCell>{event.title}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{event.eventType}</Badge>
@@ -236,7 +237,7 @@ export function EventsScreen({
             <TableBody>
               {sortedExtraEvents.map((event) => (
                 <TableRow key={event.id}>
-                  <TableCell>{new Date(event.eventDate).toLocaleString()}</TableCell>
+                  <TableCell>{shortDateTime(event.eventDate)}</TableCell>
                   <TableCell>{event.title}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{event.eventType}</Badge>

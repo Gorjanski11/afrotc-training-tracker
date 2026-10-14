@@ -2,6 +2,7 @@ import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainin
 import { formatCadetName } from "../domain/nameUtils";
 import { ATTENDANCE_STATUS_LABELS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
+import { shortDate, shortDateTime } from "../domain/memoAnalytics";
 import type { Attendance, PmtEvent, Cadet } from "../domain/types";
 
 function pctText(n: number | undefined): string {
@@ -58,11 +59,11 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
           return person ? formatCadetName(person) : "";
         })(),
         pmt: event?.title ?? "",
-        date: event ? new Date(event.eventDate).toLocaleDateString() : "",
+        date: event ? shortDate(event.eventDate) : "",
         type: event?.eventType ?? "",
         status: ATTENDANCE_STATUS_LABELS[a.status] ?? a.status,
         reason: a.absenceReason ?? "",
-        recordedAt: a.recordedAt ? new Date(a.recordedAt).toLocaleString() : "",
+        recordedAt: a.recordedAt ? shortDateTime(a.recordedAt) : "",
         notes: a.notes,
       };
     }),
@@ -79,7 +80,7 @@ export function buildAttendanceSheets(roster: Cadet[], events: PmtEvent[], atten
     ],
     rows: events.map((e) => ({
       title: e.title,
-      date: new Date(e.eventDate).toLocaleDateString(),
+      date: shortDate(e.eventDate),
       type: e.eventType,
       trainingWeek: e.trainingWeek ?? "",
       location: e.location,

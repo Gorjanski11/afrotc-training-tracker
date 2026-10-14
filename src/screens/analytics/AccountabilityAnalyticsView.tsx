@@ -10,6 +10,7 @@ import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, 
 import { cn } from "@/lib/utils";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
+import { shortDate } from "../../domain/memoAnalytics";
 import {
   computeSessionTrend,
   computeCadetSessionTrend,
@@ -946,7 +947,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
                     .filter((e): e is PmtEvent => !!e)
                     .map((e) => e.title)
                     .join(" + ")}{" "}
-                  — {new Date((ptDrillDownEvent ?? llabDrillDownEvent)!.eventDate).toLocaleDateString()}
+                  — {shortDate((ptDrillDownEvent ?? llabDrillDownEvent)!.eventDate)}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-5">

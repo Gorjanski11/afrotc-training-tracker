@@ -2,6 +2,7 @@ import { computeCadetProgress } from "../domain/progress";
 import { formatCadetName } from "../domain/nameUtils";
 import { DEV_LEVELS } from "../domain/constants";
 import { downloadWorkbook, todayForFilename, type ExportSheet } from "./exportWorkbook";
+import { shortDate } from "../domain/memoAnalytics";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 /** One sheet per collection plus a computed progress summary -- exported separately from `exportTrainingData` so Data Management (Section 6) can combine it with other categories into one workbook. */
@@ -73,9 +74,9 @@ export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[
         objectiveTitle: objective?.title ?? "",
         proficiency: c.proficiencyAchieved,
         partial: c.partial ? "Yes" : "No",
-        dateCompleted: c.dateCompleted ?? "",
+        dateCompleted: c.dateCompleted ? shortDate(c.dateCompleted) : "",
         evaluator: c.evaluator,
-        pmt: event ? `${event.eventType} — ${event.title} (${new Date(event.eventDate).toLocaleDateString()})` : "",
+        pmt: event ? `${event.eventType} — ${event.title} (${shortDate(event.eventDate)})` : "",
         notes: c.notes,
       };
     }),
@@ -92,7 +93,7 @@ export function buildTrainingSheets(cadets: Cadet[], catalog: TrainingObjective[
     ],
     rows: pmtEvents.map((e) => ({
       title: e.title,
-      date: new Date(e.eventDate).toLocaleDateString(),
+      date: shortDate(e.eventDate),
       type: e.eventType,
       trainingWeek: e.trainingWeek ?? "",
       objectives: e.objectiveIds.map((id) => objectivesById.get(id)?.number).filter(Boolean).join(", "),

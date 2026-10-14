@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { absenceMemoDeadline } from "../../domain/constants";
+import { shortDate } from "../../domain/memoAnalytics";
 import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
 import type { AbsenceMemo, Cadet, DeviationMemo, PmtEvent } from "../../domain/types";
 
@@ -131,12 +132,12 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
                       className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
                     >
                       <span>{m.cadetName}</span>
-                      <span className="text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                      <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
                     </button>
                   ) : (
                     <div key={m.id} className="flex items-center justify-between text-sm">
                       <span>{m.cadetName}</span>
-                      <span className="text-muted-foreground">{new Date(m.submittedAt).toLocaleDateString()}</span>
+                      <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
                     </div>
                   )
                 )}
@@ -161,7 +162,7 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
                   <div key={memo.id} className="flex items-center justify-between text-sm">
                     <span>{memo.cadetName}</span>
                     <span className="text-muted-foreground">
-                      {event.eventType} — {event.title} ({new Date(event.eventDate).toLocaleDateString()})
+                      {event.eventType} — {event.title} ({shortDate(event.eventDate)})
                     </span>
                   </div>
                 ))}
@@ -185,7 +186,7 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
                 {overdueDeviations.map((m) => (
                   <div key={m.id} className="flex items-center justify-between text-sm">
                     <span>{m.cadetName}</span>
-                    <span className="text-muted-foreground">Due {new Date(m.dueDate!).toLocaleDateString()}</span>
+                    <span className="text-muted-foreground">Due {shortDate(m.dueDate)}</span>
                   </div>
                 ))}
               </div>

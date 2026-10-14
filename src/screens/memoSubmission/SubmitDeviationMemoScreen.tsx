@@ -5,6 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { ClipboardList, Upload, CheckCircle2 } from "lucide-react";
 import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
+import { shortDate } from "../../domain/memoAnalytics";
 import type { DeviationMemo, Cadet } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
@@ -138,7 +139,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                     </TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
-                      {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
+                      {shortDate(m.dueDate)}
                       {isOverdue(m) && " (overdue)"}
                     </TableCell>
                     <TableCell>
@@ -250,7 +251,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                     <TableRow key={m.id}>
                       <TableCell className="max-w-sm">{reasonDisplay(m)}</TableCell>
                       <TableCell>{m.status}</TableCell>
-                      <TableCell>{m.submittedAt ? new Date(m.submittedAt).toLocaleDateString() : "—"}</TableCell>
+                      <TableCell>{shortDate(m.submittedAt)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

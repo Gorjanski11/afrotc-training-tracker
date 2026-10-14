@@ -14,6 +14,7 @@ import { downloadWorkbook, todayForFilename } from "../../lib/exportWorkbook";
 import { listAllMemoPdfs, deleteMemoPdf, type StoredMemoPdf } from "../../lib/storage";
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
+import { shortDate } from "../../domain/memoAnalytics";
 import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
@@ -222,7 +223,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
                       <PdfLinkButton url={p.url} name={p.fileName} />
                     </TableCell>
                     <TableCell>{formatSize(p.size)}</TableCell>
-                    <TableCell>{new Date(p.uploadedAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{shortDate(p.uploadedAt)}</TableCell>
                     <TableCell>
                       {canDelete && (
                         <Button variant="ghost" size="icon" onClick={() => setDeleteTargets([p])} aria-label="Delete">

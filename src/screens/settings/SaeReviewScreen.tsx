@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ShieldAlert } from "lucide-react";
 import { isEntryOutsideWindow } from "../../domain/attendance";
+import { shortDate, shortDateTime } from "../../domain/memoAnalytics";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
 import { formatCadetName } from "../../domain/nameUtils";
 import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -132,12 +133,12 @@ export function SaeReviewScreen({ roster, events, attendance, catalog, completio
                           return (
                             <div key={eventId} className="rounded-md border border-input p-2.5 text-xs">
                               <div className="font-medium">
-                                {event.title} — {new Date(event.eventDate).toLocaleDateString()} ({event.eventType})
+                                {event.title} — {shortDate(event.eventDate)} ({event.eventType})
                               </div>
                               <ul className="mt-1 space-y-0.5 text-muted-foreground">
                                 {entries.map((e, i) => (
                                   <li key={i}>
-                                    {e.cadetName} — recorded {new Date(e.recordedAt).toLocaleString()}
+                                    {e.cadetName} — recorded {shortDateTime(e.recordedAt)}
                                   </li>
                                 ))}
                               </ul>
@@ -166,7 +167,7 @@ function AccountabilityRow({ flag, responsibleName }: { flag: AccountabilityFlag
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-input p-2.5 text-xs">
       <div>
         <span className="font-medium">
-          {flag.event.title} — {new Date(flag.event.eventDate).toLocaleDateString()} ({flag.event.eventType})
+          {flag.event.title} — {shortDate(flag.event.eventDate)} ({flag.event.eventType})
         </span>
         <div className="text-muted-foreground">
           {unitLabel}: {flag.missing}/{flag.total} cadets missing — responsible: {responsibleName}
@@ -186,7 +187,7 @@ function ToRow({ flag, responsibleName }: { flag: ToFlag; responsibleName: strin
           {flag.objective.number} {flag.objective.title}
         </span>
         <div className="text-muted-foreground">
-          {flag.event.title} ({new Date(flag.event.eventDate).toLocaleDateString()}) — {unitLabel}, responsible: {responsibleName}
+          {flag.event.title} ({shortDate(flag.event.eventDate)}) — {unitLabel}, responsible: {responsibleName}
         </div>
       </div>
       <StatusBadge status={flag.status} />

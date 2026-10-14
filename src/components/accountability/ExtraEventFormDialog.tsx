@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EXTRA_EVENT_TYPES, type ExtraEventType } from "../../domain/constants";
+import { shortDate } from "../../domain/memoAnalytics";
 import type { ExtraEventInput } from "../../hooks/useExtraEvents";
 import type { ExtraEvent, PmtEvent } from "../../domain/types";
 
@@ -106,7 +107,7 @@ export function ExtraEventFormDialog({ open, onClose, existingEvent, pmtEvents, 
                 <SelectContent>
                   {pmtEvents.map((e) => (
                     <SelectItem key={e.id} value={e.id}>
-                      {e.title} — {new Date(e.eventDate).toLocaleDateString()}
+                      {e.title} — {shortDate(e.eventDate)}
                     </SelectItem>
                   ))}
                 </SelectContent>

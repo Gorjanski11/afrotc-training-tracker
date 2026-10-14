@@ -8,6 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Circle, Clock, Info, TriangleAlert, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProficiencyCode } from "../domain/constants";
+import { shortDate } from "../domain/memoAnalytics";
 import { computeCadetProgress, bestCompletionForObjective, getObjectiveStatus, isOverdue } from "../domain/progress";
 import { formatCadetName } from "../domain/nameUtils";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
@@ -191,23 +192,23 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
                                   ) : info?.status === "completed" ? (
                                     <span className="flex items-center gap-2 text-sm">
                                       <CheckCircle2 className="h-4 w-4 text-success" />
-                                      {info.bestCompletion?.proficiencyAchieved} on {info.bestCompletion?.dateCompleted?.slice(0, 10)}
+                                      {info.bestCompletion?.proficiencyAchieved} on {info.bestCompletion?.dateCompleted && shortDate(info.bestCompletion.dateCompleted)}
                                     </span>
                                   ) : info?.status === "missed" ? (
                                     <span className="flex items-center gap-2 text-sm text-destructive">
                                       <TriangleAlert className="h-4 w-4" />
-                                      Missed — last PMT was {lastOccurrence && new Date(lastOccurrence.eventDate).toLocaleDateString()}
+                                      Missed — last PMT was {lastOccurrence && shortDate(lastOccurrence.eventDate)}
                                     </span>
                                   ) : info?.status === "due" ? (
                                     <span className="flex items-center gap-2 text-sm">
                                       <Circle className="h-4 w-4 text-warning" />
                                       Due — click to log
-                                      {nextOccurrence && ` (next PMT ${new Date(nextOccurrence.eventDate).toLocaleDateString()})`}
+                                      {nextOccurrence && ` (next PMT ${shortDate(nextOccurrence.eventDate)})`}
                                     </span>
                                   ) : info?.status === "upcoming" ? (
                                     <span className="flex items-center gap-2 text-sm text-muted-foreground">
                                       <Clock className="h-4 w-4" />
-                                      Upcoming — {nextOccurrence && new Date(nextOccurrence.eventDate).toLocaleDateString()}
+                                      Upcoming — {nextOccurrence && shortDate(nextOccurrence.eventDate)}
                                     </span>
                                   ) : (
                                     <span className="text-sm text-muted-foreground">Not yet scheduled</span>

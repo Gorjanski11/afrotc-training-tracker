@@ -12,6 +12,7 @@ import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
 import { canDeleteAbsenceMemo, visibleAbsenceMemos } from "../../domain/access";
+import { shortDate } from "../../domain/memoAnalytics";
 import type { AbsenceMemo, Cadet, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
@@ -38,7 +39,7 @@ function StatusBadge({ status }: { status: AbsenceMemoStatus }) {
 function coverageSummary(m: AbsenceMemo, eventLabel: (id: string) => string): string {
   const parts: string[] = [];
   if (m.pmtEventIds.length > 0) parts.push(m.pmtEventIds.map(eventLabel).join(", "));
-  if (m.asClass) parts.push(`${m.asClass} class (${m.classDate ? new Date(m.classDate).toLocaleDateString() : "no date"})`);
+  if (m.asClass) parts.push(`${m.asClass} class (${m.classDate ? shortDate(m.classDate) : "no date"})`);
   return parts.join(" + ") || "—";
 }
 
@@ -157,7 +158,7 @@ export function AbsenceMemosScreen({
 
   const eventLabel = (id: string) => {
     const e = events.find((ev) => ev.id === id);
-    return e ? `${e.eventType} ${new Date(e.eventDate).toLocaleDateString()}` : "deleted PMT";
+    return e ? `${e.eventType} ${shortDate(e.eventDate)}` : "deleted PMT";
   };
 
   const reviewing = memos.find((m) => m.id === reviewingId);
@@ -222,7 +223,7 @@ export function AbsenceMemosScreen({
           <TableBody>
             {pendingMemos.map((m) => (
               <TableRow key={m.id}>
-                <TableCell>{new Date(m.submittedAt).toLocaleDateString()}</TableCell>
+                <TableCell>{shortDate(m.submittedAt)}</TableCell>
                 <TableCell>{m.cadetName}</TableCell>
                 <TableCell className="max-w-xs truncate" title={coverageSummary(m, eventLabel)}>
                   {coverageSummary(m, eventLabel)}
@@ -280,7 +281,7 @@ export function AbsenceMemosScreen({
               <TableBody>
                 {decidedMemos.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell>{shortDate(m.reviewedAt)}</TableCell>
                     <TableCell>{m.cadetName}</TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell className="flex items-center gap-1.5">
@@ -339,7 +340,7 @@ export function AbsenceMemosScreen({
                   )}
                   {reviewing.asClass && (
                     <div>
-                      <strong>AS Class:</strong> {reviewing.asClass} — {reviewing.classDate ? new Date(reviewing.classDate).toLocaleDateString() : "no date"}
+                      <strong>AS Class:</strong> {reviewing.asClass} — {reviewing.classDate ? shortDate(reviewing.classDate) : "no date"}
                       {reviewing.instructor && <> — {reviewing.instructor}</>}
                     </div>
                   )}

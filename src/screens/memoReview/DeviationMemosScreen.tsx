@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
+import { shortDate } from "../../domain/memoAnalytics";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
 import { DEVIATION_MEMO_STATUSES, DEVIATION_REASONS, endOfDay, type DeviationMemoStatus, type DeviationReason } from "../../domain/constants";
@@ -70,7 +71,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const relatedPmtLabel = (memo: DeviationMemo): string | undefined => {
     const event = memo.relatedPmtEventId ? eventsById.get(memo.relatedPmtEventId) : undefined;
-    return event ? `${event.title} — ${new Date(event.eventDate).toLocaleDateString()}` : undefined;
+    return event ? `${event.title} — ${shortDate(event.eventDate)}` : undefined;
   };
 
   const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
@@ -340,7 +341,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
               <TableBody>
                 {submitted.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell>{m.submittedAt ? new Date(m.submittedAt).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell>{shortDate(m.submittedAt)}</TableCell>
                     <TableCell>
                       {m.cadetName}
                       {isDeviationMemoViaCc(userEmail, m) && (
@@ -419,7 +420,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                     <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
-                      {m.dueDate ? new Date(m.dueDate).toLocaleDateString() : "—"}
+                      {shortDate(m.dueDate)}
                       {isOverdue(m) && " (overdue)"}
                     </TableCell>
                     <TableCell>
@@ -475,7 +476,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
               <TableBody>
                 {processed.map((m) => (
                   <TableRow key={m.id}>
-                    <TableCell>{m.reviewedAt ? new Date(m.reviewedAt).toLocaleDateString() : "—"}</TableCell>
+                    <TableCell>{shortDate(m.reviewedAt)}</TableCell>
                     <TableCell>
                       {m.cadetName}
                       {isDeviationMemoViaCc(userEmail, m) && (

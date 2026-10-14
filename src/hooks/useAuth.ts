@@ -33,10 +33,21 @@ export interface AccountOpResult {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  // Set only on a session that got here via impersonateAccount (the custom token it mints carries
+  // an `impersonatedBy` claim) -- lets the maintenance-mode gate (App.tsx) tell "Cortes Garay
+  // impersonated into this account" apart from "this account signed in with its own password",
+  // even though `user.email` looks identical either way.
+  const [impersonatedBy, setImpersonatedBy] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        const result = await u.getIdTokenResult();
+        setImpersonatedBy(result.claims.impersonatedBy as string | undefined);
+      } else {
+        setImpersonatedBy(undefined);
+      }
       setAuthLoading(false);
     });
     return unsubscribe;
@@ -131,6 +142,7 @@ export function useAuth() {
   return {
     user,
     authLoading,
+    impersonatedBy,
     signIn,
     signOut: signOutUser,
     changePassword,

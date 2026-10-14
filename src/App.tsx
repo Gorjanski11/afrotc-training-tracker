@@ -90,7 +90,7 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
  * a sub-app under src/apps/ instead of its own repo/deploy.
  */
 function App() {
-  const { user, authLoading, signIn, signOut, changePassword } = useAuth();
+  const { user, authLoading, impersonatedBy, signIn, signOut, changePassword } = useAuth();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
@@ -170,7 +170,7 @@ function App() {
     return <SignInScreen signIn={handleSignIn} />;
   }
 
-  if (maintenance.inEffect && !isCortesGaray(user.email)) {
+  if (maintenance.inEffect && !isCortesGaray(user.email) && !isCortesGaray(impersonatedBy)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <Wrench className="h-10 w-10 text-muted-foreground" />

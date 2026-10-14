@@ -5,7 +5,8 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Database, Download, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { Database, Download, RefreshCw, Trash2 } from "lucide-react";
+import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { buildAttendanceSheets } from "../../lib/exportAttendanceData";
 import { buildTrainingSheets } from "../../lib/exportTrainingData";
 import { buildMemoSheets } from "../../lib/exportMemoData";
@@ -218,10 +219,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
                     </TableCell>
                     <TableCell>{p.folder === "absenceMemos" ? "Absence" : "Deviation"}</TableCell>
                     <TableCell>
-                      <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                        <ExternalLink className="h-3 w-3" />
-                        {p.fileName}
-                      </a>
+                      <PdfLinkButton url={p.url} name={p.fileName} />
                     </TableCell>
                     <TableCell>{formatSize(p.size)}</TableCell>
                     <TableCell>{new Date(p.uploadedAt).toLocaleDateString()}</TableCell>

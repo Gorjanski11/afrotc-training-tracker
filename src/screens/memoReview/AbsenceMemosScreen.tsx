@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { FileText, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
 import { canDeleteAbsenceMemo, visibleAbsenceMemos } from "../../domain/access";
@@ -230,14 +231,7 @@ export function AbsenceMemosScreen({
                   {reasonDisplay(m)}
                 </TableCell>
                 <TableCell>
-                  {m.pdfUrl ? (
-                    <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                      <ExternalLink className="h-3 w-3" />
-                      {m.pdfFileName}
-                    </a>
-                  ) : (
-                    "—"
-                  )}
+                  <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
                 </TableCell>
                 <TableCell className="flex items-center gap-1.5">
                   <Button size="sm" onClick={() => openReview(m)}>
@@ -298,14 +292,7 @@ export function AbsenceMemosScreen({
                       )}
                     </TableCell>
                     <TableCell>
-                      {m.pdfUrl ? (
-                        <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                          <ExternalLink className="h-3 w-3" />
-                          {m.pdfFileName}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
+                      <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
                     <TableCell>

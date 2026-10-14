@@ -8,7 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, FileDown, ArrowUpDown, Pencil } from "lucide-react";
+import { FileText, ArrowUpDown, Pencil } from "lucide-react";
+import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
 import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, memoStatusVariant, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
@@ -62,21 +63,6 @@ function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | undefi
 }
 
 /** Icon-only button (Section: Memorandums Analytics table redesign) -- no filename/link text shown, to keep these dense tables narrow. */
-function PdfButton({ url, name }: { url: string | undefined; name: string | undefined }) {
-  if (!url) return <span className="text-muted-foreground">—</span>;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      title={name ?? "PDF"}
-      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input text-primary hover:bg-accent"
-    >
-      <FileDown className="h-3.5 w-3.5" />
-    </a>
-  );
-}
-
 /** "C/Rank Last, First" via the roster lookup (Section: Memorandums Analytics table redesign) -- falls back to the memo's own stored cadetName if the cadet's roster record is gone. */
 function cadetDisplayName(cadetId: string, cadetName: string, roster: Cadet[]): string {
   const person = roster.find((p) => p.id === cadetId);
@@ -413,7 +399,7 @@ function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; rost
               </span>
             </TableCell>
             <TableCell>
-              <PdfButton url={row.pdfUrl} name={row.pdfFileName} />
+              <PdfLinkButton url={row.pdfUrl} name={row.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate" title={row.notes || undefined}>{row.notes}</TableCell>
             <TableCell>
@@ -474,7 +460,7 @@ function AbsenceTable({
               </span>
             </TableCell>
             <TableCell>
-              <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
+              <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate" title={(m.status === "Returned" ? m.returnReason : m.reviewNotes) || undefined}>
               {m.status === "Returned" ? m.returnReason : m.reviewNotes}
@@ -541,7 +527,7 @@ function DeviationTable({
               <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
             </TableCell>
             <TableCell>
-              <PdfButton url={m.pdfUrl} name={m.pdfFileName} />
+              <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
             </TableCell>
             <TableCell className="max-w-xs truncate" title={m.reviewNotes || undefined}>{m.reviewNotes}</TableCell>
             <TableCell>

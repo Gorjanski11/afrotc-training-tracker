@@ -10,6 +10,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2 } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
+import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
 import { DEVIATION_MEMO_STATUSES, DEVIATION_REASONS, endOfDay, type DeviationMemoStatus, type DeviationReason } from "../../domain/constants";
@@ -352,14 +353,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                     <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>
-                      {m.pdfUrl ? (
-                        <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                          <ExternalLink className="h-3 w-3" />
-                          {m.pdfFileName}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
+                      <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
                     </TableCell>
                     <TableCell>
                       {canReview(m) ? (
@@ -497,14 +491,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       <StatusBadge status={m.status} />
                     </TableCell>
                     <TableCell>
-                      {m.pdfUrl ? (
-                        <a href={m.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                          <ExternalLink className="h-3 w-3" />
-                          {m.pdfFileName}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
+                      <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
                     <TableCell>

@@ -64,18 +64,34 @@ function reasonDisplay(memo: DeviationMemo): string {
   return memo.reason === "Other" && memo.reasonOther ? `Other: ${memo.reasonOther}` : memo.reason;
 }
 
+/** Stacks related-PMT labels one per line instead of a comma-joined run that stretches the column wide -- capped at 2 lines total, so 3+ PMTs show just the first plus a "+N more" summary line rather than growing the row (full list still available via the native title tooltip). */
+function RelatedPmtCell({ labels }: { labels: string[] }) {
+  if (labels.length === 0) return <>—</>;
+  const overflowing = labels.length > 2;
+  const shown = overflowing ? labels.slice(0, 1) : labels;
+  const extra = labels.length - shown.length;
+  return (
+    <div className="max-w-48" title={labels.join(", ")}>
+      {shown.map((label) => (
+        <div key={label} className="truncate text-xs">
+          {label}
+        </div>
+      ))}
+      {extra > 0 && <div className="text-xs text-muted-foreground">+{extra} more</div>}
+    </div>
+  );
+}
+
 /** Section 9 -- single view (no more Assign/Submissions-&-Review tabs): Submitted, then Awaiting submission, then Processed, top to bottom. Assign lives in a popup instead of its own tab. */
 export function DeviationMemosScreen({ roster, memos, events, createMemo, updateMemo, deleteMemo, reauthenticate, userEmail: userEmailRaw }: Props) {
   const userEmail = userEmailRaw ?? "";
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
-  const relatedPmtLabel = (memo: DeviationMemo): string | undefined => {
-    const labels = memo.relatedPmtEventIds
+  const relatedPmtLabels = (memo: DeviationMemo): string[] =>
+    memo.relatedPmtEventIds
       .map((id) => eventsById.get(id))
       .filter((e): e is PmtEvent => !!e)
       .map((e) => `${e.title} — ${shortDate(e.eventDate)}`);
-    return labels.length > 0 ? labels.join(", ") : undefined;
-  };
 
   const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
   // Checked once per render, not on a ticking clock -- matches how every other "now" check in this
@@ -357,7 +373,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       <div>{reasonDisplay(m)}</div>
                       {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
+                    <TableCell><RelatedPmtCell labels={relatedPmtLabels(m)} /></TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>
                       <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
@@ -426,7 +442,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       <div>{reasonDisplay(m)}</div>
                       {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
+                    <TableCell><RelatedPmtCell labels={relatedPmtLabels(m)} /></TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
                       {shortDate(m.dueDate)}
@@ -499,7 +515,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       <div>{reasonDisplay(m)}</div>
                       {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
                     </TableCell>
-                    <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
+                    <TableCell><RelatedPmtCell labels={relatedPmtLabels(m)} /></TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>{m.reviewedBy ?? "—"}</TableCell>
                     <TableCell>
@@ -623,9 +639,9 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                       <strong>Purpose:</strong> {reviewing.purpose}
                     </div>
                   )}
-                  {relatedPmtLabel(reviewing) && (
+                  {relatedPmtLabels(reviewing).length > 0 && (
                     <div>
-                      <strong>Related PMT:</strong> {relatedPmtLabel(reviewing)}
+                      <strong>Related PMT{relatedPmtLabels(reviewing).length > 1 ? "s" : ""}:</strong> {relatedPmtLabels(reviewing).join(", ")}
                     </div>
                   )}
                   {reviewing.pdfUrl && (

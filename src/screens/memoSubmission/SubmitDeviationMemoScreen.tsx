@@ -43,6 +43,17 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [confirmingMemo, setConfirmingMemo] = useState<DeviationMemo | undefined>();
 
+  // Combining multiple separately-issued "missed your own Absence Memo deadline" memos (e.g. one
+  // auto-created for Tuesday's missed PMTs, a second one for Thursday's, created days apart) into
+  // one shared PDF submission -- each stays its own record (own due date/history), just gets marked
+  // Submitted with the same file. Only offered among memos that trace back to a missed PMT
+  // (relatedPmtEventIds set) -- a manually-assigned memo for an unrelated reason never joins in.
+  const [combineSelected, setCombineSelected] = useState<Set<string>>(new Set());
+  const [combineFile, setCombineFile] = useState<File | undefined>();
+  const [combineBusy, setCombineBusy] = useState(false);
+  const [combineError, setCombineError] = useState<string | undefined>();
+  const [confirmingCombine, setConfirmingCombine] = useState(false);
+
   // "Late" is still submittable (checkDeviationMemoDeadlines only hides the terminal "Not
   // Submitted", 24h further on) -- it was previously missing here, so any memo that went overdue
   // disappeared from this table entirely and sat unsubmittable under "Already submitted" instead,
@@ -54,6 +65,17 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
         .sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")),
     [memos, cadetId]
   );
+  const eligibleForCombine = useMemo(() => myAssigned.filter((m) => m.relatedPmtEventIds.length > 0), [myAssigned]);
+  const showCombineColumn = eligibleForCombine.length > 1;
+
+  const toggleCombineSelected = (id: string) => {
+    setCombineSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const myReturned = useMemo(
     () => memos.filter((m) => m.cadetId === cadetId && m.status === "Returned").sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? "")),
     [memos, cadetId]
@@ -99,6 +121,28 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
     }
   };
 
+  // Combine mode is only ever offered among "Assigned"/"Late" memos (eligibleForCombine), never
+  // Returned ones -- those already have their own 48-hour resubmit-deadline logic above, which
+  // doesn't apply here.
+  const handleCombineSubmit = async () => {
+    if (!combineFile || combineSelected.size === 0) return;
+    setCombineBusy(true);
+    setCombineError(undefined);
+    try {
+      const uploaded = await uploadMemoPdf(combineFile, "deviationMemos", cadetId);
+      const now = new Date().toISOString();
+      for (const id of combineSelected) {
+        await updateMemo(id, { pdfUrl: uploaded.url, pdfFileName: uploaded.fileName, status: "Submitted", submittedAt: now });
+      }
+      setCombineSelected(new Set());
+      setCombineFile(undefined);
+      setJustSubmitted(true);
+    } catch (e) {
+      setCombineError(e instanceof Error ? e.message : "Failed to submit.");
+    } finally {
+      setCombineBusy(false);
+    }
+  };
 
   return (
     <div>
@@ -124,6 +168,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
             <Table aria-label="My assigned deviation memos">
               <TableHeader>
                 <TableRow>
+                  {showCombineColumn && <TableHead />}
                   <TableHead>Reason</TableHead>
                   <TableHead>Assigned by</TableHead>
                   <TableHead>Due</TableHead>
@@ -133,6 +178,13 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
               <TableBody>
                 {myAssigned.map((m) => (
                   <TableRow key={m.id}>
+                    {showCombineColumn && (
+                      <TableCell>
+                        {m.relatedPmtEventIds.length > 0 && (
+                          <input type="checkbox" checked={combineSelected.has(m.id)} onChange={() => toggleCombineSelected(m.id)} />
+                        )}
+                      </TableCell>
+                    )}
                     <TableCell className="max-w-sm">
                       <div>{reasonDisplay(m)}</div>
                       {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
@@ -175,7 +227,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                 ))}
                 {myAssigned.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={showCombineColumn ? 5 : 4} className="text-center text-muted-foreground">
                       Nothing assigned to you right now.
                     </TableCell>
                   </TableRow>
@@ -184,6 +236,40 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
             </Table>
             </div>
             {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+            {showCombineColumn && (
+              <div className="mt-3 rounded-md border border-input p-3">
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Missed the deadline for more than one? Check the ones above that are really the same explanation (e.g. you waited until after
+                  Thursday's PMT to submit for Tuesday's) and upload one PDF covering all of them.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {combineFile ? (
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <span className="max-w-32 truncate">{combineFile.name}</span>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setCombineFile(undefined)}>
+                        Change
+                      </Button>
+                    </span>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => setCombineFile(e.target.files?.[0])}
+                      className="text-xs text-muted-foreground"
+                    />
+                  )}
+                  <Button
+                    size="sm"
+                    disabled={combineSelected.size === 0 || !combineFile || combineBusy}
+                    onClick={() => setConfirmingCombine(true)}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {combineBusy ? "Uploading..." : `Submit combined (${combineSelected.size})`}
+                  </Button>
+                </div>
+                {combineError && <p className="mt-2 text-sm text-destructive">{combineError}</p>}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -270,6 +356,17 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
         onConfirm={async () => {
           if (confirmingMemo) await handleSubmit(confirmingMemo);
           setConfirmingMemo(undefined);
+        }}
+      />
+
+      <SubmissionRequirementsDialog
+        open={confirmingCombine}
+        onClose={() => setConfirmingCombine(false)}
+        busy={combineBusy}
+        requirements={REQUIREMENTS_LIST}
+        onConfirm={async () => {
+          await handleCombineSubmit();
+          setConfirmingCombine(false);
         }}
       />
     </div>

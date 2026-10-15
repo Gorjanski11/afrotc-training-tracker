@@ -266,8 +266,13 @@ export interface DeviationMemo {
   reasonOther: string | undefined;
   /** What the assigning POC wants explained/addressed in this memorandum -- required at assign time. */
   purpose: string;
-  /** The PMT this deviation memo traces back to, when it was auto-generated from a missed absence-memo deadline (undefined for a manually-assigned memo with no PMT tie). */
-  relatedPmtEventId: string | undefined;
+  /**
+   * The PMT(s) this deviation memo traces back to, when it was auto-generated from a missed
+   * absence-memo deadline -- empty for a manually-assigned memo with no PMT tie. More than one id
+   * means the cadet missed the deadline for multiple PMTs the SAME calendar day, combined into this
+   * one memo instead of issuing one per PMT.
+   */
+  relatedPmtEventIds: string[];
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;

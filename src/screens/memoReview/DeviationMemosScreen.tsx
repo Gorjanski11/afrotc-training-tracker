@@ -31,7 +31,7 @@ import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 interface Props {
   roster: Cadet[];
   memos: DeviationMemo[];
-  /** Resolves `relatedPmtEventId` (set only on memos auto-assigned for a missed Absence Memo deadline) to the PMT's title/date. */
+  /** Resolves `relatedPmtEventIds` (set only on memos auto-assigned for a missed Absence Memo deadline) to the PMT(s)' title/date. */
   events: PmtEvent[];
   createMemo: (input: DeviationMemoInput) => Promise<DeviationMemo>;
   updateMemo: (id: string, input: Partial<DeviationMemoInput>) => Promise<void>;
@@ -70,8 +70,11 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const relatedPmtLabel = (memo: DeviationMemo): string | undefined => {
-    const event = memo.relatedPmtEventId ? eventsById.get(memo.relatedPmtEventId) : undefined;
-    return event ? `${event.title} — ${shortDate(event.eventDate)}` : undefined;
+    const labels = memo.relatedPmtEventIds
+      .map((id) => eventsById.get(id))
+      .filter((e): e is PmtEvent => !!e)
+      .map((e) => `${e.title} — ${shortDate(e.eventDate)}`);
+    return labels.length > 0 ? labels.join(", ") : undefined;
   };
 
   const assignTargets = useMemo(() => cadetsInAssignScope(rule.assignScope, roster), [rule, roster]);
@@ -176,7 +179,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
         reason,
         reasonOther: reason === "Other" ? reasonOther.trim() : undefined,
         purpose: purpose.trim(),
-        relatedPmtEventId: undefined,
+        relatedPmtEventIds: [],
         dateAssigned: new Date().toISOString(),
         dueDate: dueDate ? endOfDay(dueDate).toISOString() : undefined,
         status: "Assigned",
@@ -350,7 +353,10 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
+                    <TableCell className="max-w-sm">
+                      <div>{reasonDisplay(m)}</div>
+                      {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell>
@@ -416,7 +422,10 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">{reasonDisplay(m)}</TableCell>
+                    <TableCell className="max-w-sm">
+                      <div>{reasonDisplay(m)}</div>
+                      {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
+                    </TableCell>
                     <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
                     <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
@@ -464,6 +473,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                 <TableRow>
                   <TableHead>Reviewed</TableHead>
                   <TableHead>Cadet</TableHead>
+                  <TableHead>Reason</TableHead>
                   <TableHead>Related PMT</TableHead>
                   <TableHead>Assigned by</TableHead>
                   <TableHead>Reviewed by</TableHead>
@@ -484,6 +494,10 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                           CC'd
                         </Badge>
                       )}
+                    </TableCell>
+                    <TableCell className="max-w-sm">
+                      <div>{reasonDisplay(m)}</div>
+                      {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{relatedPmtLabel(m) ?? "—"}</TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
@@ -511,7 +525,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
                 ))}
                 {processed.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground">
                       Nothing processed yet.
                     </TableCell>
                   </TableRow>

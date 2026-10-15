@@ -16,7 +16,7 @@ export interface DeviationMemoInput {
   reason: string;
   reasonOther: string | undefined;
   purpose: string;
-  relatedPmtEventId: string | undefined;
+  relatedPmtEventIds: string[];
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;
@@ -39,7 +39,11 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     reason: (data.reason as string) ?? "",
     reasonOther: (data.reasonOther as string | null | undefined) ?? undefined,
     purpose: (data.purpose as string) ?? "",
-    relatedPmtEventId: (data.relatedPmtEventId as string | null | undefined) ?? undefined,
+    // Older docs only ever had a single `relatedPmtEventId` -- read that as a 1-item array so old
+    // and new records look identical to every caller, with no Firestore data migration needed.
+    relatedPmtEventIds:
+      (data.relatedPmtEventIds as string[] | null | undefined) ??
+      (data.relatedPmtEventId ? [data.relatedPmtEventId as string] : []),
     dateAssigned: (data.dateAssigned as string) ?? "",
     dueDate: (data.dueDate as string | null | undefined) ?? undefined,
     status: ((data.status as DeviationMemoStatus) ?? "Assigned") as DeviationMemoStatus,

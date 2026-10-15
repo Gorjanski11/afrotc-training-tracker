@@ -81,6 +81,9 @@ export function AttendanceScreen({
   // button toggle instead of the plain dropdowns -- scope-shape-driven, same convention as the two
   // consts above (never an email check).
   const showCohortToggle = unitScope.kind === "all" || unitScope.kind === "group-and-gmc";
+  // Every unit-scoped commander except SAE/CWL -- can't see a future PMT's accountability at all,
+  // on either the Current/Past toggle or the TW selector (both below).
+  const restrictFuturePmts = unitScope.kind !== "all";
   const catalogById = useMemo(() => new Map(catalog.map((o) => [o.id, o])), [catalog]);
   const sortedEvents = useMemo(() => [...events].sort((a, b) => b.eventDate.localeCompare(a.eventDate)), [events]);
 
@@ -90,6 +93,19 @@ export function AttendanceScreen({
     () => [...new Set(events.map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined))].sort((a, b) => b - a),
     [events]
   );
+
+  // Every unit-scoped commander also loses any entirely-future Training Week from the TW dropdown
+  // itself -- otherwise picking one would just land on "No PMTs match this view" once
+  // visibleWeekEvents filters its events back out. Past weeks stay selectable (still useful via the
+  // Past toggle); "All weeks" is dropped too since it would silently fold future weeks' now-hidden
+  // PMTs back into the same list.
+  const selectableTWs = useMemo(() => {
+    if (!restrictFuturePmts) return availableTWs;
+    const notFutureTWs = new Set(
+      events.filter((e) => !isFutureCalendarDay(e.eventDate)).map((e) => e.trainingWeek).filter((tw): tw is number => tw !== undefined)
+    );
+    return availableTWs.filter((tw) => notFutureTWs.has(tw));
+  }, [availableTWs, events, restrictFuturePmts]);
 
   // The default view is always the current Training Week -- the latest TW that's already started
   // (has at least one PMT on or before today), regardless of whether some older TW still has
@@ -208,7 +224,6 @@ export function AttendanceScreen({
   // commander (Flight/Group/GMC-wide/group-and-gmc) can't see a future PMT's accountability at all
   // until its own calendar day arrives, regardless of which side of the toggle they're on.
   const expectedCadetIds = useMemo(() => activeCadets.map((c) => c.id), [activeCadets]);
-  const restrictFuturePmts = unitScope.kind !== "all";
   const visibleWeekEvents = useMemo(() => {
     const now = Date.now();
     return weekEvents.filter((e) => {
@@ -399,8 +414,8 @@ export function AttendanceScreen({
             <SelectValue placeholder="Training Week" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="All">All weeks</SelectItem>
-            {availableTWs.map((tw) => (
+            {!restrictFuturePmts && <SelectItem value="All">All weeks</SelectItem>}
+            {selectableTWs.map((tw) => (
               <SelectItem key={tw} value={String(tw)}>
                 TW {tw}
               </SelectItem>

@@ -18,6 +18,12 @@ function sortByLastName(cadets: Cadet[]): Cadet[] {
   return [...cadets].sort((a, b) => compareByLastName(a.name, b.name));
 }
 
+/** "BC, M-FLT" or just "BC" for a POC cadet with no flight -- the extra detail this picker shows next to each name. */
+function cadetMeta(cadet: Cadet): string {
+  const level = cadet.devLevel ?? "no level";
+  return cadet.flight ? `${level}, ${cadet.flight}-FLT` : level;
+}
+
 /** Cadre supervise, they're never a selectable subject (Section 4) -- filtered here so every caller gets this for free. */
 export function CadetCombobox({ cadets, value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);
@@ -29,7 +35,7 @@ export function CadetCombobox({ cadets, value, onChange, className }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={open} className={cn("w-64 justify-between font-normal", className)}>
-          {selected ? `${formatCadetName(selected)} (${selected.devLevel ?? "no level"})` : "Select a cadet..."}
+          {selected ? `${formatCadetName(selected)} (${cadetMeta(selected)})` : "Select a cadet..."}
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -49,7 +55,7 @@ export function CadetCombobox({ cadets, value, onChange, className }: Props) {
                   }}
                 >
                   <Check className={cn("mr-2 h-4 w-4", c.id === value ? "opacity-100" : "opacity-0")} />
-                  {formatCadetName(c)} ({c.devLevel ?? "no level"})
+                  {formatCadetName(c)} ({cadetMeta(c)})
                 </CommandItem>
               ))}
             </CommandGroup>

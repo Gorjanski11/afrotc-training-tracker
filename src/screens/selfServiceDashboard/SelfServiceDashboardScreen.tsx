@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { LayoutDashboard, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bucketForEventType, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
-import { computeCadetAttendanceSummary } from "../../domain/attendance";
+import { computeCadetAttendanceSummary, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
 import { memoStatusVariant, shortDate } from "../../domain/memoAnalytics";
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetNameCompact } from "../../domain/nameUtils";
@@ -37,7 +37,21 @@ const TONE_CLASSES: Record<"success" | "warning" | "critical", { badge: string; 
 };
 
 /** Condensed top-row stat box -- colored by `tone` (Good/Warning/Hard Limit-style severity), not just a plain critical/neutral split. */
-function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "success" | "warning" | "critical"; index: number }) {
+function HeroStat({
+  icon,
+  label,
+  value,
+  detail,
+  tone,
+  index,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  detail?: string;
+  tone?: "success" | "warning" | "critical";
+  index: number;
+}) {
   const toneClasses = tone ? TONE_CLASSES[tone] : undefined;
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05 }}>
@@ -49,6 +63,7 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
           <div>
             <div className="text-xs font-medium text-muted-foreground">{label}</div>
             <div className={cn("text-2xl font-semibold tabular-nums", toneClasses?.value)}>{value}</div>
+            {detail && <div className="text-xs text-muted-foreground">{detail}</div>}
           </div>
         </CardContent>
       </Card>
@@ -61,6 +76,13 @@ function standingTone(standing: string | undefined): "success" | "warning" | "cr
   if (standing === "Warning") return "warning";
   if (standing === "Hard Limit") return "critical";
   return undefined;
+}
+
+/** "92% · 4 absences left" -- the percent/absences-left detail line under a standing's PT/LLAB tile. */
+function standingDetail(tally: BucketTally): string | undefined {
+  if (tally.percent === undefined) return undefined;
+  const left = absencesRemainingForGoodStanding(tally);
+  return `${Math.round(tally.percent * 100)}% · ${left} absence${left === 1 ? "" : "s"} left`;
 }
 
 // "Pending"/"Submitted" (already turned in, awaiting cadre review) deliberately excluded -- reviewing
@@ -209,11 +231,19 @@ export function SelfServiceDashboardScreen({
       </h2>
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <HeroStat icon={<Gauge className="h-4.5 w-4.5" />} label="PT Standing" value={summary.pt.standing ?? "—"} tone={standingTone(summary.pt.standing)} index={0} />
+        <HeroStat
+          icon={<Gauge className="h-4.5 w-4.5" />}
+          label="PT Standing"
+          value={summary.pt.standing ?? "—"}
+          detail={standingDetail(summary.pt)}
+          tone={standingTone(summary.pt.standing)}
+          index={0}
+        />
         <HeroStat
           icon={<Gauge className="h-4.5 w-4.5" />}
           label="LLAB/FM/D&C Standing"
           value={summary.llabFm.standing ?? "—"}
+          detail={standingDetail(summary.llabFm)}
           tone={standingTone(summary.llabFm.standing)}
           index={1}
         />

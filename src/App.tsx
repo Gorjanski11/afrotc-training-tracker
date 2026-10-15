@@ -191,10 +191,16 @@ function App() {
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between gap-2 border-b border-input bg-background px-3 py-3 sm:px-8">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="flex min-w-0 items-center gap-2 text-left sm:gap-3"
+          aria-label="Reload page"
+          title="Reload page"
+        >
           <img src={`${import.meta.env.BASE_URL}det756-logo.webp`} alt="AFROTC Det 756" className="h-8 w-8 shrink-0 rounded-full object-cover sm:h-9 sm:w-9" />
           <h1 className="truncate text-base font-semibold sm:text-xl">Borinkeneers Det 756</h1>
-        </div>
+        </button>
         <div className="flex shrink-0 items-center gap-1 sm:gap-3">
           <span className="hidden truncate text-sm text-muted-foreground md:inline">{user.email}</span>
           <Button variant="ghost" size="icon" onClick={toggleViewMode} aria-label={viewMode === "desktop" ? "Switch to mobile view" : "Switch to desktop view"}>

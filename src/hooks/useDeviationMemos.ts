@@ -17,6 +17,7 @@ export interface DeviationMemoInput {
   reasonOther: string | undefined;
   purpose: string;
   relatedPmtEventIds: string[];
+  autoCategory: "absence-memo" | "accountability-or-to" | undefined;
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;
@@ -44,6 +45,7 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     relatedPmtEventIds:
       (data.relatedPmtEventIds as string[] | null | undefined) ??
       (data.relatedPmtEventId ? [data.relatedPmtEventId as string] : []),
+    autoCategory: (data.autoCategory as "absence-memo" | "accountability-or-to" | null | undefined) ?? undefined,
     dateAssigned: (data.dateAssigned as string) ?? "",
     dueDate: (data.dueDate as string | null | undefined) ?? undefined,
     status: ((data.status as DeviationMemoStatus) ?? "Assigned") as DeviationMemoStatus,

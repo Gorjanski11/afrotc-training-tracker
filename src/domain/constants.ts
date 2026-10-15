@@ -164,14 +164,9 @@ export const ATTENDANCE_WEIGHT: Record<AttendanceStatus, number | undefined> = {
 export const ABSENCE_REASONS = ["Academics", "Medical", "Personal", "Work/Job", "Other"] as const;
 export type AbsenceReason = (typeof ABSENCE_REASONS)[number];
 
-export const DEVIATION_REASONS = [
-  "Grooming & Appearance",
-  "Uniform Discrepancy",
-  "Misconduct",
-  "Customs & Courtesies",
-  "Missed Deadline",
-  "Other",
-] as const;
+// "Uniform Discrepancy" merged into "Grooming & Appearance" and "Misconduct" merged into "Customs &
+// Courtesies" -- existing deviationMemos docs stored with either old value were migrated in place.
+export const DEVIATION_REASONS = ["Grooming & Appearance", "Customs & Courtesies", "Missed Deadline", "Other"] as const;
 export type DeviationReason = (typeof DEVIATION_REASONS)[number];
 
 /** Percentage bucket for threshold purposes: PT stands alone, LLAB+FM+D&C are combined (D&C is a type of LLAB session). "OTHER" is unused today -- kept for any future PMT type that shouldn't count toward either threshold. */

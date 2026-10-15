@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardCheck, GraduationCap, FileText } from "lucide-react";
+import { ClipboardCheck, GraduationCap, FileText, ShieldAlert } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
@@ -16,9 +16,10 @@ import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS, type Flight, type Group } f
 import { AccountabilityAnalyticsView } from "../screens/analytics/AccountabilityAnalyticsView";
 import { TrainingObjectivesAnalyticsView } from "../screens/analytics/TrainingObjectivesAnalyticsView";
 import { MemorandumsAnalyticsView } from "../screens/analytics/MemorandumsAnalyticsView";
+import { DeviationsLogView } from "../screens/analytics/DeviationsLogView";
 import type { DashboardNavIntent } from "../domain/dashboardNav";
 
-type Screen = "accountability" | "trainingObjectives" | "memorandums";
+type Screen = "accountability" | "trainingObjectives" | "memorandums" | "deviations";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -133,6 +134,12 @@ export function AnalyticsApp({
                 <span className="hidden sm:inline">Memorandums</span>
               </TabsTrigger>
             )}
+            {memoReviewAccess && (
+              <TabsTrigger value="deviations">
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Deviation's Log</span>
+              </TabsTrigger>
+            )}
           </TabsList>
         </nav>
 
@@ -205,6 +212,21 @@ export function AnalyticsApp({
                       updateAbsenceMemo={absenceState.updateMemo}
                       updateDeviationMemo={deviationState.updateMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}
+                      unitScope={unitScope}
+                      flightFilter={flightFilter}
+                      onFlightFilterChange={setFlightFilter}
+                      groupFilter={groupFilter}
+                      onGroupFilterChange={setGroupFilter}
+                    />
+                  </AnimatedPanel>
+                </TabsContent>
+              )}
+              {memoReviewAccess && (
+                <TabsContent value="deviations">
+                  <AnimatedPanel>
+                    <DeviationsLogView
+                      roster={memoRoster}
+                      deviationMemos={deviationState.memos}
                       unitScope={unitScope}
                       flightFilter={flightFilter}
                       onFlightFilterChange={setFlightFilter}

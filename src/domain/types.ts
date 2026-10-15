@@ -284,6 +284,13 @@ export interface DeviationMemo {
    * one memo instead of issuing one per PMT.
    */
   relatedPmtEventIds: string[];
+  /**
+   * Set only on a "Missed Deadline" memo the backend auto-generated (afrotc-functions) -- which of
+   * the two machine triggers created it. Undefined for anything manually assigned, including a
+   * human-picked "Missed Deadline" for something unrelated to either (Deviation's Log's "Other
+   * missed deadline" subcategory, Analytics -- see domain/deviationAnalytics.ts).
+   */
+  autoCategory: "absence-memo" | "accountability-or-to" | undefined;
   dateAssigned: string;
   dueDate: string | undefined;
   status: DeviationMemoStatus;

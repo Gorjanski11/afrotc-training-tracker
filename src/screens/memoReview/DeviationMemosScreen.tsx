@@ -196,6 +196,7 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
         reasonOther: reason === "Other" ? reasonOther.trim() : undefined,
         purpose: purpose.trim(),
         relatedPmtEventIds: [],
+        autoCategory: undefined,
         dateAssigned: new Date().toISOString(),
         dueDate: dueDate ? endOfDay(dueDate).toISOString() : undefined,
         status: "Assigned",

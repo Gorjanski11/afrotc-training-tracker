@@ -1,6 +1,6 @@
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,6 +45,9 @@ import { CadreDashboardApp } from "./apps/CadreDashboardApp";
 import type { DashboardNavIntent } from "./domain/dashboardNav";
 
 type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDashboard" | "memoReview" | "analytics" | "settings";
+
+/** sessionStorage (not localStorage) -- matches the session itself only lasting until the tab closes (lib/firebase.ts's browser-session-only auth persistence), so a reload keeps the same tab but a genuinely new browser session doesn't carry one over. */
+const TAB_STORAGE_KEY = "activeTab";
 
 /** Label + icon per tab, shared by the desktop TabsList and the phone dropdown (Section H) so the two never drift apart. */
 const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> = {
@@ -102,6 +105,10 @@ function App() {
 
   const handleSignIn = async (email: string, password: string) => {
     await signIn(email, password);
+    // Every explicit sign-in lands on My Dashboard, regardless of whatever tab a previous session on
+    // this browser left in sessionStorage -- the fallback below redirects anyone without a dashboard
+    // (e.g. CADET_ONLY) to their own actual first tab.
+    setTab("myDashboard");
     const normalized = email.trim().toLowerCase();
     const me = cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
     // Either signal forces it: the literal shared password (covers anyone not yet backfilled with
@@ -146,8 +153,27 @@ function App() {
     ...(hasAnalyticsAccess ? (["analytics"] as const) : []),
     ...(hasSettingsAccess ? (["settings"] as const) : []),
   ];
-  const [tab, setTab] = useState<HubTab>(visibleTabs[0]);
+  // Reads once at mount, whether that's a true fresh page load (sessionStorage empty, so
+  // visibleTabs[0] -- My Dashboard, for anyone who has one) or a refresh via the header logo (Section:
+  // refresh keeps the tab) -- an explicit sign-in (handleSignIn) separately forces this back to My
+  // Dashboard regardless of what a previous session on this browser left behind.
+  const [tab, setTab] = useState<HubTab>(() => {
+    try {
+      const stored = sessionStorage.getItem(TAB_STORAGE_KEY);
+      if (stored && visibleTabs.includes(stored as HubTab)) return stored as HubTab;
+    } catch {
+      // sessionStorage unavailable -- fall through to the default.
+    }
+    return visibleTabs[0];
+  });
   const activeTab = visibleTabs.includes(tab) ? tab : visibleTabs[0];
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // Non-fatal -- the tab just won't survive a refresh.
+    }
+  }, [activeTab]);
   const [phoneNavOpen, setPhoneNavOpen] = useState(false);
 
   // Cross-tab "take me there" intent from a dashboard tile/row click (Cadre Dashboard, SAE's My

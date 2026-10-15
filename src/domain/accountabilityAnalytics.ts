@@ -1,4 +1,4 @@
-import { ATTENDANCE_WEIGHT, SEMESTER_PMT_TOTALS, absenceMemoDeadline, bucketForEventType, deriveClass, type Standing } from "./constants";
+import { ATTENDANCE_WEIGHT, SEMESTER_PMT_TOTALS, effectiveAbsenceMemoDeadline, bucketForEventType, deriveClass, type Standing } from "./constants";
 import { computeCadetAttendanceSummary } from "./attendance";
 import { compareByLastName } from "./nameUtils";
 import type { Attendance, AbsenceMemo, PmtEvent, Cadet } from "./types";
@@ -358,7 +358,6 @@ export interface MissedCadetRow {
 /** Every cadet who missed (A) or was Late (L) for a single PMT, with their flight/group (via `cadet`) and their Absence Memo status for that PMT, if any -- powers the trend chart's click-to-drill-down. */
 export function getMissedCadetsForEvent(event: PmtEvent, roster: Cadet[], attendance: Attendance[], absenceMemos: AbsenceMemo[]): MissedCadetRow[] {
   const rosterById = new Map(roster.map((p) => [p.id, p]));
-  const deadline = absenceMemoDeadline(event.eventDate, event.eventType);
   const now = new Date();
 
   const rows: MissedCadetRow[] = [];
@@ -370,7 +369,10 @@ export function getMissedCadetsForEvent(event: PmtEvent, roster: Cadet[], attend
     let memoStatus: MissedMemoStatus | undefined;
     if (record.status === "A") {
       const memo = absenceMemos.find((m) => m.cadetId === record.cadetId && m.pmtEventIds.includes(event.id));
-      if (!memo || memo.status === "Assigned") memoStatus = now > deadline ? "Not submitted (overdue)" : "Not submitted";
+      if (!memo || memo.status === "Assigned") {
+        const deadline = effectiveAbsenceMemoDeadline(event.eventDate, event.eventType, memo?.deadlineOverrideAt);
+        memoStatus = now > deadline ? "Not submitted (overdue)" : "Not submitted";
+      }
       else if (memo.status === "Pending") memoStatus = "Pending";
       else if (memo.status === "Accepted") memoStatus = "Accepted";
       else if (memo.status === "Rejected") memoStatus = "Rejected";

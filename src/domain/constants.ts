@@ -265,6 +265,16 @@ export function absenceMemoDeadline(eventDate: string, eventType: PmtEventType):
   return new Date(end.getTime() + 72 * 3_600_000);
 }
 
+/**
+ * The deadline that actually governs one specific Absence Memo -- the normal 72h-from-PMT-end
+ * deadline above, unless `deadlineOverrideAt` is set (Accountability's "Flight/Group Commander
+ * marked them Present by mistake" correction, Cortes Garay only): a flat 48 hours from the moment
+ * that correction was saved, with no extra grace period layered on top of it.
+ */
+export function effectiveAbsenceMemoDeadline(eventDate: string, eventType: PmtEventType, deadlineOverrideAt: string | undefined): Date {
+  return deadlineOverrideAt ? new Date(deadlineOverrideAt) : absenceMemoDeadline(eventDate, eventType);
+}
+
 /** 23:59:59 local time on a plain "YYYY-MM-DD" date-input value -- e.g. a Deviation Memo due date of "3 September" means the cadet has until 2359 that day, not midnight at the start of it. */
 export function endOfDay(dateInputValue: string): Date {
   const [year, month, day] = dateInputValue.split("-").map(Number);

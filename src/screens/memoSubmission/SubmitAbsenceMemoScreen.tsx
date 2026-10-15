@@ -9,9 +9,9 @@ import { FileText, Send, CheckCircle2, Plus, Upload, CalendarClock } from "lucid
 import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
-import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTOR_BY_AS_CLASS, absenceMemoDeadline } from "../../domain/constants";
+import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTOR_BY_AS_CLASS, effectiveAbsenceMemoDeadline } from "../../domain/constants";
 import { formatCadetName } from "../../domain/nameUtils";
-import { shortDate } from "../../domain/memoAnalytics";
+import { shortDate, shortDateTime } from "../../domain/memoAnalytics";
 import type { AbsenceAsClass, AbsenceReason } from "../../domain/constants";
 import type { AbsenceMemo, PmtEvent, Cadet } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
@@ -207,7 +207,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
       const now = new Date();
       const late = covering.some((m) => {
         const event = events.find((e) => e.id === m.pmtEventIds[0]);
-        return event ? now > absenceMemoDeadline(event.eventDate, event.eventType) : false;
+        return event ? now > effectiveAbsenceMemoDeadline(event.eventDate, event.eventType, m.deadlineOverrideAt) : false;
       });
 
       const uploaded = await uploadMemoPdf(file, "absenceMemos", person.id);
@@ -234,6 +234,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
         lateSubmission: late ? "late" : undefined,
+        deadlineOverrideAt: undefined,
+        lateCorrectionNote: undefined,
       });
 
       // The auto-assigned records this submission covers are now folded into the memo above --
@@ -287,6 +289,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         returnReason: undefined,
         attendanceUpdatedAt: undefined,
         lateSubmission: undefined,
+        deadlineOverrideAt: undefined,
+        lateCorrectionNote: undefined,
       });
 
       resetFutureForm();
@@ -407,7 +411,12 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     {myAssigned.map((m) => (
                       <label key={m.id} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
                         <input type="checkbox" checked={selectedIds.has(m.id)} onChange={() => toggleSelected(m.id)} />
-                        {m.pmtEventIds.map((id) => eventLabel(events, id)).join(", ")}
+                        <span>
+                          {m.pmtEventIds.map((id) => eventLabel(events, id)).join(", ")}
+                          {m.deadlineOverrideAt && (
+                            <span className="ml-1.5 text-xs text-destructive">(corrected -- due {shortDateTime(m.deadlineOverrideAt)})</span>
+                          )}
+                        </span>
                       </label>
                     ))}
                   </div>

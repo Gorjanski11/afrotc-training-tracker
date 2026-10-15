@@ -21,6 +21,8 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 interface Props {
   /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5). */
   unitScope: UnitScope;
+  /** Gates the Flight/Group Commander-mistake correction option (Cortes Garay only) in Attendance. */
+  userEmail: string | null | undefined;
 }
 
 /**
@@ -29,7 +31,7 @@ interface Props {
  * the Cadre Dashboard and SAE Review, which cover the same ground detachment-wide instead of per
  * unit-scoped viewer). Roster/Events moved to Settings (Section 6).
  */
-export function AccountabilityApp({ unitScope }: Props) {
+export function AccountabilityApp({ unitScope, userEmail }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -81,6 +83,7 @@ export function AccountabilityApp({ unitScope }: Props) {
             discardOrphanedPreSubmission={absenceMemoAssignmentsState.discardOrphanedPreSubmission}
             refetchAbsenceMemoAssignments={absenceMemoAssignmentsState.refetch}
             unitScope={unitScope}
+            userEmail={userEmail}
           />
         </AnimatedPanel>
       )}

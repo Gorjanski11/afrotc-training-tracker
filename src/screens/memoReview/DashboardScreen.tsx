@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { absenceMemoDeadline } from "../../domain/constants";
+import { effectiveAbsenceMemoDeadline } from "../../domain/constants";
 import { shortDate } from "../../domain/memoAnalytics";
 import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
 import type { AbsenceMemo, Cadet, DeviationMemo, PmtEvent } from "../../domain/types";
@@ -63,7 +63,10 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
     return myAbsenceMemos
       .filter((m) => m.status === "Assigned")
       .map((m) => ({ memo: m, event: eventsById.get(m.pmtEventIds[0]) }))
-      .filter((row): row is { memo: AbsenceMemo; event: PmtEvent } => !!row.event && absenceMemoDeadline(row.event.eventDate, row.event.eventType).getTime() < now);
+      .filter(
+        (row): row is { memo: AbsenceMemo; event: PmtEvent } =>
+          !!row.event && effectiveAbsenceMemoDeadline(row.event.eventDate, row.event.eventType, row.memo.deadlineOverrideAt).getTime() < now
+      );
   }, [myAbsenceMemos, events]);
 
   return (

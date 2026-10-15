@@ -316,7 +316,7 @@ function App() {
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} />
+                  <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} userEmail={user.email} />
                 </AnimatedPanel>
               </TabsContent>
             )}

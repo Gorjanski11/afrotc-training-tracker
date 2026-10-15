@@ -237,6 +237,17 @@ export interface AbsenceMemo {
    * through the grace window (the `escalateOverdueAbsenceMemos` escalation path).
    */
   lateSubmission: "late" | "dns" | undefined;
+  /**
+   * Set only when Cortes Garay corrects a cadet's own saved "Present" to "Absent" in Accountability
+   * (a Flight/Group Commander's mistake, caught late) -- replaces the normal 72h-from-PMT-end
+   * deadline with a flat 48 hours from the moment the correction was saved, with NO extra 24h grace
+   * on top (the cadet already has the memo drafted, per the project's own rule here). Every deadline
+   * check in the app (`effectiveAbsenceMemoDeadline` in domain/constants.ts) and the backend
+   * escalation function both honor this over the normal computed deadline when it's set.
+   */
+  deadlineOverrideAt: string | undefined;
+  /** Required note explaining the correction, saved alongside `deadlineOverrideAt` for an audit trail. */
+  lateCorrectionNote: string | undefined;
 }
 
 /** One person referenced by email+display name -- used for the deviation memo assigner/CC fields (Section 7 of the plan), where identity needs to be matched reliably rather than just displayed. */

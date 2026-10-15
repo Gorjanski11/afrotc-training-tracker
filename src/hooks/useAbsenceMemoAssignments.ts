@@ -68,7 +68,15 @@ export function useAbsenceMemoAssignments() {
       reason: AbsenceReason | undefined,
       reasonOther: string | undefined,
       attendanceId: string,
-      opts?: { refetch?: boolean }
+      opts?: {
+        refetch?: boolean;
+        /**
+         * Cortes Garay correcting a cadet's own saved "Present" to "Absent" in Accountability (a
+         * Flight/Group Commander's mistake, caught late) -- replaces the normal 72h-from-PMT-end
+         * deadline with a flat 48 hours from right now, no extra grace period on top.
+         */
+        lateCorrection?: { note: string };
+      }
     ) => {
       if (new Date(pmtEvent.eventDate).getTime() < new Date(ABSENCE_MEMO_AUTO_ASSIGN_START).getTime()) return;
       const alreadyCovered = refs.some((m) => m.cadetId === cadet.id && m.pmtEventIds.includes(pmtEvent.id) && m.status !== "Rejected");
@@ -86,6 +94,8 @@ export function useAbsenceMemoAssignments() {
           status: "Assigned" as const,
           submittedAt: "",
           assignedAt: new Date().toISOString(),
+          deadlineOverrideAt: opts?.lateCorrection ? new Date(Date.now() + 48 * 3_600_000).toISOString() : undefined,
+          lateCorrectionNote: opts?.lateCorrection?.note,
         }),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

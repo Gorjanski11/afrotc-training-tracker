@@ -9,7 +9,7 @@ import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceS
 import { isEventFullyRecorded, isFutureCalendarDay, isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import { shortDateTime } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
-import type { UnitScope } from "../../domain/access";
+import { isCortesGaray, type UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
 import type { Attendance, PmtEvent, Cadet, TrainingObjective } from "../../domain/types";
 
@@ -28,7 +28,7 @@ interface Props {
     reason: AbsenceReason | undefined,
     reasonOther: string | undefined,
     attendanceId: string,
-    opts?: { refetch?: boolean }
+    opts?: { refetch?: boolean; lateCorrection?: { note: string } }
   ) => Promise<void>;
   retractAbsenceMemoAssignment: (cadetId: string, pmtEventId: string, opts?: { refetch?: boolean }) => Promise<void>;
   linkPreSubmittedAttendance: (cadetId: string, pmtEventId: string, attendanceId: string, opts?: { refetch?: boolean }) => Promise<boolean>;
@@ -40,6 +40,8 @@ interface Props {
   initialPmtEventId?: string;
   /** A Group/Flight Commander already only has their own unit's roster here (Section 8) -- hide whichever filter would only ever show one meaningful value. */
   unitScope: UnitScope;
+  /** Gates the Flight/Group Commander-mistake correction option (Cortes Garay only) below. */
+  userEmail: string | null | undefined;
 }
 
 const NONE = "__none__";
@@ -65,7 +67,9 @@ export function AttendanceScreen({
   refetchAbsenceMemoAssignments,
   initialPmtEventId,
   unitScope,
+  userEmail,
 }: Props) {
+  const canUseLateCorrection = isCortesGaray(userEmail);
   // A "group" or "flight" scoped commander's roster only ever has one Group or one Flight value in
   // it -- hide BOTH selects for them, since the other one would only ever show a meaningless
   // empty-or-single-value option (Section A2). But "gmc" (all 4 flights, e.g. Montalvo) and
@@ -153,6 +157,11 @@ export function AttendanceScreen({
   const [pending, setPending] = useState<
     Record<string, { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
   >({});
+  // Cortes Garay only -- correcting a cadet's own saved "Present" to "Absent" because a Flight/Group
+  // Commander marked them Present by mistake. When enabled (with a note), the cadet gets a flat 48h
+  // window instead of a deviation memo for the original 72h deadline they never had a fair shot at --
+  // but still gets the normal deviation memo if they also miss THIS window (Section: escalation).
+  const [lateCorrections, setLateCorrections] = useState<Record<string, { enabled: boolean; note: string }>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>();
   const [groupFilter, setGroupFilter] = useState<Group | "All">(
@@ -296,7 +305,23 @@ export function AttendanceScreen({
     setPending((prev) => ({ ...prev, [cadetId]: { status: NONE, absenceReason: undefined, absenceReasonOther: undefined } }));
   };
 
+  const getLateCorrection = (cadetId: string) => lateCorrections[cadetId] ?? { enabled: false, note: "" };
+  const toggleLateCorrection = (cadetId: string) => {
+    setLateCorrections((prev) => ({ ...prev, [cadetId]: { ...getLateCorrection(cadetId), enabled: !getLateCorrection(cadetId).enabled } }));
+  };
+  const setLateCorrectionNote = (cadetId: string, note: string) => {
+    setLateCorrections((prev) => ({ ...prev, [cadetId]: { ...getLateCorrection(cadetId), note } }));
+  };
+  /** True only at the exact moment a saved "Present" is being corrected to "Absent" -- the only case this option is ever offered. */
+  const isPresentToAbsentCorrection = (cadetId: string): boolean =>
+    canUseLateCorrection && existingByCadet.get(cadetId)?.status === "P" && getValue(cadetId).status === "A";
+
   const dirtyCount = Object.keys(pending).length;
+  const hasInvalidLateCorrection = Object.keys(pending).some((cadetId) => {
+    if (!isPresentToAbsentCorrection(cadetId)) return false;
+    const lc = getLateCorrection(cadetId);
+    return lc.enabled && lc.note.trim().length === 0;
+  });
   const windowClosed = selectedEvent ? isPostAccountabilityWindowClosed(selectedEvent) : false;
 
   const handleSave = async () => {
@@ -353,8 +378,15 @@ export function AttendanceScreen({
               await updateAttendance(attendanceId, { ...input, status: "PE" }, { refetch: false });
             } else {
               // An Absence Memo is assigned to the cadet the instant they're marked Absent -- the
-              // cadet then picks it up from the Memo Submissions site.
-              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId, { refetch: false });
+              // cadet then picks it up from the Memo Submissions site. A Flight/Group Commander's
+              // mistake, corrected late (existing saved status was "P"), gets the 48h override instead
+              // of the normal 72h-from-PMT-end deadline.
+              const lc = getLateCorrection(cadetId);
+              const lateCorrection = existing?.status === "P" && lc.enabled && lc.note.trim().length > 0 ? { note: lc.note.trim() } : undefined;
+              await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId, {
+                refetch: false,
+                lateCorrection,
+              });
             }
           }
         } else {
@@ -370,6 +402,7 @@ export function AttendanceScreen({
       // per cadet (see the per-write `{ refetch: false }` calls above).
       await Promise.all([refetchAttendance(true), refetchAbsenceMemoAssignments(true)]);
       setPending({});
+      setLateCorrections({});
       awaitingPostSaveDefaultRef.current = true;
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Failed to save one or more entries.");
@@ -387,7 +420,10 @@ export function AttendanceScreen({
         </h2>
         <div className="flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}
-          <Button onClick={handleSave} disabled={dirtyCount === 0 || saving}>
+          {!saveError && hasInvalidLateCorrection && (
+            <span className="text-sm text-destructive">Add a note explaining the correction before saving.</span>
+          )}
+          <Button onClick={handleSave} disabled={dirtyCount === 0 || saving || hasInvalidLateCorrection}>
             <Save />
             {saving ? "Saving..." : dirtyCount > 0 ? `Save Changes (${dirtyCount})` : "Save Changes"}
           </Button>
@@ -592,29 +628,47 @@ export function AttendanceScreen({
                   </TableCell>
                   <TableCell>
                     {value.status === "A" && (
-                      <div className="flex items-center gap-1.5">
-                        <Select
-                          value={value.absenceReason ?? ABSENCE_REASONS[0]}
-                          onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason, value.absenceReasonOther)}
-                        >
-                          <SelectTrigger className="h-7 w-40 text-[11px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ABSENCE_REASONS.map((r) => (
-                              <SelectItem key={r} value={r}>
-                                {r}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {value.absenceReason === "Other" && (
-                          <Input
-                            value={value.absenceReasonOther ?? ""}
-                            onChange={(e) => setValue(cadet.id, "A", "Other", e.target.value)}
-                            placeholder="Describe the reason"
-                            className="h-7 w-48 text-[11px]"
-                          />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Select
+                            value={value.absenceReason ?? ABSENCE_REASONS[0]}
+                            onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason, value.absenceReasonOther)}
+                          >
+                            <SelectTrigger className="h-7 w-40 text-[11px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ABSENCE_REASONS.map((r) => (
+                                <SelectItem key={r} value={r}>
+                                  {r}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {value.absenceReason === "Other" && (
+                            <Input
+                              value={value.absenceReasonOther ?? ""}
+                              onChange={(e) => setValue(cadet.id, "A", "Other", e.target.value)}
+                              placeholder="Describe the reason"
+                              className="h-7 w-48 text-[11px]"
+                            />
+                          )}
+                        </div>
+                        {isPresentToAbsentCorrection(cadet.id) && (
+                          <div className="flex flex-col gap-1 border-t border-input pt-1.5">
+                            <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                              <input type="checkbox" checked={getLateCorrection(cadet.id).enabled} onChange={() => toggleLateCorrection(cadet.id)} />
+                              Flight/Group Commander marked them Present by mistake -- reopen a 48h window instead of a deviation memo
+                            </label>
+                            {getLateCorrection(cadet.id).enabled && (
+                              <Input
+                                value={getLateCorrection(cadet.id).note}
+                                onChange={(e) => setLateCorrectionNote(cadet.id, e.target.value)}
+                                placeholder="Explain the mistake (required)"
+                                className="h-7 w-64 text-[11px]"
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

@@ -27,6 +27,11 @@ interface Props {
   availableDevLevels?: readonly DevLevel[];
   /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
   unitScope?: UnitScope;
+  /** Lifted up to AnalyticsApp so the Flight/Group selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
+  flightFilter: Flight | "All";
+  onFlightFilterChange: (v: Flight | "All") => void;
+  groupFilter: Group | "All";
+  onGroupFilterChange: (v: Group | "All") => void;
 }
 
 function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
@@ -58,7 +63,18 @@ const COHORT_OPTIONS = ["POC", "GMC"] as const;
 type CohortFilter = (typeof COHORT_OPTIONS)[number];
 
 /** Section 6b -- same Cadet/Flight/Group exclusive-filter bar as Accountability Analytics, plus this screen's own Class (Dev Level) and PLO filters, all of which now feed every chart below. */
-export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, pmtEvents, availableDevLevels = DEV_LEVELS, unitScope }: Props) {
+export function TrainingObjectivesAnalyticsView({
+  cadets,
+  catalog,
+  completions,
+  pmtEvents,
+  availableDevLevels = DEV_LEVELS,
+  unitScope,
+  flightFilter,
+  onFlightFilterChange,
+  groupFilter,
+  onGroupFilterChange,
+}: Props) {
   // "gmc" (all 4 flights, e.g. Montalvo) and "group-and-gmc" (one group PLUS all 4 flights, e.g.
   // Santiago) genuinely span multiple flights, so the Flight select stays meaningful for them --
   // only "flight"/"group" scopes (a single fixed value either way) hide it. "group-and-gmc" ALSO
@@ -69,8 +85,6 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
   const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
   const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [masterCadetId, setMasterCadetId] = useState<string>(ALL_CADETS);
-  const [masterFlight, setMasterFlight] = useState<Flight | "All">("All");
-  const [masterGroup, setMasterGroup] = useState<Group | "All">("All");
   const [cohortFilter, setCohortFilter] = useState<CohortFilter | "All">("All");
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [ploFilter, setPloFilter] = useState<string>("All");
@@ -102,8 +116,8 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     setMasterCadetId(which === "cadet" ? value : ALL_CADETS);
-    setMasterFlight(which === "flight" ? (value as Flight | "All") : "All");
-    setMasterGroup(which === "group" ? (value as Group | "All") : "All");
+    onFlightFilterChange(which === "flight" ? (value as Flight | "All") : "All");
+    onGroupFilterChange(which === "group" ? (value as Group | "All") : "All");
   };
 
   const filteredCadets = useMemo(
@@ -111,10 +125,10 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
       cadets
         .filter((c) => cohortFilter === "All" || deriveClass(c.asClass, c.isCadre) === cohortFilter)
         .filter((c) => devLevelFilter === "All" || c.devLevel === devLevelFilter)
-        .filter((c) => masterFlight === "All" || c.flight === masterFlight)
-        .filter((c) => masterGroup === "All" || c.group === masterGroup)
+        .filter((c) => flightFilter === "All" || c.flight === flightFilter)
+        .filter((c) => groupFilter === "All" || c.group === groupFilter)
         .filter((c) => masterCadetId === ALL_CADETS || c.id === masterCadetId),
-    [cadets, cohortFilter, devLevelFilter, masterFlight, masterGroup, masterCadetId]
+    [cadets, cohortFilter, devLevelFilter, flightFilter, groupFilter, masterCadetId]
   );
   const filteredCatalog = useMemo(() => (ploFilter === "All" ? catalog : catalog.filter((o) => o.plo === ploFilter)), [catalog, ploFilter]);
 
@@ -166,7 +180,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={cadets} value={masterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
-          <Select value={masterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+          <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Flight" />
             </SelectTrigger>
@@ -181,7 +195,7 @@ export function TrainingObjectivesAnalyticsView({ cadets, catalog, completions, 
           </Select>
         )}
         {!hideGroupFilter && (
-          <Select value={masterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
+          <Select value={groupFilter} onValueChange={(v) => setExclusiveFilter("group", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Group" />
             </SelectTrigger>

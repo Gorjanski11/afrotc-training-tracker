@@ -12,7 +12,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useAttendanceLink } from "../hooks/useAttendanceLink";
 import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
-import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS } from "../domain/constants";
+import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS, type Flight, type Group } from "../domain/constants";
 import { AccountabilityAnalyticsView } from "../screens/analytics/AccountabilityAnalyticsView";
 import { TrainingObjectivesAnalyticsView } from "../screens/analytics/TrainingObjectivesAnalyticsView";
 import { MemorandumsAnalyticsView } from "../screens/analytics/MemorandumsAnalyticsView";
@@ -63,6 +63,11 @@ export function AnalyticsApp({
 
   const first: Screen = accountabilityAccess ? "accountability" : trainingObjectivesAccess !== "none" ? "trainingObjectives" : "memorandums";
   const [screen, setScreen] = useState<Screen>(first);
+
+  // Shared Flight/Group filter, lifted out of the 3 sub-views -- picking a unit on one sub-tab keeps
+  // it selected when switching to another, instead of each view tracking its own independent filter.
+  const [flightFilter, setFlightFilter] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
+  const [groupFilter, setGroupFilter] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
 
   useEffect(() => {
     if (!initialAccountabilityFilter) return;
@@ -159,6 +164,10 @@ export function AnalyticsApp({
                       unitScope={unitScope}
                       initialFilter={initialAccountabilityFilter}
                       onConsumeInitialFilter={onConsumeInitialFilter}
+                      flightFilter={flightFilter}
+                      onFlightFilterChange={setFlightFilter}
+                      groupFilter={groupFilter}
+                      onGroupFilterChange={setGroupFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>
@@ -173,6 +182,10 @@ export function AnalyticsApp({
                       pmtEvents={eventsState.events}
                       availableDevLevels={availableDevLevels}
                       unitScope={unitScope}
+                      flightFilter={flightFilter}
+                      onFlightFilterChange={setFlightFilter}
+                      groupFilter={groupFilter}
+                      onGroupFilterChange={setGroupFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>
@@ -193,6 +206,10 @@ export function AnalyticsApp({
                       updateDeviationMemo={deviationState.updateMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}
                       unitScope={unitScope}
+                      flightFilter={flightFilter}
+                      onFlightFilterChange={setFlightFilter}
+                      groupFilter={groupFilter}
+                      onGroupFilterChange={setGroupFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>

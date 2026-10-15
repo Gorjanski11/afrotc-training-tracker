@@ -41,6 +41,11 @@ interface Props {
   /** Set by a Cadre/SAE Dashboard row click -- pre-applies this cadet/group/flight filter on mount, then `onConsumeInitialFilter` clears it. */
   initialFilter?: Extract<DashboardNavIntent, { kind: "accountabilityAnalytics" }>;
   onConsumeInitialFilter?: () => void;
+  /** Lifted up to AnalyticsApp so the Flight/Group selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
+  flightFilter: Flight | "All";
+  onFlightFilterChange: (v: Flight | "All") => void;
+  groupFilter: Group | "All";
+  onGroupFilterChange: (v: Group | "All") => void;
 }
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
@@ -210,7 +215,19 @@ function CombinedClickableDot({
   );
 }
 
-export function AccountabilityAnalyticsView({ roster, events, attendance, absenceMemos, unitScope, initialFilter, onConsumeInitialFilter }: Props) {
+export function AccountabilityAnalyticsView({
+  roster,
+  events,
+  attendance,
+  absenceMemos,
+  unitScope,
+  initialFilter,
+  onConsumeInitialFilter,
+  flightFilter,
+  onFlightFilterChange,
+  groupFilter,
+  onGroupFilterChange,
+}: Props) {
   // A single-unit scoped commander (Flight/Group) only ever gets the Cadet filter -- Flight, Group,
   // and Class all hide for them (Section A3). But "gmc" (all 4 flights, e.g. Montalvo) and
   // "group-and-gmc" (one group PLUS all 4 flights, e.g. Santiago) genuinely span multiple flights, so
@@ -229,8 +246,6 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   // page, including the table (Section: master table filters -> whole page). PMT type is NOT part of
   // this group -- the trend chart has its own view toggle and the table has its own dedicated stepper.
   const [filterCadetId, setFilterCadetId] = useState<string>(ALL_CADETS);
-  const [filterFlight, setFilterFlight] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
-  const [filterGroup, setFilterGroup] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
   const [filterClass, setFilterClass] = useState<ClassFilter | "All">("All");
   const [filterStanding, setFilterStanding] = useState<Standing | "All">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
@@ -247,8 +262,8 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   useEffect(() => {
     if (!initialFilter) return;
     setFilterCadetId(initialFilter.cadetId ?? ALL_CADETS);
-    setFilterFlight(initialFilter.flight ?? "All");
-    setFilterGroup(initialFilter.group ?? "All");
+    onFlightFilterChange(initialFilter.flight ?? "All");
+    onGroupFilterChange(initialFilter.group ?? "All");
     setFilterClass("All");
     onConsumeInitialFilter?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,20 +274,20 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
   const hasCadetFilter = filterCadetId !== ALL_CADETS;
-  const hasUnitFilter = filterFlight !== "All" || filterGroup !== "All";
+  const hasUnitFilter = flightFilter !== "All" || groupFilter !== "All";
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
     setFilterCadetId(which === "cadet" ? value : ALL_CADETS);
-    setFilterFlight(which === "flight" ? (value as Flight | "All") : "All");
-    setFilterGroup(which === "group" ? (value as Group | "All") : "All");
+    onFlightFilterChange(which === "flight" ? (value as Flight | "All") : "All");
+    onGroupFilterChange(which === "group" ? (value as Group | "All") : "All");
     setFilterClass(which === "class" ? (value as ClassFilter | "All") : "All");
   };
 
   const filteredRoster = useMemo(
     () =>
       sortedActiveRoster
-        .filter((p) => filterFlight === "All" || p.flight === filterFlight)
-        .filter((p) => filterGroup === "All" || p.group === filterGroup)
+        .filter((p) => flightFilter === "All" || p.flight === flightFilter)
+        .filter((p) => groupFilter === "All" || p.group === groupFilter)
         .filter((p) => filterClass === "All" || deriveClass(p.asClass, p.isCadre) === filterClass)
         .filter((p) => {
           if (filterStanding === "All") return true;
@@ -280,7 +295,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
           return standing === filterStanding;
         }),
-    [sortedActiveRoster, filterFlight, filterGroup, filterClass, filterStanding, tableBucketChoice, attendance, pmtEventsById]
+    [sortedActiveRoster, flightFilter, groupFilter, filterClass, filterStanding, tableBucketChoice, attendance, pmtEventsById]
   );
 
   const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === filterCadetId), [filteredRoster, hasCadetFilter, filterCadetId]);
@@ -577,7 +592,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
         <CadetFilterCombobox roster={sortedActiveRoster} value={filterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
-          <Select value={filterFlight} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+          <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Flight" />
             </SelectTrigger>
@@ -592,7 +607,7 @@ export function AccountabilityAnalyticsView({ roster, events, attendance, absenc
           </Select>
         )}
         {!hideGroupFilter && (
-          <Select value={filterGroup} onValueChange={(v) => setExclusiveFilter("group", v)}>
+          <Select value={groupFilter} onValueChange={(v) => setExclusiveFilter("group", v)}>
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Group" />
             </SelectTrigger>

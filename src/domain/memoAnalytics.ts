@@ -72,7 +72,12 @@ export function combineMemos(absenceMemos: AbsenceMemo[], deviationMemos: Deviat
   return rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
 }
 
-/** Group/Flight/individual-cadet sub-filter, shared by every table in the Memorandums Analytics view. */
+/**
+ * Group/Flight/individual-cadet sub-filter, shared by every table in the Memorandums Analytics and
+ * Deviation's Log views. A row whose cadet isn't in `roster` at all -- e.g. an Inactive cadet,
+ * already stripped out of `roster` upstream -- is always dropped, regardless of the Flight/Group
+ * filter state, so an Inactive cadet's old memos never resurface just because "All" is selected.
+ */
 export function filterByRosterScope<T extends { cadetId: string }>(
   rows: T[],
   roster: Cadet[],
@@ -83,9 +88,10 @@ export function filterByRosterScope<T extends { cadetId: string }>(
   const rosterById = new Map(roster.map((p) => [p.id, p]));
   return rows.filter((row) => {
     const person = rosterById.get(row.cadetId);
+    if (!person) return false;
     if (cadetId !== "All" && row.cadetId !== cadetId) return false;
-    if (flight !== "All" && person?.flight !== flight) return false;
-    if (group !== "All" && person?.group !== group) return false;
+    if (flight !== "All" && person.flight !== flight) return false;
+    if (group !== "All" && person.group !== group) return false;
     return true;
   });
 }

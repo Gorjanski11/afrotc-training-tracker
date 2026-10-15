@@ -249,9 +249,20 @@ export function excludeCadre(roster: Cadet[]): Cadet[] {
   return roster.filter((p) => !p.isCadre);
 }
 
-/** An Inactive cadet is no longer being tracked -- excluded from Accountability and TO's the same way Cadre is, everywhere except the Settings Roster where cadre manages/reactivates them. */
+/** An Inactive cadet is no longer being tracked -- excluded everywhere in the app except the Settings Roster, where cadre manages/reactivates them. */
 export function excludeInactive(roster: Cadet[]): Cadet[] {
   return roster.filter((p) => p.status !== "Inactive");
+}
+
+/**
+ * Drops any cadetId-keyed row (attendance, an absence/deviation memo, a completion, ...) that
+ * belongs to an Inactive cadet -- same blanket rule as `excludeInactive`, for data that's keyed by
+ * cadet rather than being a roster array itself. Settings' Roster/Data Management/New Semester are
+ * the only places still allowed to see an Inactive cadet's records.
+ */
+export function excludeInactiveRows<T extends { cadetId: string }>(rows: T[], roster: Cadet[]): T[] {
+  const inactiveIds = new Set(roster.filter((p) => p.status === "Inactive").map((p) => p.id));
+  return rows.filter((r) => !inactiveIds.has(r.cadetId));
 }
 
 /** The whole ALL_ACCESS tier (Cadre + Cortes Garay + Saltiel + Mo Velez) -- gates Settings' Account Manager and the Data Management screen. */
@@ -477,11 +488,12 @@ export function isTrueCadre(email: string | null | undefined, roster: Cadet[]): 
 
 /** Cadets a given assign scope allows targeting -- drives the cadet picker in the Assign tab. */
 export function cadetsInAssignScope(scope: DeviationAssignScope, roster: Cadet[]): Cadet[] {
-  if (scope === "everyone") return excludeCadre(roster); // a Deviation Memo target is always a cadet, never Cadre (Section 4)
-  if (scope === "everyone-except-cadre") return roster.filter((p) => !p.isCadre);
-  if (scope === "any-gmc") return roster.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
-  if ("flight" in scope) return roster.filter((p) => p.flight === scope.flight);
-  return roster.filter((p) => p.group === scope.group);
+  const active = excludeInactive(roster); // an Inactive cadet is never an assignable deviation-memo target
+  if (scope === "everyone") return excludeCadre(active); // a Deviation Memo target is always a cadet, never Cadre (Section 4)
+  if (scope === "everyone-except-cadre") return active.filter((p) => !p.isCadre);
+  if (scope === "any-gmc") return active.filter((p) => deriveClass(p.asClass, p.isCadre) === "GMC");
+  if ("flight" in scope) return active.filter((p) => p.flight === scope.flight);
+  return active.filter((p) => p.group === scope.group);
 }
 
 /**
@@ -497,10 +509,10 @@ export function isWithinDeviationAssignWindow(now: Date = new Date()): boolean {
 
 /** Every roster member currently authorized to assign a Deviation Memo -- populates the "Assigned by" combobox. */
 export function getAuthorizedDeviationAssigners(roster: Cadet[]): Cadet[] {
-  return roster.filter((p) => p.email && resolveDeviationAssignRule(p.email, roster).canAssign);
+  return excludeInactive(roster).filter((p) => p.email && resolveDeviationAssignRule(p.email, roster).canAssign);
 }
 
 /** POC-class or Cadre -- who's eligible to be CC'd on a Deviation Memo. */
 export function getCcEligiblePeople(roster: Cadet[]): Cadet[] {
-  return roster.filter((p) => p.isCadre || deriveClass(p.asClass, p.isCadre) === "POC");
+  return excludeInactive(roster).filter((p) => p.isCadre || deriveClass(p.asClass, p.isCadre) === "POC");
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,7 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canManageAccounts, canEditEvents, resolveTabAccess } from "../domain/access";
+import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canManageAccounts, canEditEvents, excludeInactive, resolveTabAccess } from "../domain/access";
 import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
@@ -63,6 +63,10 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
   // SOP (1 Oct 2026) Sections 3/4's review flags are literally "for review by the SAE" -- narrower
   // than Cadre, matching isCortesGaray (the same tier that gates New Semester's riskiest actions).
   const saeReviewAccess = isCortesGaray(userEmail);
+  // Inactive cadets are excluded from Account Manager too -- an already-departed cadet's login isn't
+  // something anyone should be resetting/impersonating day to day. The Roster screen below is the one
+  // place in Settings that still needs the raw, unfiltered roster, to reactivate someone from it.
+  const activeRoster = useMemo(() => excludeInactive(cadetsState.cadets), [cadetsState.cadets]);
   const [section, setSection] = useState<Section>("roster");
 
   useEffect(() => {
@@ -148,7 +152,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
           <AnimatedPanel>
             {activeSection === "accounts" && accountManagerAccess && (
               <AccountManagerScreen
-                roster={cadetsState.cadets}
+                roster={activeRoster}
                 updateCadetFields={cadetsState.updateCadetFields}
                 userEmail={userEmail}
                 reauthenticate={reauthenticate}

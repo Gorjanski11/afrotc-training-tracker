@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, LayoutDashboard, ClipboardList } from "lucide-react";
@@ -9,6 +9,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useAttendanceLink } from "../hooks/useAttendanceLink";
 import { useAuth } from "../hooks/useAuth";
+import { excludeInactive, excludeInactiveRows } from "../domain/access";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
 import { DeviationMemosScreen } from "../screens/memoReview/DeviationMemosScreen";
@@ -62,6 +63,12 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
     setOpenMemoId(memoId);
   };
 
+  // An Inactive cadet is excluded everywhere here too -- their name never appears in an identity
+  // lookup (roster), and any absence/deviation memo already on file for them never shows up either.
+  const roster = useMemo(() => excludeInactive(cadetsState.cadets), [cadetsState.cadets]);
+  const absenceMemos = useMemo(() => excludeInactiveRows(absenceState.memos, cadetsState.cadets), [absenceState.memos, cadetsState.cadets]);
+  const deviationMemos = useMemo(() => excludeInactiveRows(deviationState.memos, cadetsState.cadets), [deviationState.memos, cadetsState.cadets]);
+
   const dataLoading = cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading;
   const loadError = cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error;
 
@@ -108,9 +115,9 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                 <AnimatedPanel>
                   <DashboardScreen
                     events={eventsState.events}
-                    absenceMemos={absenceState.memos}
-                    deviationMemos={deviationState.memos}
-                    roster={cadetsState.cadets}
+                    absenceMemos={absenceMemos}
+                    deviationMemos={deviationMemos}
+                    roster={roster}
                     userEmail={userEmail}
                     onOpenAbsence={showAbsence ? (memoId) => openFromOwnDashboard("absence", memoId) : undefined}
                   />
@@ -121,8 +128,8 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                   <AnimatedPanel>
                     <AbsenceMemosScreen
                       events={eventsState.events}
-                      memos={absenceState.memos}
-                      roster={cadetsState.cadets}
+                      memos={absenceMemos}
+                      roster={roster}
                       updateMemo={absenceState.updateMemo}
                       deleteMemo={absenceState.deleteMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}
@@ -137,8 +144,8 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
               <TabsContent value="deviation">
                 <AnimatedPanel>
                   <DeviationMemosScreen
-                    roster={cadetsState.cadets}
-                    memos={deviationState.memos}
+                    roster={roster}
+                    memos={deviationMemos}
                     events={eventsState.events}
                     createMemo={deviationState.createMemo}
                     updateMemo={deviationState.updateMemo}

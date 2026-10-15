@@ -83,7 +83,10 @@ export function AnalyticsApp({
     [unitScope, cadetsState.cadets]
   );
   // Memorandums Analytics is now unit-scoped too (Section A3 -- a Flight/Group Commander only sees their own unit's memos, same as Accountability/TO's), Cadre still never appear in its cadet lookup.
-  const memoRoster = useMemo(() => excludeCadre(applyUnitScope(unitScope, cadetsState.cadets)), [unitScope, cadetsState.cadets]);
+  // An Inactive cadet is excluded here too, same as scopedCadets -- filterByRosterScope (domain/memoAnalytics)
+  // then drops any memo/deviation row whose cadet isn't in this roster at all, so an Inactive cadet's
+  // old records never resurface in Memorandums Analytics or Deviation's Log either.
+  const memoRoster = useMemo(() => excludeInactive(excludeCadre(applyUnitScope(unitScope, cadetsState.cadets))), [unitScope, cadetsState.cadets]);
 
   const toCadets = useMemo(() => {
     if (trainingObjectivesAccess === "poc") return scopedCadets.filter((c) => c.devLevel && (POC_DEV_LEVELS as readonly string[]).includes(c.devLevel));

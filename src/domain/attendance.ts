@@ -122,6 +122,17 @@ export function isEventFullyRecorded(event: PmtEvent, expectedCadetIds: string[]
   return expectedCadetIds.every((id) => recordedIds.has(id));
 }
 
+/** True once a PMT's own calendar date (device-local, not its exact scheduled time) is strictly after today --
+ * used to gate unit-scoped commanders (every Accountability viewer except SAE/CWL) out of a future PMT's
+ * accountability entirely. A same-day PMT counts as "today," not future, even hours before its own start time. */
+export function isFutureCalendarDay(eventDate: string, now: Date = new Date()): boolean {
+  const eventDay = new Date(eventDate);
+  eventDay.setHours(0, 0, 0, 0);
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  return eventDay.getTime() > today.getTime();
+}
+
 /** True once a Post-Accountability entry lands after its window has already closed -- a visible flag, never a block. */
 export function isEntryOutsideWindow(event: PmtEvent, recordedAt: string): boolean {
   return new Date(recordedAt).getTime() > isPostAccountabilityCloseTime(event).getTime();

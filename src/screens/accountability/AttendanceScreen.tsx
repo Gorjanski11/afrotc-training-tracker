@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Save, TriangleAlert, ClipboardCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
-import { isEventFullyRecorded, isPostAccountabilityWindowClosed } from "../../domain/attendance";
+import { isEventFullyRecorded, isFutureCalendarDay, isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import { shortDateTime } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import type { UnitScope } from "../../domain/access";
@@ -204,16 +204,20 @@ export function AttendanceScreen({
   // Current/Past split (Section 3): "Past" is every already-happened PMT where every one of the
   // viewer's currently-scoped cadets already has a status; "Current" is everything else, including
   // not-yet-happened PMTs (zero attendance rows -> never "fully recorded"), preserving today's
-  // ability to pre-browse an upcoming PMT.
+  // ability to pre-browse an upcoming PMT -- but only for SAE/CWL ("all"). Every unit-scoped
+  // commander (Flight/Group/GMC-wide/group-and-gmc) can't see a future PMT's accountability at all
+  // until its own calendar day arrives, regardless of which side of the toggle they're on.
   const expectedCadetIds = useMemo(() => activeCadets.map((c) => c.id), [activeCadets]);
+  const restrictFuturePmts = unitScope.kind !== "all";
   const visibleWeekEvents = useMemo(() => {
     const now = Date.now();
     return weekEvents.filter((e) => {
+      if (restrictFuturePmts && isFutureCalendarDay(e.eventDate)) return false;
       const passed = new Date(e.eventDate).getTime() <= now;
       const fullyRecorded = isEventFullyRecorded(e, expectedCadetIds, attendance);
       return recordedFilter === "past" ? passed && fullyRecorded : !passed || !fullyRecorded;
     });
-  }, [weekEvents, recordedFilter, expectedCadetIds, attendance]);
+  }, [weekEvents, recordedFilter, expectedCadetIds, attendance, restrictFuturePmts]);
 
   // The selected PMT can fall outside the visible list the moment the Current/Past toggle, the TW,
   // or the unit filters change -- fall back to the first still-visible event rather than leaving the

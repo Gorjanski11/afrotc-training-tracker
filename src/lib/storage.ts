@@ -1,8 +1,20 @@
 import { deleteObject, getDownloadURL, getMetadata, listAll, ref, uploadBytes } from "firebase/storage";
 import { storage } from "./firebase";
 
+/**
+ * The single choke point every memo PDF upload goes through (Submit Absence/Deviation Memo's 4 upload
+ * flows) -- every `<input type="file" accept="application/pdf">` only ever hints the OS file picker to
+ * pre-filter, it does not actually block a non-PDF someone picks via "All Files" or drag-and-drop, which
+ * is how a Word doc (e.g. a .docx deviation memo) has slipped through before. Real enforcement lives here.
+ */
+export function assertIsPdf(file: File): void {
+  const looksLikePdf = file.name.toLowerCase().endsWith(".pdf");
+  if (!looksLikePdf) throw new Error(`"${file.name}" isn't a PDF. Please convert it to PDF before uploading.`);
+}
+
 /** Uploads a memo PDF under `<folder>/<cadetId>/<timestamp>-<filename>` and returns its public download URL. */
 export async function uploadMemoPdf(file: File, folder: "absenceMemos" | "deviationMemos", cadetId: string): Promise<{ url: string; fileName: string }> {
+  assertIsPdf(file);
   const path = `${folder}/${cadetId}/${Date.now()}-${file.name}`;
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);

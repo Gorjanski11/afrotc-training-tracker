@@ -60,8 +60,8 @@ const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> 
 /** Label + icon per theme, shared by the header picker's trigger and its option list. */
 const THEME_META: Record<Theme, { label: string; icon: typeof Sun }> = {
   light: { label: "Light", icon: Sun },
-  dark: { label: "Dark", icon: Moon },
-  af: { label: "AF Mode", icon: ShieldHalf },
+  ussf: { label: "USSF Mode", icon: Moon },
+  usaf: { label: "USAF Mode", icon: ShieldHalf },
 };
 
 /**

@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Theme is a `data-theme="dark"|"af"` attribute on <html> (see useTheme.ts), not OS preference --
+/* Theme is a `data-theme="ussf"|"usaf"` attribute on <html> (see useTheme.ts), not OS preference --
    no attribute at all means light, which is just :root with no override. There is no `dark:`
    Tailwind variant anywhere in this codebase (confirmed), so there's no need for a @custom-variant
    here -- every themed value is a CSS custom property swapped per data-theme block below. */
@@ -56,35 +56,40 @@
   --chart-ink-muted: #898781;
 }
 
-[data-theme="dark"] {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.6 0.13 258);
-  --primary-foreground: oklch(0.145 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.7 0.16 145);
-  --success-foreground: oklch(0.145 0 0);
-  --warning: oklch(0.8 0.15 75);
-  --warning-foreground: oklch(0.145 0 0);
+/* "USSF mode" -- modeled on the Space Force Delta: true black with chrome/platinum silver facets,
+   no blue anywhere (the delta itself is pure black + metallic silver/white). --primary moves off the
+   258-hue blue used by light mode and the other two themes onto a desaturated cool silver instead,
+   so this theme reads as a distinct, blue-free identity rather than "dark mode with a new name." */
+[data-theme="ussf"] {
+  --background: oklch(0.09 0 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.15 0 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.15 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.78 0.01 255);
+  --primary-foreground: oklch(0.12 0 0);
+  --secondary: oklch(0.32 0.004 255);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.72 0.005 255);
+  --accent: oklch(0.45 0.006 255);
+  --accent-foreground: oklch(0.97 0 0);
+  --destructive: oklch(0.65 0.2 25);
+  --destructive-foreground: oklch(0.12 0 0);
+  --success: oklch(0.68 0.15 145);
+  --success-foreground: oklch(0.12 0 0);
+  --warning: oklch(0.78 0.14 75);
+  --warning-foreground: oklch(0.12 0 0);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.6 0.13 258);
+  --ring: oklch(0.78 0.01 255);
   color-scheme: dark;
 
-  --accent-gold: oklch(0.8 0.14 85);
+  /* Chrome/silver glint, replacing the gold highlight used in the other two themes. */
+  --accent-gold: oklch(0.85 0.006 255);
 
-  /* Chart palette, dark mode -- series/status hues kept, grid/axis/muted-ink brightened for a dark canvas. */
+  /* Chart palette, USSF mode -- same hues as before, tuned bright enough for a true-black canvas. */
   --chart-series-1: #5b9bdf;
   --chart-series-2: #f08a56;
   --chart-series-3: #3bd0a0;
@@ -102,36 +107,37 @@
   --chart-ink-muted: #a4a29b;
 }
 
-/* "AF mode" -- Air Force blue + silver/gunmetal on a near-black, slightly cool-toned background.
-   Same --primary hue (258) as light/dark so the brand color reads consistently across all 3 themes;
-   only the surrounding palette (background/secondary/accent) differentiates this one. */
-[data-theme="af"] {
-  --background: oklch(0.16 0.012 255);
-  --foreground: oklch(0.95 0.004 255);
-  --card: oklch(0.21 0.014 255);
-  --card-foreground: oklch(0.95 0.004 255);
-  --popover: oklch(0.21 0.014 255);
-  --popover-foreground: oklch(0.95 0.004 255);
-  --primary: oklch(0.62 0.13 258);
-  --primary-foreground: oklch(0.15 0 0);
-  --secondary: oklch(0.52 0.012 255);
-  --secondary-foreground: oklch(0.97 0 0);
-  --muted: oklch(0.28 0.012 255);
-  --muted-foreground: oklch(0.72 0.01 255);
-  --accent: oklch(0.58 0.014 255);
+/* "USAF mode" -- modeled on the Air Force roundel: Air Force blue field with silver/gunmetal bars and
+   a red-and-white striped accent. --primary keeps the same 258 hue as light mode (brighter, for contrast
+   on a dark field); --accent-gold is repurposed from a gold highlight into the roundel's flag-red stripe. */
+[data-theme="usaf"] {
+  --background: oklch(0.19 0.045 258);
+  --foreground: oklch(0.97 0.004 255);
+  --card: oklch(0.24 0.048 258);
+  --card-foreground: oklch(0.97 0.004 255);
+  --popover: oklch(0.24 0.048 258);
+  --popover-foreground: oklch(0.97 0.004 255);
+  --primary: oklch(0.58 0.16 258);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.55 0.015 255);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.3 0.03 258);
+  --muted-foreground: oklch(0.75 0.015 255);
+  --accent: oklch(0.62 0.02 255);
   --accent-foreground: oklch(0.15 0 0);
-  --destructive: oklch(0.68 0.19 25);
-  --destructive-foreground: oklch(0.15 0 0);
+  --destructive: oklch(0.62 0.19 25);
+  --destructive-foreground: oklch(0.98 0 0);
   --success: oklch(0.68 0.15 145);
   --success-foreground: oklch(0.15 0 0);
   --warning: oklch(0.78 0.14 75);
   --warning-foreground: oklch(0.15 0 0);
-  --border: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.62 0.13 258);
+  --border: oklch(1 0 0 / 16%);
+  --input: oklch(1 0 0 / 20%);
+  --ring: oklch(0.58 0.16 258);
   color-scheme: dark;
 
-  --accent-gold: oklch(0.78 0.13 85);
+  /* Flag-red stripe accent, replacing the gold highlight used in the other two themes. */
+  --accent-gold: oklch(0.62 0.19 25);
 
   --chart-series-1: #5b9bdf;
   --chart-series-2: #f08a56;

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
-export type Theme = "light" | "dark" | "af";
-export const THEMES: readonly Theme[] = ["light", "dark", "af"];
+export type Theme = "light" | "ussf" | "usaf";
+export const THEMES: readonly Theme[] = ["light", "ussf", "usaf"];
 
 const STORAGE_KEY = "theme";
 
@@ -20,7 +20,7 @@ function applyTheme(theme: Theme) {
   else document.documentElement.setAttribute("data-theme", theme);
 }
 
-/** Manually picked (not OS-driven) theme -- light, dark, or "AF mode" -- persisted so it survives a reload. */
+/** Manually picked (not OS-driven) theme -- light, "USSF mode", or "USAF mode" -- persisted so it survives a reload. */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 

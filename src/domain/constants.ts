@@ -252,12 +252,23 @@ export const PMT_END_TIME: Record<PmtEventType, { hours: number; minutes: number
   "D&C": { hours: 11, minutes: 45 },
 };
 
+/**
+ * Puerto Rico is fixed UTC-4 year-round (no DST). `Date#setHours` sets the hour in whatever
+ * timezone the code happens to be RUNNING in -- correct by accident on a device actually set to
+ * Puerto Rico local time, silently wrong anywhere else (and definitely wrong on the backend, which
+ * runs in UTC -- see afrotc-functions/functions/src/lib/deadlines.ts). Computed explicitly here
+ * instead, so this never depends on the viewer's own device clock/timezone being right. Every PMT in
+ * this app happens well within the same UTC and AST calendar day (none cross midnight AST), so the
+ * event's own UTC date components are a safe stand-in for its AST calendar date.
+ */
+const PUERTO_RICO_UTC_OFFSET_HOURS = 4;
+
 /** A cadet has 72 hours from the PMT's own end time (not the time it was marked Absent) to submit an Absence Memo covering it. */
 export function absenceMemoDeadline(eventDate: string, eventType: PmtEventType): Date {
-  const end = new Date(eventDate);
+  const event = new Date(eventDate);
   const { hours, minutes } = PMT_END_TIME[eventType];
-  end.setHours(hours, minutes, 0, 0);
-  return new Date(end.getTime() + 72 * 3_600_000);
+  const endUtcMs = Date.UTC(event.getUTCFullYear(), event.getUTCMonth(), event.getUTCDate(), hours + PUERTO_RICO_UTC_OFFSET_HOURS, minutes, 0, 0);
+  return new Date(endUtcMs + 72 * 3_600_000);
 }
 
 /**

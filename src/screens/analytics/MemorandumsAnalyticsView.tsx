@@ -56,11 +56,13 @@ interface Props {
   /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
   unitScope?: UnitScope;
   userEmail: string | null | undefined;
-  /** Lifted up to AnalyticsApp so the Flight/Group selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
+  /** Lifted up to AnalyticsApp so the Flight/Group/Cadet selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
   flightFilter: Flight | "All";
   onFlightFilterChange: (v: Flight | "All") => void;
   groupFilter: Group | "All";
   onGroupFilterChange: (v: Group | "All") => void;
+  cadetFilter: string;
+  onCadetFilterChange: (v: string) => void;
 }
 
 type ViewMode = "all" | "absence" | "deviation";
@@ -113,6 +115,8 @@ export function MemorandumsAnalyticsView({
   onFlightFilterChange,
   groupFilter,
   onGroupFilterChange,
+  cadetFilter,
+  onCadetFilterChange,
 }: Props) {
   // "gmc"/"group-and-gmc" scopes (Montalvo, Santiago) span multiple flights -- Flight stays
   // meaningful for them, same fix as Accountability/TO Analytics. "group-and-gmc" ALSO needs a way
@@ -122,11 +126,10 @@ export function MemorandumsAnalyticsView({
   const hideFlightFilter = unitScope !== undefined && (unitScope.kind === "flight" || unitScope.kind === "group");
   const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [mode, setMode] = useState<ViewMode>("all");
-  const [cadetId, setCadetId] = useState<string>(ALL_CADETS);
   const [sortBy, setSortBy] = useState<"date" | "cadet">("date");
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
-    setCadetId(which === "cadet" ? value : ALL_CADETS);
+    onCadetFilterChange(which === "cadet" ? value : ALL_CADETS);
     onFlightFilterChange(which === "flight" ? (value as Flight | "All") : "All");
     onGroupFilterChange(which === "group" ? (value as Group | "All") : "All");
   };
@@ -158,25 +161,25 @@ export function MemorandumsAnalyticsView({
     const rows = filterByRosterScope(
       combineMemos(ownerScopedAbsence, ownerScopedDeviation, pmtEventsById),
       roster,
-      cadetId === ALL_CADETS ? "All" : cadetId,
+      cadetFilter === ALL_CADETS ? "All" : cadetFilter,
       flightFilter,
       groupFilter
     );
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
-  }, [ownerScopedAbsence, ownerScopedDeviation, pmtEventsById, roster, cadetId, flightFilter, groupFilter, sortBy]);
+  }, [ownerScopedAbsence, ownerScopedDeviation, pmtEventsById, roster, cadetFilter, flightFilter, groupFilter, sortBy]);
   const filteredAbsence = useMemo(() => {
-    const rows = filterByRosterScope(ownerScopedAbsence, roster, cadetId === ALL_CADETS ? "All" : cadetId, flightFilter, groupFilter);
+    const rows = filterByRosterScope(ownerScopedAbsence, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
     return sortBy === "cadet"
       ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName))
       : rows.sort((a, b) => dateMissedFor(b, pmtEventsById).localeCompare(dateMissedFor(a, pmtEventsById)));
-  }, [ownerScopedAbsence, roster, cadetId, flightFilter, groupFilter, sortBy, pmtEventsById]);
+  }, [ownerScopedAbsence, roster, cadetFilter, flightFilter, groupFilter, sortBy, pmtEventsById]);
   const filteredDeviation = useMemo(() => {
-    const rows = filterByRosterScope(ownerScopedDeviation, roster, cadetId === ALL_CADETS ? "All" : cadetId, flightFilter, groupFilter);
+    const rows = filterByRosterScope(ownerScopedDeviation, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.dateAssigned.localeCompare(a.dateAssigned));
-  }, [ownerScopedDeviation, roster, cadetId, flightFilter, groupFilter, sortBy]);
+  }, [ownerScopedDeviation, roster, cadetFilter, flightFilter, groupFilter, sortBy]);
   const selectedCadetSummary = useMemo(
-    () => (cadetId === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetId, attendance, pmtEventsById)),
-    [cadetId, attendance, pmtEventsById]
+    () => (cadetFilter === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetFilter, attendance, pmtEventsById)),
+    [cadetFilter, attendance, pmtEventsById]
   );
 
   const absenceById = useMemo(() => new Map(ownerScopedAbsence.map((m) => [m.id, m])), [ownerScopedAbsence]);
@@ -251,7 +254,7 @@ export function MemorandumsAnalyticsView({
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
-        <CadetFilterCombobox roster={roster} value={cadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+        <CadetFilterCombobox roster={roster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {isTrueCadreViewer && (
           <Button
             variant={showAllMemos ? "default" : "outline"}

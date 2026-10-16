@@ -41,11 +41,13 @@ interface Props {
   /** Set by a Cadre/SAE Dashboard row click -- pre-applies this cadet/group/flight filter on mount, then `onConsumeInitialFilter` clears it. */
   initialFilter?: Extract<DashboardNavIntent, { kind: "accountabilityAnalytics" }>;
   onConsumeInitialFilter?: () => void;
-  /** Lifted up to AnalyticsApp so the Flight/Group selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
+  /** Lifted up to AnalyticsApp so the Flight/Group/Cadet selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
   flightFilter: Flight | "All";
   onFlightFilterChange: (v: Flight | "All") => void;
   groupFilter: Group | "All";
   onGroupFilterChange: (v: Group | "All") => void;
+  cadetFilter: string;
+  onCadetFilterChange: (v: string) => void;
 }
 
 const chartMargin = { top: 8, right: 16, bottom: 8, left: 8 };
@@ -227,6 +229,8 @@ export function AccountabilityAnalyticsView({
   onFlightFilterChange,
   groupFilter,
   onGroupFilterChange,
+  cadetFilter,
+  onCadetFilterChange,
 }: Props) {
   // A single-unit scoped commander (Flight/Group) only ever gets the Cadet filter -- Flight, Group,
   // and Class all hide for them (Section A3). But "gmc" (all 4 flights, e.g. Montalvo) and
@@ -245,7 +249,6 @@ export function AccountabilityAnalyticsView({
   // a separate row on the master attendance table; now unified into one row that drives the whole
   // page, including the table (Section: master table filters -> whole page). PMT type is NOT part of
   // this group -- the trend chart has its own view toggle and the table has its own dedicated stepper.
-  const [filterCadetId, setFilterCadetId] = useState<string>(ALL_CADETS);
   const [filterClass, setFilterClass] = useState<ClassFilter | "All">("All");
   const [filterStanding, setFilterStanding] = useState<Standing | "All">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
@@ -261,7 +264,7 @@ export function AccountabilityAnalyticsView({
 
   useEffect(() => {
     if (!initialFilter) return;
-    setFilterCadetId(initialFilter.cadetId ?? ALL_CADETS);
+    onCadetFilterChange(initialFilter.cadetId ?? ALL_CADETS);
     onFlightFilterChange(initialFilter.flight ?? "All");
     onGroupFilterChange(initialFilter.group ?? "All");
     setFilterClass("All");
@@ -273,11 +276,11 @@ export function AccountabilityAnalyticsView({
   const sortedActiveRoster = useMemo(() => [...activeRoster].sort((a, b) => compareByLastName(a.name, b.name)), [activeRoster]);
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
-  const hasCadetFilter = filterCadetId !== ALL_CADETS;
+  const hasCadetFilter = cadetFilter !== ALL_CADETS;
   const hasUnitFilter = flightFilter !== "All" || groupFilter !== "All";
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group" | "class", value: string) => {
-    setFilterCadetId(which === "cadet" ? value : ALL_CADETS);
+    onCadetFilterChange(which === "cadet" ? value : ALL_CADETS);
     onFlightFilterChange(which === "flight" ? (value as Flight | "All") : "All");
     onGroupFilterChange(which === "group" ? (value as Group | "All") : "All");
     setFilterClass(which === "class" ? (value as ClassFilter | "All") : "All");
@@ -298,7 +301,7 @@ export function AccountabilityAnalyticsView({
     [sortedActiveRoster, flightFilter, groupFilter, filterClass, filterStanding, tableBucketChoice, attendance, pmtEventsById]
   );
 
-  const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === filterCadetId), [filteredRoster, hasCadetFilter, filterCadetId]);
+  const statsRoster = useMemo(() => filteredRoster.filter((p) => !hasCadetFilter || p.id === cadetFilter), [filteredRoster, hasCadetFilter, cadetFilter]);
 
   // --- Attendance trend --------------------------------------------------
   // "combined" is handled separately below (computeCombinedDayTrend) since it merges same-day PT +
@@ -307,9 +310,9 @@ export function AccountabilityAnalyticsView({
     if (trendView !== "pt" && trendView !== "llab") return [];
     const bucket = trendView === "pt" ? "PT" : "LLAB_FM";
     return hasCadetFilter
-      ? computeCadetSessionTrend(bucket, filterCadetId, attendance, events)
+      ? computeCadetSessionTrend(bucket, cadetFilter, attendance, events)
       : computeSessionTrend(bucket, filteredRoster, attendance, events);
-  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, cadetFilter, filteredRoster, attendance, events]);
 
   const singleTrendData = useMemo(
     () =>
@@ -327,7 +330,7 @@ export function AccountabilityAnalyticsView({
   const combinedTrendData = useMemo(() => {
     if (trendView !== "combined") return [];
     const points = hasCadetFilter
-      ? computeCadetCombinedDayTrend(filterCadetId, attendance, events)
+      ? computeCadetCombinedDayTrend(cadetFilter, attendance, events)
       : computeCombinedDayTrend(filteredRoster, attendance, events);
     return cutoffAtNow(points).map((t) => ({
       date: t.date,
@@ -342,15 +345,15 @@ export function AccountabilityAnalyticsView({
       llabPct: t.llabPercent === undefined ? null : Math.round(t.llabPercent * 100),
       llabCountedCadets: t.llabCountedCadets,
     }));
-  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, cadetFilter, filteredRoster, attendance, events]);
 
   const splitTrendData = useMemo(() => {
     if (trendView !== "split") return [];
     const ptPoints = hasCadetFilter
-      ? computeCadetSessionTrend("PT", filterCadetId, attendance, events)
+      ? computeCadetSessionTrend("PT", cadetFilter, attendance, events)
       : computeSessionTrend("PT", filteredRoster, attendance, events);
     const llabPoints = hasCadetFilter
-      ? computeCadetSessionTrend("LLAB_FM", filterCadetId, attendance, events)
+      ? computeCadetSessionTrend("LLAB_FM", cadetFilter, attendance, events)
       : computeSessionTrend("LLAB_FM", filteredRoster, attendance, events);
 
     type Row = { date: string; dateLabel: string; ptEventId?: string; llabEventId?: string; ptPct: number | null; llabPct: number | null };
@@ -381,7 +384,7 @@ export function AccountabilityAnalyticsView({
     }
     const rows = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     return cutoffAtNow(rows);
-  }, [trendView, hasCadetFilter, filterCadetId, filteredRoster, attendance, events]);
+  }, [trendView, hasCadetFilter, cadetFilter, filteredRoster, attendance, events]);
 
   // Single-event dots (PT-only/LLAB-only views, and each line in Split view) resolve their own
   // bucket from the event itself. The Combined view's dots already know both ids for that day.
@@ -450,10 +453,10 @@ export function AccountabilityAnalyticsView({
     [distribution]
   );
 
-  const selectedCadet = useMemo(() => (hasCadetFilter ? roster.find((p) => p.id === filterCadetId) : undefined), [hasCadetFilter, roster, filterCadetId]);
+  const selectedCadet = useMemo(() => (hasCadetFilter ? roster.find((p) => p.id === cadetFilter) : undefined), [hasCadetFilter, roster, cadetFilter]);
   const selectedCadetSummary = useMemo(
-    () => (hasCadetFilter ? computeCadetAttendanceSummary(filterCadetId, attendance, pmtEventsById) : undefined),
-    [hasCadetFilter, filterCadetId, attendance, pmtEventsById]
+    () => (hasCadetFilter ? computeCadetAttendanceSummary(cadetFilter, attendance, pmtEventsById) : undefined),
+    [hasCadetFilter, cadetFilter, attendance, pmtEventsById]
   );
 
   const cohortCombinedPercent = useMemo(() => {
@@ -590,7 +593,7 @@ export function AccountabilityAnalyticsView({
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
-        <CadetFilterCombobox roster={sortedActiveRoster} value={filterCadetId} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
+        <CadetFilterCombobox roster={sortedActiveRoster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
           <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
             <SelectTrigger className="w-40">

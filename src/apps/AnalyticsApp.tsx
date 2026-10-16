@@ -17,6 +17,7 @@ import { AccountabilityAnalyticsView } from "../screens/analytics/Accountability
 import { TrainingObjectivesAnalyticsView } from "../screens/analytics/TrainingObjectivesAnalyticsView";
 import { MemorandumsAnalyticsView } from "../screens/analytics/MemorandumsAnalyticsView";
 import { DeviationsLogView } from "../screens/analytics/DeviationsLogView";
+import { ALL_CADETS } from "../components/accountability/CadetFilterCombobox";
 import type { DashboardNavIntent } from "../domain/dashboardNav";
 
 type Screen = "accountability" | "trainingObjectives" | "memorandums" | "deviations";
@@ -69,6 +70,7 @@ export function AnalyticsApp({
   // it selected when switching to another, instead of each view tracking its own independent filter.
   const [flightFilter, setFlightFilter] = useState<Flight | "All">(unitScope.kind === "flight" ? unitScope.flight : "All");
   const [groupFilter, setGroupFilter] = useState<Group | "All">(unitScope.kind === "group" ? unitScope.group : "All");
+  const [cadetFilter, setCadetFilter] = useState<string>(ALL_CADETS);
 
   useEffect(() => {
     if (!initialAccountabilityFilter) return;
@@ -178,6 +180,8 @@ export function AnalyticsApp({
                       onFlightFilterChange={setFlightFilter}
                       groupFilter={groupFilter}
                       onGroupFilterChange={setGroupFilter}
+                      cadetFilter={cadetFilter}
+                      onCadetFilterChange={setCadetFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>
@@ -196,6 +200,8 @@ export function AnalyticsApp({
                       onFlightFilterChange={setFlightFilter}
                       groupFilter={groupFilter}
                       onGroupFilterChange={setGroupFilter}
+                      cadetFilter={cadetFilter}
+                      onCadetFilterChange={setCadetFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>
@@ -220,6 +226,8 @@ export function AnalyticsApp({
                       onFlightFilterChange={setFlightFilter}
                       groupFilter={groupFilter}
                       onGroupFilterChange={setGroupFilter}
+                      cadetFilter={cadetFilter}
+                      onCadetFilterChange={setCadetFilter}
                     />
                   </AnimatedPanel>
                 </TabsContent>

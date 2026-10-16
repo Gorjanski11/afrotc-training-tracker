@@ -12,7 +12,17 @@ import { FileText, ArrowUpDown, Pencil } from "lucide-react";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
-import { combineMemos, coversLabel, dateMissedFor, filterByRosterScope, memoStatusVariant, shortDate, trainingWeekFor, type CombinedMemoRow } from "../../domain/memoAnalytics";
+import {
+  combineMemos,
+  coversLabel,
+  dateMissedFor,
+  filterByRosterScope,
+  memoStatusVariant,
+  shortDate,
+  shortDateTimeBracketed,
+  trainingWeekFor,
+  type CombinedMemoRow,
+} from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetBucketStats } from "./AccountabilityAnalyticsView";
@@ -392,13 +402,13 @@ function CombinedTable({ rows, roster, onEdit }: { rows: CombinedMemoRow[]; rost
       <TableBody>
         {rows.map((row) => (
           <TableRow key={`${row.kind}-${row.id}`}>
-            <TableCell>{shortDate(row.primaryDate)}</TableCell>
+            <TableCell>{shortDateTimeBracketed(row.primaryDate)}</TableCell>
             <TableCell className="max-w-xs truncate" title={row.subject || undefined}>{row.subject}</TableCell>
             <TableCell>{cadetDisplayName(row.cadetId, row.cadetName, roster)}</TableCell>
             <TableCell>
               <Badge variant="outline">{row.kind}</Badge>
             </TableCell>
-            <TableCell>{shortDate(row.submittedAt)}</TableCell>
+            <TableCell>{shortDateTimeBracketed(row.submittedAt)}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <Badge variant={memoStatusVariant(row.status)}>{row.status}</Badge>
@@ -455,7 +465,7 @@ function AbsenceTable({
             <TableCell>{trainingWeekFor(m, pmtEventsById) ?? "—"}</TableCell>
             <TableCell>{shortDate(dateMissedFor(m, pmtEventsById))}</TableCell>
             <TableCell className="max-w-xs truncate" title={coversLabel(m, pmtEventsById)}>{coversLabel(m, pmtEventsById)}</TableCell>
-            <TableCell>{shortDate(m.submittedAt)}</TableCell>
+            <TableCell>{shortDateTimeBracketed(m.submittedAt)}</TableCell>
             <TableCell>{cadetDisplayName(m.cadetId, m.cadetName, roster)}</TableCell>
             <TableCell className="max-w-xs truncate" title={m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}>
               {m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}
@@ -515,7 +525,7 @@ function DeviationTable({
       <TableBody>
         {memos.map((m) => (
           <TableRow key={m.id}>
-            <TableCell>{shortDate(m.dateAssigned)}</TableCell>
+            <TableCell>{shortDateTimeBracketed(m.dateAssigned)}</TableCell>
             <TableCell>{m.assignedBy}</TableCell>
             <TableCell>{shortDate(m.dueDate)}</TableCell>
             <TableCell className="max-w-xs truncate" title={m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason}>

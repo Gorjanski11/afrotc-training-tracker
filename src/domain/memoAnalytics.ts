@@ -113,6 +113,13 @@ export function shortDateTime(iso: string | undefined): string {
   return `${shortDate(iso)}, ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
 }
 
+/** "9 Sep 26 (3:45 PM)" -- same local time as `shortDateTime`, bracketed instead of comma-separated, so it fits inside a single dense table column. Used by Memorandums Analytics' Date Assigned/Submitted columns specifically; every other screen keeps shortDateTime's comma format. */
+export function shortDateTimeBracketed(iso: string | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${shortDate(iso)} (${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })})`;
+}
+
 /** Badge color convention for every status literal across both Absence and Deviation memos. */
 export function memoStatusVariant(status: string): "success" | "destructive" | "warning" | "secondary" | "outline" {
   if (status === "Accepted") return "success";

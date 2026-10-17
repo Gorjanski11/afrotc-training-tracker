@@ -183,14 +183,14 @@ export type Standing = "Good" | "Warning" | "Hard Limit";
 /**
  * Standing is derived directly from the flat absence budget (PERMITTED_ABSENCES_PER_SEMESTER,
  * below), not a percentage threshold: "Hard Limit" once a cadet has gone a full absence past the
- * budget (-1 or fewer left -- exactly at 0 left, budget used up but not yet exceeded, still reads
- * "Good"), "Warning" with exactly one absence left (one more unexcused absence away from Hard
- * Limit), "Good" otherwise. An AE (Approved Excuse) never costs anything against the budget -- same
- * weight as a plain Present -- so it can never push a cadet into Warning/Hard Limit on its own.
+ * budget (-1 or fewer left -- the budget is fully exceeded), "Warning" at 0 or 1 left (budget used
+ * up, or one more unexcused absence away from Hard Limit), "Good" otherwise. An AE (Approved Excuse)
+ * never costs anything against the budget -- same weight as a plain Present -- so it can never push
+ * a cadet into Warning/Hard Limit on its own.
  */
 export function standingForAbsencesLeft(absencesLeft: number): Standing {
   if (absencesLeft <= -1) return "Hard Limit";
-  if (absencesLeft === 1) return "Warning";
+  if (absencesLeft <= 1) return "Warning";
   return "Good";
 }
 

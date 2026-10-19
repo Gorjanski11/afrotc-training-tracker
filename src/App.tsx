@@ -52,7 +52,7 @@ const TAB_STORAGE_KEY = "activeTab";
 /** Label + icon per tab, shared by the desktop TabsList and the phone dropdown (Section H) so the two never drift apart. */
 const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> = {
   myDashboard: { label: "My Dashboard", icon: LayoutDashboard },
-  accountability: { label: "Accountability", icon: ClipboardCheck },
+  accountability: { label: "Attendance", icon: ClipboardCheck },
   trainingObjectives: { label: "TO's", icon: GraduationCap },
   memoSubmission: { label: "Memo Submission", icon: Send },
   memoReview: { label: "Memo Review", icon: FileText },

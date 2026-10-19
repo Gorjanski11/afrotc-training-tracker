@@ -3,9 +3,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Save, TriangleAlert, ClipboardCheck, X } from "lucide-react";
+import { Save, TriangleAlert, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
+import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, absenceMemoDeadline, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
 import { isEventFullyRecorded, isFutureCalendarDay, isPostAccountabilityWindowClosed } from "../../domain/attendance";
 import { shortDateTime } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
@@ -292,7 +293,7 @@ export function AttendanceScreen({
         return next;
       });
     } else {
-      setValue(cadetId, status, status === "A" ? (current.absenceReason ?? ABSENCE_REASONS[0]) : undefined, current.absenceReasonOther);
+      setValue(cadetId, status, status === "A" ? current.absenceReason : undefined, current.absenceReasonOther);
     }
   };
 
@@ -312,17 +313,21 @@ export function AttendanceScreen({
   const setLateCorrectionNote = (cadetId: string, note: string) => {
     setLateCorrections((prev) => ({ ...prev, [cadetId]: { ...getLateCorrection(cadetId), note } }));
   };
-  /** True only at the exact moment a saved "Present" is being corrected to "Absent" -- the only case this option is ever offered. */
-  const isPresentToAbsentCorrection = (cadetId: string): boolean =>
-    canUseLateCorrection && existingByCadet.get(cadetId)?.status === "P" && getValue(cadetId).status === "A";
+  // True once this PMT's own normal 72h-from-end Absence Memo deadline has already passed -- not
+  // tied to any particular previous status, just whether the SAE is entering/editing this PMT's
+  // accountability late.
+  const normalDeadlinePassed = selectedEvent ? Date.now() > absenceMemoDeadline(selectedEvent.eventDate, selectedEvent.eventType).getTime() : false;
+  /** SAE marking/editing a cadet Absent after the PMT's normal 72h deadline already passed -- the only case this option is ever offered. */
+  const canExtendDeadline = (cadetId: string): boolean => canUseLateCorrection && normalDeadlinePassed && getValue(cadetId).status === "A";
 
   const dirtyCount = Object.keys(pending).length;
   const hasInvalidLateCorrection = Object.keys(pending).some((cadetId) => {
-    if (!isPresentToAbsentCorrection(cadetId)) return false;
+    if (!canExtendDeadline(cadetId)) return false;
     const lc = getLateCorrection(cadetId);
     return lc.enabled && lc.note.trim().length === 0;
   });
   const windowClosed = selectedEvent ? isPostAccountabilityWindowClosed(selectedEvent) : false;
+  const [missingReasonCadetIds, setMissingReasonCadetIds] = useState<string[]>([]);
 
   const handleSave = async () => {
     if (!selectedEventId || !selectedEvent) return;
@@ -382,7 +387,7 @@ export function AttendanceScreen({
               // mistake, corrected late (existing saved status was "P"), gets the 48h override instead
               // of the normal 72h-from-PMT-end deadline.
               const lc = getLateCorrection(cadetId);
-              const lateCorrection = existing?.status === "P" && lc.enabled && lc.note.trim().length > 0 ? { note: lc.note.trim() } : undefined;
+              const lateCorrection = canExtendDeadline(cadetId) && lc.enabled && lc.note.trim().length > 0 ? { note: lc.note.trim() } : undefined;
               await assignAbsenceMemo(cadet, selectedEvent, value.absenceReason, value.absenceReasonOther, attendanceId, {
                 refetch: false,
                 lateCorrection,
@@ -411,24 +416,80 @@ export function AttendanceScreen({
     }
   };
 
+  // Marking someone Absent with no reason picked is a dead end for cadre later -- catch it before
+  // the save actually runs rather than letting a reason-less Absence Memo go out, and name exactly
+  // who's missing one instead of a generic error.
+  const handleSaveClick = () => {
+    const missing = Object.entries(pending)
+      .filter(([, v]) => v.status === "A" && !v.absenceReason)
+      .map(([cadetId]) => cadetId);
+    if (missing.length > 0) {
+      setMissingReasonCadetIds(missing);
+      return;
+    }
+    void handleSave();
+  };
+
+  const cadetsMissingReason = missingReasonCadetIds.map((id) => roster.find((c) => c.id === id)).filter((c): c is Cadet => !!c);
+  const allMissingReasonsFilled = missingReasonCadetIds.every((id) => !!getValue(id).absenceReason);
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <ClipboardCheck className="h-5 w-5 text-primary" />
-          Accountability
-        </h2>
+      <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}
           {!saveError && hasInvalidLateCorrection && (
             <span className="text-sm text-destructive">Add a note explaining the correction before saving.</span>
           )}
-          <Button onClick={handleSave} disabled={dirtyCount === 0 || saving || hasInvalidLateCorrection}>
+          <Button onClick={handleSaveClick} disabled={dirtyCount === 0 || saving || hasInvalidLateCorrection}>
             <Save />
             {saving ? "Saving..." : dirtyCount > 0 ? `Save Changes (${dirtyCount})` : "Save Changes"}
           </Button>
         </div>
       </div>
+
+      <Dialog open={missingReasonCadetIds.length > 0} onOpenChange={(open) => !open && setMissingReasonCadetIds([])}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Pick an absence reason</DialogTitle>
+            <DialogDescription>
+              {cadetsMissingReason.length === 1
+                ? "This cadet is marked Absent with no reason selected yet."
+                : "These cadets are marked Absent with no reason selected yet."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3">
+            {cadetsMissingReason.map((cadet) => (
+              <div key={cadet.id} className="flex items-center justify-between gap-3">
+                <span className="text-sm">{formatCadetName(cadet)}</span>
+                <Select value={getValue(cadet.id).absenceReason ?? ""} onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason)}>
+                  <SelectTrigger className="h-8 w-44 text-xs">
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ABSENCE_REASONS.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {r}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              disabled={!allMissingReasonsFilled}
+              onClick={() => {
+                setMissingReasonCadetIds([]);
+                void handleSave();
+              }}
+            >
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="flex gap-1">
@@ -631,11 +692,11 @@ export function AttendanceScreen({
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-1.5">
                           <Select
-                            value={value.absenceReason ?? ABSENCE_REASONS[0]}
+                            value={value.absenceReason ?? ""}
                             onValueChange={(v) => setValue(cadet.id, "A", v as AbsenceReason, value.absenceReasonOther)}
                           >
                             <SelectTrigger className="h-7 w-40 text-[11px]">
-                              <SelectValue />
+                              <SelectValue placeholder="Select a reason" />
                             </SelectTrigger>
                             <SelectContent>
                               {ABSENCE_REASONS.map((r) => (
@@ -654,23 +715,28 @@ export function AttendanceScreen({
                             />
                           )}
                         </div>
-                        {isPresentToAbsentCorrection(cadet.id) && (
+                        {canExtendDeadline(cadet.id) && (
                           <div className="flex flex-col gap-1 border-t border-input pt-1.5">
                             <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                               <input type="checkbox" checked={getLateCorrection(cadet.id).enabled} onChange={() => toggleLateCorrection(cadet.id)} />
-                              Flight/Group Commander marked them Present by mistake -- reopen a 48h window instead of a deviation memo
+                              Entered after the normal 72h deadline -- reopen a 48h window instead of a deviation memo
                             </label>
                             {getLateCorrection(cadet.id).enabled && (
                               <Input
                                 value={getLateCorrection(cadet.id).note}
                                 onChange={(e) => setLateCorrectionNote(cadet.id, e.target.value)}
-                                placeholder="Explain the mistake (required)"
+                                placeholder="Reason for the extension (required)"
                                 className="h-7 w-64 text-[11px]"
                               />
                             )}
                           </div>
                         )}
                       </div>
+                    )}
+                    {(value.status === "AE" || value.status === "PE") && (
+                      <span className="text-[11px] text-muted-foreground">
+                        {value.absenceReason === "Other" && value.absenceReasonOther ? value.absenceReasonOther : value.absenceReason ?? "—"}
+                      </span>
                     )}
                   </TableCell>
                 </TableRow>

@@ -3,11 +3,12 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
+import { FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bucketForEventType, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
 import { computeCadetAttendanceSummary, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
-import { memoStatusVariant, shortDate } from "../../domain/memoAnalytics";
+import { memoStatusVariant, shortDate, shortDateTimeBracketed } from "../../domain/memoAnalytics";
+import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetNameCompact } from "../../domain/nameUtils";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
@@ -28,6 +29,8 @@ interface Props {
   catalog?: TrainingObjective[];
   completions?: Completion[];
   onOpenSaeReview?: () => void;
+  /** Jumps to Memo Submission's Absence or Deviation tab -- set by the "Missing Memos" tile below when it's clickable (i.e. there's actually something missing). */
+  onOpenMissingMemos?: (screen: "absence" | "deviation") => void;
 }
 
 const TONE_CLASSES: Record<"success" | "warning" | "critical", { badge: string; value: string }> = {
@@ -44,6 +47,7 @@ function HeroStat({
   detail,
   tone,
   index,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -51,11 +55,18 @@ function HeroStat({
   detail?: string;
   tone?: "success" | "warning" | "critical";
   index: number;
+  onClick?: () => void;
 }) {
   const toneClasses = tone ? TONE_CLASSES[tone] : undefined;
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05 }}>
-      <Card className="hover:shadow-md">
+    <motion.div className="h-full" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05 }}>
+      <Card
+        className={cn("h-full", onClick && "cursor-pointer transition-shadow hover:shadow-md")}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+      >
         <CardContent className="flex items-center gap-3">
           <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full", toneClasses?.badge ?? "bg-primary/10 text-primary")}>
             {icon}
@@ -101,6 +112,7 @@ export function SelfServiceDashboardScreen({
   catalog,
   completions,
   onOpenSaeReview,
+  onOpenMissingMemos,
 }: Props) {
   const isSae = isCortesGaray(cadet.email);
   const [bucketChoice, setBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
@@ -195,21 +207,37 @@ export function SelfServiceDashboardScreen({
 
   const myAbsenceMemos = useMemo(() => absenceMemos.filter((m) => m.cadetId === cadet.id), [absenceMemos, cadet.id]);
   const myDeviationMemos = useMemo(() => deviationMemos.filter((m) => m.cadetId === cadet.id), [deviationMemos, cadet.id]);
-  const missingMemosCount =
-    myAbsenceMemos.filter((m) => ABSENCE_ACTIONABLE.has(m.status)).length + myDeviationMemos.filter((m) => DEVIATION_ACTIONABLE.has(m.status)).length;
+  const missingAbsenceCount = useMemo(() => myAbsenceMemos.filter((m) => ABSENCE_ACTIONABLE.has(m.status)).length, [myAbsenceMemos]);
+  const missingDeviationCount = useMemo(() => myDeviationMemos.filter((m) => DEVIATION_ACTIONABLE.has(m.status)).length, [myDeviationMemos]);
+  const missingMemosCount = missingAbsenceCount + missingDeviationCount;
+  const [showAllMemos, setShowAllMemos] = useState(false);
 
   const memoHistory = useMemo(() => {
     const rows = [
       ...myAbsenceMemos.map((m) => ({
         kind: "Absence" as const,
-        date: m.submittedAt || m.assignedAt || "",
+        assignedAt: m.assignedAt,
+        submittedAt: m.submittedAt,
+        sortDate: m.submittedAt || m.assignedAt || "",
         status: m.status,
         reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+        pdfUrl: m.pdfUrl,
+        pdfFileName: m.pdfFileName,
       })),
-      ...myDeviationMemos.map((m) => ({ kind: "Deviation" as const, date: m.submittedAt ?? m.dateAssigned, status: m.status, reason: m.reason })),
+      ...myDeviationMemos.map((m) => ({
+        kind: "Deviation" as const,
+        assignedAt: m.dateAssigned,
+        submittedAt: m.submittedAt,
+        sortDate: m.submittedAt ?? m.dateAssigned,
+        status: m.status,
+        reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+        pdfUrl: m.pdfUrl,
+        pdfFileName: m.pdfFileName,
+      })),
     ];
-    return rows.sort((a, b) => b.date.localeCompare(a.date));
+    return rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
   }, [myAbsenceMemos, myDeviationMemos]);
+  const visibleMemoHistory = showAllMemos ? memoHistory : memoHistory.slice(0, 10);
 
   const tableEvents = useMemo(
     () => events.filter((e) => bucketForEventType(e.eventType) === bucketChoice).sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
@@ -225,12 +253,7 @@ export function SelfServiceDashboardScreen({
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <LayoutDashboard className="h-5 w-5 text-primary" />
-        My Dashboard
-      </h2>
-
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-1 items-stretch gap-4 sm:grid-cols-3">
         <HeroStat
           icon={<Gauge className="h-4.5 w-4.5" />}
           label="PT Standing"
@@ -253,6 +276,11 @@ export function SelfServiceDashboardScreen({
           value={String(missingMemosCount)}
           tone={missingMemosCount > 0 ? "critical" : "success"}
           index={2}
+          onClick={
+            missingMemosCount > 0 && onOpenMissingMemos
+              ? () => onOpenMissingMemos(missingAbsenceCount > 0 ? "absence" : "deviation")
+              : undefined
+          }
         />
       </div>
 
@@ -262,7 +290,7 @@ export function SelfServiceDashboardScreen({
             <CardHeader>
               <CardTitle>
                 <ShieldAlert className="h-4 w-4 text-primary" />
-                Missing Status
+                Missing Status Log
                 {saeFlags.acct.length + saeFlags.to.length > 0 && (
                   <Badge variant="destructive" className="ml-1.5">
                     {saeFlags.acct.length + saeFlags.to.length}
@@ -364,11 +392,11 @@ export function SelfServiceDashboardScreen({
                 <TableHeader>
                   <TableRow>
                     {tableEvents.map((e) => (
-                      <TableHead key={e.id} className="whitespace-nowrap text-center" title={e.title}>
+                      <TableHead key={e.id} className="whitespace-nowrap px-1.5 py-1 text-center text-xs" title={e.title}>
                         {new Date(e.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       </TableHead>
                     ))}
-                    <TableHead className="whitespace-nowrap text-center">Standing</TableHead>
+                    <TableHead className="whitespace-nowrap px-1.5 py-1 text-center text-xs">Standing</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -376,12 +404,12 @@ export function SelfServiceDashboardScreen({
                     {tableEvents.map((e) => {
                       const record = cellByEvent.get(e.id);
                       return (
-                        <TableCell key={e.id} className="text-center">
+                        <TableCell key={e.id} className="px-1.5 py-1 text-center">
                           {record ? <StatusDot status={record.status} /> : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-center">
+                    <TableCell className="px-1.5 py-1 text-center">
                       <StandingBadge standing={(bucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing) ?? "Good"} />
                     </TableCell>
                   </TableRow>
@@ -400,32 +428,49 @@ export function SelfServiceDashboardScreen({
           {memoHistory.length === 0 ? (
             <p className="text-sm text-muted-foreground">No memorandums on file.</p>
           ) : (
-            <div className="overflow-x-auto">
-            <Table aria-label="My memorandum history">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memoHistory.map((m, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{shortDate(m.date)}</TableCell>
-                    <TableCell>
-                      <Badge variant={m.kind === "Absence" ? "secondary" : "outline"}>{m.kind}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
-                    <TableCell>
-                      <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <Table aria-label="My memorandum history">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>PDF</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleMemoHistory.map((m, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="whitespace-nowrap">{shortDateTimeBracketed(m.assignedAt)}</TableCell>
+                        <TableCell className="whitespace-nowrap">{shortDateTimeBracketed(m.submittedAt)}</TableCell>
+                        <TableCell>
+                          <Badge variant={m.kind === "Absence" ? "secondary" : "outline"}>{m.kind}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate">{m.reason}</TableCell>
+                        <TableCell>
+                          <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {memoHistory.length > 10 && (
+                <button
+                  type="button"
+                  className="mt-3 text-sm text-primary underline underline-offset-2"
+                  onClick={() => setShowAllMemos((v) => !v)}
+                >
+                  {showAllMemos ? "Show last 10 only" : `Show all ${memoHistory.length}`}
+                </button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

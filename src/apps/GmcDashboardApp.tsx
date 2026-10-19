@@ -8,10 +8,12 @@ import { SelfServiceDashboardScreen } from "../screens/selfServiceDashboard/Self
 
 interface Props {
   userEmail: string | null | undefined;
+  /** Jumps to Memo Submission's Absence or Deviation tab -- set by the My Dashboard "Missing Memos" tile. */
+  onOpenMissingMemos?: (screen: "absence" | "deviation") => void;
 }
 
 /** Section 13 -- every GMC cadet's own tab, scoped to just themselves via email lookup (same pattern Memo Submission already uses). */
-export function GmcDashboardApp({ userEmail }: Props) {
+export function GmcDashboardApp({ userEmail, onOpenMissingMemos }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -55,6 +57,7 @@ export function GmcDashboardApp({ userEmail }: Props) {
         attendance={attendanceState.attendance}
         absenceMemos={absenceState.memos}
         deviationMemos={deviationState.memos}
+        onOpenMissingMemos={onOpenMissingMemos}
       />
     </div>
   );

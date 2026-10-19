@@ -13,10 +13,12 @@ interface Props {
   userEmail: string | null | undefined;
   /** Only Cortes Garay's dashboard ever uses this (its "Open full SAE Review" link). */
   onOpenSaeReview?: () => void;
+  /** Jumps to Memo Submission's Absence or Deviation tab -- set by the My Dashboard "Missing Memos" tile. */
+  onOpenMissingMemos?: (screen: "absence" | "deviation") => void;
 }
 
 /** Same as GmcDashboardApp, for every POC cadet. Cortes Garay (SAE) additionally fetches the catalog/completions his dashboard's SAE Review glance needs. */
-export function PocDashboardApp({ userEmail, onOpenSaeReview }: Props) {
+export function PocDashboardApp({ userEmail, onOpenSaeReview, onOpenMissingMemos }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -73,6 +75,7 @@ export function PocDashboardApp({ userEmail, onOpenSaeReview }: Props) {
         catalog={isSaeViewer ? catalogState.catalog : undefined}
         completions={isSaeViewer ? completionsState.completions : undefined}
         onOpenSaeReview={onOpenSaeReview}
+        onOpenMissingMemos={onOpenMissingMemos}
       />
     </div>
   );

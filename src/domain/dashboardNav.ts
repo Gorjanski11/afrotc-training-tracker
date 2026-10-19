@@ -9,5 +9,6 @@ import type { Group, Flight } from "./constants";
  */
 export type DashboardNavIntent =
   | { kind: "memoReview"; screen: "absence" | "deviation"; openMemoId?: string }
+  | { kind: "memoSubmission"; screen: "absence" | "deviation" }
   | { kind: "accountabilityAnalytics"; cadetId?: string; group?: Group; flight?: Flight }
   | { kind: "settings"; section: "saeReview" };

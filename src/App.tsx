@@ -179,7 +179,7 @@ function App() {
   // Cross-tab "take me there" intent from a dashboard tile/row click (Cadre Dashboard, SAE's My
   // Dashboard) -- set alongside the tab switch, consumed once by the destination then cleared.
   const [navIntent, setNavIntent] = useState<DashboardNavIntent | undefined>();
-  const navigateTo = (destTab: "memoReview" | "analytics" | "settings", intent?: DashboardNavIntent) => {
+  const navigateTo = (destTab: "memoSubmission" | "memoReview" | "analytics" | "settings", intent?: DashboardNavIntent) => {
     setTab(destTab);
     setNavIntent(intent);
   };
@@ -357,9 +357,18 @@ function App() {
               <TabsContent value="myDashboard" className="h-full" forceMount>
                 <AnimatedPanel>
                   {tabAccess.gmcDashboard ? (
-                    <GmcDashboardApp key="gmcDashboard" userEmail={user.email} />
+                    <GmcDashboardApp
+                      key="gmcDashboard"
+                      userEmail={user.email}
+                      onOpenMissingMemos={(screen) => navigateTo("memoSubmission", { kind: "memoSubmission", screen })}
+                    />
                   ) : tabAccess.pocDashboard ? (
-                    <PocDashboardApp key="pocDashboard" userEmail={user.email} onOpenSaeReview={() => navigateTo("settings", { kind: "settings", section: "saeReview" })} />
+                    <PocDashboardApp
+                      key="pocDashboard"
+                      userEmail={user.email}
+                      onOpenSaeReview={() => navigateTo("settings", { kind: "settings", section: "saeReview" })}
+                      onOpenMissingMemos={(screen) => navigateTo("memoSubmission", { kind: "memoSubmission", screen })}
+                    />
                   ) : (
                     <CadreDashboardApp key="cadreDashboard" userEmail={user.email} navigateTo={navigateTo} />
                   )}
@@ -369,7 +378,12 @@ function App() {
             {activeTab === "memoSubmission" && !tabAccess.cadreDashboard && (
               <TabsContent value="memoSubmission" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <MemoSubmissionApp key="memoSubmission" userEmail={user.email} />
+                  <MemoSubmissionApp
+                    key="memoSubmission"
+                    userEmail={user.email}
+                    initialScreen={navIntent?.kind === "memoSubmission" ? navIntent.screen : undefined}
+                    onConsumeInitialScreen={() => setNavIntent(undefined)}
+                  />
                 </AnimatedPanel>
               </TabsContent>
             )}

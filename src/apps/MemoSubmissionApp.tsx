@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, ClipboardList, LibraryBig } from "lucide-react";
@@ -24,16 +24,26 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 interface Props {
   /** The hub's signed-in user email -- identity comes from matching this against the roster, not from picking a name off a list. Visible to literally everyone signed in, no access restriction. */
   userEmail: string | null | undefined;
+  /** Set by My Dashboard's "Missing Memos" tile -- jumps straight to the Absence or Deviation sub-screen on mount, then `onConsumeInitialScreen` clears it so it doesn't re-fire on a later remount. */
+  initialScreen?: "absence" | "deviation";
+  onConsumeInitialScreen?: () => void;
 }
 
 /** GMC/POC-facing submission -- Absence Memo, Deviation Memo. A signed-in cadet only ever sees their own submissions. */
-export function MemoSubmissionApp({ userEmail }: Props) {
+export function MemoSubmissionApp({ userEmail, initialScreen, onConsumeInitialScreen }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
 
   const [screen, setScreen] = useState<Screen>("absence");
+
+  useEffect(() => {
+    if (!initialScreen) return;
+    setScreen(initialScreen);
+    onConsumeInitialScreen?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScreen]);
 
   const dataLoading = cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading;
   const loadError = cadetsState.error || eventsState.error || absenceState.error || deviationState.error;

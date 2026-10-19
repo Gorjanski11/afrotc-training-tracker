@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { httpsCallable } from "firebase/functions";
 import { Button } from "@/components/ui/button";
-import { Pencil, MessageSquarePlus, Undo2, Eraser, Download, ChevronLeft, ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Pencil, MessageSquarePlus, Undo2, Eraser, ChevronLeft, ChevronRight } from "lucide-react";
 import { uploadMemoPdf } from "../lib/storage";
 import { functions } from "../lib/firebase";
 
@@ -36,15 +35,27 @@ interface Props {
   cadetId: string;
   /** Omitted when embedded inside a larger dialog that already has its own close affordance. */
   onClose?: () => void;
-  /** Called once the marked-up copy has been flattened and uploaded -- the caller saves the resulting URL. */
-  onSaved: (markupUrl: string) => void;
+}
+
+export interface PdfMarkupReviewHandle {
+  /**
+   * Called by the parent right before it commits a review decision. Flattens and uploads a
+   * marked-up copy if (and only if) any marks were drawn this session, resolving to its URL --
+   * `undefined` means nothing was drawn, so the parent should leave any previously-saved
+   * `markupPdfUrl` alone. There's no separate "export" step for cadre to remember: drawing marks
+   * and deciding (Return/Accept) IS the save.
+   */
+  exportIfNeeded: () => Promise<string | undefined>;
 }
 
 /**
- * In-platform PDF review: draw freehand and drop numbered comments directly on the submitted PDF,
- * then export a flattened marked-up COPY (the original `pdfUrl` is never touched) uploaded alongside
- * it in Storage (Section 12). Deliberately simple -- fixed pen color/width, `window.prompt` for
- * comment text -- this is a markup pass for cadre giving feedback, not a general-purpose PDF editor.
+ * In-platform PDF review: draw freehand and drop numbered comments directly on the submitted PDF.
+ * The marks themselves are flattened into a real, separate marked-up COPY (the original `pdfUrl`
+ * is never touched) uploaded to Storage (Section 12) only when the parent calls `exportIfNeeded`
+ * via the imperative handle -- in practice, right as cadre returns/accepts the memo, so the cadet
+ * always sees the same annotated PDF cadre just decided against. Deliberately simple -- fixed pen
+ * color/width, `window.prompt` for comment text -- this is a markup pass for cadre giving feedback,
+ * not a general-purpose PDF editor.
  *
  * Fetches the PDF's bytes once via the `fetchMemoPdf` callable (afrotc-functions) rather than a
  * direct browser fetch -- the Storage bucket has no CORS policy configured, so a script-initiated
@@ -53,7 +64,7 @@ interface Props {
  * this). The callable downloads it server-side with the Admin SDK instead, sidestepping CORS
  * entirely, and reuses the same bytes for both pdfjs rendering and the pdf-lib export.
  */
-export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
+export const PdfMarkupReview = forwardRef<PdfMarkupReviewHandle, Props>(function PdfMarkupReview({ pdfUrl, cadetId, onClose }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,8 +77,6 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
   const [pageIndex, setPageIndex] = useState(0);
   const [tool, setTool] = useState<Tool>("pen");
   const [loadError, setLoadError] = useState<string | undefined>();
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | undefined>();
 
   // One annotation list + render scale per page, keyed by 0-based page index.
   const annotationsByPage = useRef(new Map<number, Annotation[]>());
@@ -243,12 +252,12 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderTick]);
 
-  const handleExport = async () => {
-    const sourceBytes = sourceBytesRef.current;
-    if (!sourceBytes) return;
-    setExporting(true);
-    setExportError(undefined);
-    try {
+  useImperativeHandle(ref, () => ({
+    exportIfNeeded: async () => {
+      const sourceBytes = sourceBytesRef.current;
+      const hasAny = [...annotationsByPage.current.values()].some((list) => list.length > 0);
+      if (!sourceBytes || !hasAny) return undefined;
+
       const outDoc = await PDFDocument.load(sourceBytes);
       const font = await outDoc.embedFont(StandardFonts.Helvetica);
       const markColor = rgb(0.86, 0.15, 0.15);
@@ -280,13 +289,9 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
       const outBytes = await outDoc.save();
       const file = new File([outBytes as unknown as BlobPart], `markup-${Date.now()}.pdf`, { type: "application/pdf" });
       const uploaded = await uploadMemoPdf(file, "deviationMemos", cadetId);
-      onSaved(uploaded.url);
-    } catch (e) {
-      setExportError(e instanceof Error ? e.message : "Failed to export the marked-up copy.");
-    } finally {
-      setExporting(false);
-    }
-  };
+      return uploaded.url;
+    },
+  }));
 
   return (
     <div className="flex h-[80vh] flex-col gap-3">
@@ -318,13 +323,11 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
             </Button>
           </div>
         )}
-        <Button type="button" size="sm" className={cn(numPages <= 1 && "ml-auto")} disabled={!hasAnyAnnotations || exporting} onClick={handleExport}>
-          <Download className="h-3.5 w-3.5" />
-          {exporting ? "Exporting..." : "Export marked-up copy"}
-        </Button>
+        {hasAnyAnnotations && (
+          <span className="ml-auto text-xs text-muted-foreground">Marks are saved when you Return or Accept below.</span>
+        )}
       </div>
 
-      {exportError && <p className="text-sm text-destructive">{exportError}</p>}
       {loadError && <p className="text-sm text-destructive">{loadError}</p>}
 
       <div ref={containerRef} className="flex-1 overflow-auto rounded-md border border-input bg-muted/30 p-2">
@@ -351,4 +354,4 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
       )}
     </div>
   );
-}
+});

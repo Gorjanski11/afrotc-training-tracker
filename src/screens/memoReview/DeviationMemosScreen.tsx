@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2, Highlighter } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
-import { PdfMarkupReview } from "../../components/PdfMarkupReview";
+import { PdfMarkupReview, type PdfMarkupReviewHandle } from "../../components/PdfMarkupReview";
 import { shortDate } from "../../domain/memoAnalytics";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
@@ -132,6 +132,8 @@ export function DeviationMemosScreen({
   const [reviewerName, setReviewerName] = useState("");
   const [reviewNotes, setReviewNotes] = useState("");
   const [deciding, setDeciding] = useState(false);
+  const [decideError, setDecideError] = useState<string | undefined>();
+  const markupRef = useRef<PdfMarkupReviewHandle>(null);
 
   const [overrideId, setOverrideId] = useState<string | undefined>();
   const [overrideStatus, setOverrideStatus] = useState<DeviationMemoStatus>("Assigned");
@@ -238,6 +240,7 @@ export function DeviationMemosScreen({
     // restricts the Review button to them) -- default the box to their name instead of blank.
     setReviewerName(memo.assignedBy);
     setReviewNotes("");
+    setDecideError(undefined);
   };
 
   useEffect(() => {
@@ -248,16 +251,24 @@ export function DeviationMemosScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialReviewId]);
 
+  // The markup canvas has no "export" step of its own -- deciding IS the save. Flattening the
+  // drawn marks into a real PDF and uploading it happens right here, right before the decision is
+  // written, so the cadet always sees the exact annotated copy cadre just decided against.
   const decide = async (memo: DeviationMemo, decision: "Accepted" | "Returned") => {
     setDeciding(true);
+    setDecideError(undefined);
     try {
+      const markupUrl = await markupRef.current?.exportIfNeeded();
       await updateMemo(memo.id, {
         status: decision,
         reviewedAt: new Date().toISOString(),
         reviewedBy: reviewerName.trim() || undefined,
         reviewNotes,
+        ...(markupUrl ? { markupPdfUrl: markupUrl } : {}),
       });
       setReviewingId(undefined);
+    } catch (e) {
+      setDecideError(e instanceof Error ? e.message : "Failed to save the marked-up copy -- try again.");
     } finally {
       setDeciding(false);
     }
@@ -693,15 +704,7 @@ export function DeviationMemosScreen({
                 </div>
 
                 {/* The PDF markup canvas IS the review view now -- opens automatically with Review, no extra click. */}
-                {reviewing.pdfUrl && (
-                  <PdfMarkupReview
-                    pdfUrl={reviewing.pdfUrl}
-                    cadetId={reviewing.cadetId}
-                    onSaved={async (markupUrl) => {
-                      await updateMemo(reviewing.id, { markupPdfUrl: markupUrl });
-                    }}
-                  />
-                )}
+                {reviewing.pdfUrl && <PdfMarkupReview ref={markupRef} pdfUrl={reviewing.pdfUrl} cadetId={reviewing.cadetId} />}
 
                 <div className="grid gap-1.5">
                   <Label>Your name</Label>
@@ -712,12 +715,13 @@ export function DeviationMemosScreen({
                   <Textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} placeholder="Optional -- required context if returning" />
                 </div>
               </div>
+              {decideError && <p className="text-sm text-destructive">{decideError}</p>}
               <DialogFooter>
                 <Button variant="secondary" disabled={deciding} onClick={() => decide(reviewing, "Returned")}>
-                  Return
+                  {deciding ? "Saving..." : "Return"}
                 </Button>
                 <Button disabled={deciding} onClick={() => decide(reviewing, "Accepted")}>
-                  Accept
+                  {deciding ? "Saving..." : "Accept"}
                 </Button>
               </DialogFooter>
             </>

@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Gauge, CalendarDays, ShieldAlert } from "lucide-react";
+import { FileText, Gauge, CalendarDays, ShieldAlert, Highlighter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { bucketForEventType, PLO_SHORT_CODE, type PloSection } from "../../domain/constants";
 import { computeCadetAttendanceSummary, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
@@ -225,6 +225,7 @@ export function SelfServiceDashboardScreen({
         reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
         pdfUrl: m.pdfUrl,
         pdfFileName: m.pdfFileName,
+        markupPdfUrl: undefined as string | undefined,
       })),
       ...myDeviationMemos.map((m) => ({
         kind: "Deviation" as const,
@@ -235,6 +236,7 @@ export function SelfServiceDashboardScreen({
         reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
         pdfUrl: m.pdfUrl,
         pdfFileName: m.pdfFileName,
+        markupPdfUrl: m.markupPdfUrl,
       })),
     ];
     return rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
@@ -456,7 +458,20 @@ export function SelfServiceDashboardScreen({
                           <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
                         </TableCell>
                         <TableCell>
-                          <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                          <div className="flex items-center gap-1">
+                            <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                            {m.markupPdfUrl && (
+                              <a
+                                href={m.markupPdfUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Cadre's marked-up copy"
+                                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input text-primary hover:bg-accent"
+                              >
+                                <Highlighter className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

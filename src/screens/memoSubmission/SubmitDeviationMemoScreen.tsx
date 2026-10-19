@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Upload, CheckCircle2 } from "lucide-react";
 import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
+import { PdfPreview } from "../../components/PdfPreview";
 import { uploadMemoPdf } from "../../lib/storage";
 import { shortDate, memoStatusVariant } from "../../domain/memoAnalytics";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +83,10 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
     () => memos.filter((m) => m.cadetId === cadetId && m.status === "Returned").sort((a, b) => (b.reviewedAt ?? "").localeCompare(a.reviewedAt ?? "")),
     [memos, cadetId]
   );
+  // "Verify Corrections & Submit" opens a dialog previewing cadre's marked-up copy (falling back to
+  // the cadet's own last-submitted PDF if cadre didn't draw anything) with the resubmit area inside
+  // it, instead of the old plain "Attach corrected PDF" that revealed a bare file input inline.
+  const verifyingMemo = myReturned.find((m) => m.id === submittingId);
   const mySubmitted = useMemo(
     () =>
       memos
@@ -274,7 +280,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
         {myReturned.length > 0 && (
           <Card className="border-warning/50">
             <CardHeader>
-              <CardTitle className="text-warning-foreground">Returned -- needs fixing</CardTitle>
+              <CardTitle className="text-warning">Returned -- needs fixing</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-2">
               {myReturned.map((m) => (
@@ -282,33 +288,18 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                   <div className="mb-1 text-sm font-medium">{reasonDisplay(m)}</div>
                   {m.purpose && <p className="mb-1 text-sm text-muted-foreground">{m.purpose}</p>}
                   {m.reviewNotes && <p className="mb-2 text-sm text-muted-foreground">Cadre notes: {m.reviewNotes}</p>}
-                  {submittingId === m.id ? (
-                    <div className="flex items-center gap-2">
-                      {file ? (
-                        <span className="flex items-center gap-1.5 text-xs">
-                          <span className="max-w-32 truncate">{file.name}</span>
-                          <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setFile(undefined)}>
-                            Change
-                          </Button>
-                        </span>
-                      ) : (
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          onChange={(e) => setFile(e.target.files?.[0])}
-                          className="text-xs text-muted-foreground"
-                        />
-                      )}
-                      <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(m)}>
-                        {busy ? "Uploading..." : "Resubmit"}
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button size="sm" variant="secondary" onClick={() => setSubmittingId(m.id)}>
-                      <Upload className="h-3.5 w-3.5" />
-                      Attach corrected PDF
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setFile(undefined);
+                      setError(undefined);
+                      setSubmittingId(m.id);
+                    }}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Verify Corrections & Submit
+                  </Button>
                 </div>
               ))}
             </CardContent>
@@ -352,6 +343,52 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
           </Card>
         )}
       </div>
+
+      <Dialog open={!!verifyingMemo} onOpenChange={(o) => !o && setSubmittingId(undefined)}>
+        <DialogContent className="max-w-4xl">
+          {verifyingMemo && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Verify Corrections — {reasonDisplay(verifyingMemo)}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4">
+                {verifyingMemo.reviewNotes && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Cadre notes:</strong> {verifyingMemo.reviewNotes}
+                  </p>
+                )}
+                <PdfPreview url={verifyingMemo.markupPdfUrl ?? verifyingMemo.pdfUrl ?? ""} />
+                <div className="flex items-center gap-2 border-t border-input pt-4">
+                  {file ? (
+                    <span className="flex items-center gap-1.5 text-xs">
+                      <span className="max-w-48 truncate">{file.name}</span>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setFile(undefined)}>
+                        Change
+                      </Button>
+                    </span>
+                  ) : (
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      onChange={(e) => setFile(e.target.files?.[0])}
+                      className="text-xs text-muted-foreground"
+                    />
+                  )}
+                  <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(verifyingMemo)}>
+                    {busy ? "Uploading..." : "Resubmit"}
+                  </Button>
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </div>
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setSubmittingId(undefined)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <SubmissionRequirementsDialog
         open={!!confirmingMemo}

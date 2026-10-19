@@ -36,6 +36,12 @@ export interface MissedObjectiveRow {
   overdueCount: number;
 }
 
+/** One cadet x one objective they're overdue on -- the Overdue Objectives drill-down's row shape (Section 5). */
+export interface MissingObjectiveCadetRow {
+  cadet: Cadet;
+  objective: TrainingObjective;
+}
+
 function completionsByCadetId(completions: Completion[]): Map<string, Completion[]> {
   const map = new Map<string, Completion[]>();
   for (const c of completions) {
@@ -185,4 +191,33 @@ export function computeOverdueObjectives(cadets: Cadet[], catalog: TrainingObjec
   }
 
   return rows.sort((a, b) => b.overdueCount - a.overdueCount);
+}
+
+/**
+ * Same underlying cadet x objective loop as `computeOverdueObjectives`, kept flat instead of
+ * collapsed into a per-objective count -- the drill-down table behind the Overdue Objectives
+ * box/card (Section 5), one row per cadet still missing one specific objective. Optionally
+ * restricted to a single objective (the per-objective "Overdue objectives" card's own rows).
+ */
+export function computeMissingObjectivesByCadet(
+  cadets: Cadet[],
+  catalog: TrainingObjective[],
+  completions: Completion[],
+  pmtEvents: PmtEvent[],
+  onlyObjectiveId?: string
+): MissingObjectiveCadetRow[] {
+  const byCadet = completionsByCadetId(completions);
+  const rows: MissingObjectiveCadetRow[] = [];
+
+  for (const cadet of cadets) {
+    if (!cadet.devLevel || cadet.status !== "Active") continue;
+    for (const objective of catalog) {
+      if (onlyObjectiveId && objective.id !== onlyObjectiveId) continue;
+      if (!objective.graded || objective.proficiencyByLevel[cadet.devLevel] === "") continue;
+      const info = getObjectiveStatus(objective, cadet.devLevel, pmtEvents, byCadet.get(cadet.id) ?? []);
+      if (isOverdue(info.status) && !info.bestCompletion) rows.push({ cadet, objective });
+    }
+  }
+
+  return rows.sort((a, b) => compareByLastName(a.cadet.name, b.cadet.name) || a.objective.number.localeCompare(b.objective.number));
 }

@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, LayoutDashboard, Search, Users, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FLIGHTS, GROUPS, type DevLevel, type Flight, type Group } from "../domain/constants";
+import { PLO_SHORT_CODE, FLIGHTS, GROUPS, type DevLevel, type Flight, type Group, type PloSection } from "../domain/constants";
 import { computeCadetProgress, shouldFlagCadet } from "../domain/progress";
-import { computeCohortSummary } from "../domain/analytics";
-import { compareByLastName, formatCadetName } from "../domain/nameUtils";
+import { computeCohortSummary, computeMissingObjectivesByCadet } from "../domain/analytics";
+import { compareByLastName, formatCadetName, formatCadetNameCompact } from "../domain/nameUtils";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../domain/types";
 
 interface HeroStatProps {
@@ -19,16 +20,23 @@ interface HeroStatProps {
   value: string;
   tone?: "critical";
   index: number;
+  onClick?: () => void;
 }
 
-function HeroStat({ icon, label, value, tone, index }: HeroStatProps) {
+function HeroStat({ icon, label, value, tone, index, onClick }: HeroStatProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}
     >
-      <Card className="hover:shadow-md">
+      <Card
+        className={cn(onClick && "cursor-pointer transition-shadow hover:shadow-md")}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+      >
         <CardContent className="flex items-center gap-3">
           <span
             className={cn(
@@ -117,6 +125,12 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
     [filteredCadets, catalog, completions, pmtEvents]
   );
 
+  const [showMissingDrillDown, setShowMissingDrillDown] = useState(false);
+  const missingRows = useMemo(
+    () => (showMissingDrillDown ? computeMissingObjectivesByCadet(filteredCadets, catalog, completions, pmtEvents) : []),
+    [showMissingDrillDown, filteredCadets, catalog, completions, pmtEvents]
+  );
+
   return (
     <div>
       <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
@@ -140,8 +154,48 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
           value={String(summary.overdueInstances)}
           tone={summary.overdueInstances > 0 ? "critical" : undefined}
           index={3}
+          onClick={summary.overdueInstances > 0 ? () => setShowMissingDrillDown(true) : undefined}
         />
       </div>
+
+      <Dialog open={showMissingDrillDown} onOpenChange={setShowMissingDrillDown}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Every overdue objective-instance</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[28rem] overflow-y-auto">
+            <Table aria-label="Cadets missing a Training Objective">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cadet</TableHead>
+                  <TableHead>Dev Level</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead>Missing TO</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {missingRows.map(({ cadet, objective }) => (
+                  <TableRow key={`${cadet.id}-${objective.id}`}>
+                    <TableCell>{formatCadetNameCompact(cadet)}</TableCell>
+                    <TableCell>{cadet.devLevel ?? "—"}</TableCell>
+                    <TableCell>{cadet.group ?? cadet.flight ?? "—"}</TableCell>
+                    <TableCell>
+                      {PLO_SHORT_CODE[objective.plo as PloSection] ?? ""} - {objective.number}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {missingRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      Nothing missing.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <div className="relative w-full sm:w-64">

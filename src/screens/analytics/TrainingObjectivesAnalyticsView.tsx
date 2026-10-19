@@ -5,13 +5,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLO_SECTIONS, PLO_SHORT_CODE, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group, type PloSection } from "../../domain/constants";
-import { computeCohortSummary, computeCompletionByPlo, computeOverdueObjectives, crosstabCellFor, type PloCompletionRow } from "../../domain/analytics";
+import { computeCohortSummary, computeCompletionByPlo, computeOverdueObjectives, computeMissingObjectivesByCadet, crosstabCellFor, type PloCompletionRow } from "../../domain/analytics";
 import { groupByPlo } from "../../domain/objectiveGrouping";
 import { SIX_ONE_PARENT_ID, computeSixOneRollup } from "../../domain/sixOneRollup";
-import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetNameCompact } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetObjectiveTimelineTable } from "../../components/CadetObjectiveTimelineTable";
 import { Stepper } from "../../components/analytics/Stepper";
@@ -36,10 +37,30 @@ interface Props {
   onCadetFilterChange: (v: string) => void;
 }
 
-function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
+function StatTile({
+  icon,
+  label,
+  value,
+  tone,
+  index,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  tone?: "critical";
+  index: number;
+  onClick?: () => void;
+}) {
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}>
-      <Card className="hover:shadow-md">
+      <Card
+        className={cn(onClick && "cursor-pointer transition-shadow hover:shadow-md")}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onClick={onClick}
+        onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
+      >
         <CardContent className="flex items-center gap-3">
           <span
             className={cn(
@@ -138,6 +159,14 @@ export function TrainingObjectivesAnalyticsView({
   const summary = useMemo(() => computeCohortSummary(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
   const byPlo = useMemo(() => computeCompletionByPlo(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
   const overdue = useMemo(() => computeOverdueObjectives(filteredCadets, filteredCatalog, completions, pmtEvents), [filteredCadets, filteredCatalog, completions, pmtEvents]);
+
+  // Overdue Objectives drill-down (Section 5) -- "all" from the stat tile (every overdue instance),
+  // an objective id from clicking one row of the per-objective card below (just that objective's).
+  const [missingDrillDown, setMissingDrillDown] = useState<string | "all" | undefined>();
+  const missingRows = useMemo(() => {
+    if (!missingDrillDown) return [];
+    return computeMissingObjectivesByCadet(filteredCadets, filteredCatalog, completions, pmtEvents, missingDrillDown === "all" ? undefined : missingDrillDown);
+  }, [missingDrillDown, filteredCadets, filteredCatalog, completions, pmtEvents]);
 
   // Section D: "Completed TO's by Cadet" crosstab -- PLO-grouped columns (spanning header), one row
   // per cadet, sorted the same way as the other cadet views.
@@ -271,6 +300,7 @@ export function TrainingObjectivesAnalyticsView({
           value={String(summary.overdueInstances)}
           tone={summary.overdueInstances > 0 ? "critical" : undefined}
           index={3}
+          onClick={summary.overdueInstances > 0 ? () => setMissingDrillDown("all") : undefined}
         />
       </div>
 
@@ -319,7 +349,12 @@ export function TrainingObjectivesAnalyticsView({
             ) : (
               <div className="max-h-96 space-y-2 overflow-y-auto">
                 {overdue.map((row) => (
-                  <div key={row.objectiveId} className="flex items-center justify-between gap-2 text-sm">
+                  <button
+                    key={row.objectiveId}
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-md px-1 py-0.5 text-left text-sm hover:bg-muted/50"
+                    onClick={() => setMissingDrillDown(row.objectiveId)}
+                  >
                     <span className="truncate" title={row.title}>
                       <Badge variant="outline" className="mr-1.5">
                         {row.number}
@@ -329,7 +364,7 @@ export function TrainingObjectivesAnalyticsView({
                     <span className="shrink-0 font-medium text-destructive">
                       {row.overdueCount} cadet{row.overdueCount === 1 ? "" : "s"}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -394,7 +429,7 @@ export function TrainingObjectivesAnalyticsView({
                   <TableBody>
                     {crosstabCadets.map((cadet) => (
                       <TableRow key={cadet.id}>
-                        <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetName(cadet)}</TableCell>
+                        <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-background px-2 py-0.5 text-xs">{formatCadetNameCompact(cadet)}</TableCell>
                         {crosstabPloGroups.flatMap((group) =>
                           group.objectives.map((objective, i) => {
                             const cell = !cadet.devLevel
@@ -449,6 +484,49 @@ export function TrainingObjectivesAnalyticsView({
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!missingDrillDown} onOpenChange={(open) => !open && setMissingDrillDown(undefined)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {missingDrillDown && missingDrillDown !== "all"
+                ? `Missing: ${overdue.find((r) => r.objectiveId === missingDrillDown)?.number ?? ""} ${overdue.find((r) => r.objectiveId === missingDrillDown)?.title ?? ""}`
+                : "Every overdue objective-instance"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[28rem] overflow-y-auto">
+            <Table aria-label="Cadets missing a Training Objective">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cadet</TableHead>
+                  <TableHead>Dev Level</TableHead>
+                  <TableHead>Group</TableHead>
+                  <TableHead>Missing TO</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {missingRows.map(({ cadet, objective }) => (
+                  <TableRow key={`${cadet.id}-${objective.id}`}>
+                    <TableCell>{formatCadetNameCompact(cadet)}</TableCell>
+                    <TableCell>{cadet.devLevel ?? "—"}</TableCell>
+                    <TableCell>{cadet.group ?? cadet.flight ?? "—"}</TableCell>
+                    <TableCell>
+                      {PLO_SHORT_CODE[objective.plo as PloSection] ?? ""} - {objective.number}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {missingRows.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      Nothing missing.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

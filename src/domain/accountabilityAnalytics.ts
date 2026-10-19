@@ -353,6 +353,8 @@ export interface MissedCadetRow {
   status: Attendance["status"];
   /** undefined for a Late (L) row -- a Late never requires an Absence Memo, so there's nothing to report here. */
   memoStatus: MissedMemoStatus | undefined;
+  /** The matched memo's review notes (or return reason, if Returned) -- blank when there's no memo yet, or none was ever recorded. */
+  notes: string;
 }
 
 /** Every cadet who missed (A) or was Late (L) for a single PMT, with their flight/group (via `cadet`) and their Absence Memo status for that PMT, if any -- powers the trend chart's click-to-drill-down. */
@@ -367,6 +369,7 @@ export function getMissedCadetsForEvent(event: PmtEvent, roster: Cadet[], attend
     if (!cadet) continue;
 
     let memoStatus: MissedMemoStatus | undefined;
+    let notes = "";
     if (record.status === "A") {
       const memo = absenceMemos.find((m) => m.cadetId === record.cadetId && m.pmtEventIds.includes(event.id));
       if (!memo || memo.status === "Assigned") {
@@ -377,9 +380,10 @@ export function getMissedCadetsForEvent(event: PmtEvent, roster: Cadet[], attend
       else if (memo.status === "Accepted") memoStatus = "Accepted";
       else if (memo.status === "Rejected") memoStatus = "Rejected";
       else memoStatus = "Returned";
+      if (memo) notes = memo.status === "Returned" ? memo.returnReason ?? "" : memo.reviewNotes;
     }
 
-    rows.push({ cadet, status: record.status, memoStatus });
+    rows.push({ cadet, status: record.status, memoStatus, notes });
   }
   return rows.sort((a, b) => compareByLastName(a.cadet.name, b.cadet.name));
 }

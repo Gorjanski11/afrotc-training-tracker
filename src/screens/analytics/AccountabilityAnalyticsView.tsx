@@ -537,44 +537,47 @@ export function AccountabilityAnalyticsView({
           {missed.length === 0 ? (
             <p className="text-muted-foreground">No absences or lates recorded for this session.</p>
           ) : (
-            <div className="max-h-96 overflow-y-auto rounded-md border border-input">
-              <div className="overflow-x-auto">
-              <Table aria-label={`Cadets who missed ${event.title}`}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cadet</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Memo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {missed.map((row) => (
-                    <TableRow key={row.cadet.id}>
-                      <TableCell>
-                        <button
-                          type="button"
-                          className="text-primary underline-offset-2 hover:underline"
-                          onClick={() => closeDrillDownAndFilterCadet(row.cadet.id)}
-                        >
-                          {formatCadetName(row.cadet)}
-                        </button>
-                      </TableCell>
-                      <TableCell>{row.cadet.flight ?? row.cadet.group ?? "—"}</TableCell>
-                      <TableCell>
-                        <StatusDot status={row.status} />
-                      </TableCell>
-                      <TableCell>
-                        {row.memoStatus && (
-                          <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
-                            {row.memoStatus}
-                          </Badge>
-                        )}
-                      </TableCell>
+            <div className="space-y-1.5">
+              <p className="text-sm font-semibold">Absentees</p>
+              <div className="max-h-96 overflow-y-auto rounded-md border border-input">
+                <div className="overflow-x-auto">
+                <Table aria-label={`Cadets who missed ${event.title}`}>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Cadet</TableHead>
+                      <TableHead>Unit</TableHead>
+                      <TableHead>Memo</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {missed.map((row) => (
+                      <TableRow key={row.cadet.id}>
+                        <TableCell>
+                          <button
+                            type="button"
+                            className="text-primary underline-offset-2 hover:underline"
+                            onClick={() => closeDrillDownAndFilterCadet(row.cadet.id)}
+                          >
+                            {formatCadetNameCompact(row.cadet)}
+                          </button>
+                        </TableCell>
+                        <TableCell>{row.cadet.flight ?? row.cadet.group ?? "—"}</TableCell>
+                        <TableCell>
+                          {row.memoStatus && (
+                            <Badge variant={row.memoStatus === "Accepted" ? "success" : row.memoStatus.includes("overdue") || row.memoStatus === "Rejected" ? "destructive" : "secondary"}>
+                              {row.memoStatus}
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="max-w-xs truncate" title={row.notes}>
+                          {row.notes || "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                </div>
               </div>
             </div>
           )}
@@ -909,13 +912,13 @@ export function AccountabilityAnalyticsView({
                 <Table aria-label="Master attendance table">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="sticky left-0 z-10 bg-card">Cadet</TableHead>
+                      <TableHead className="sticky left-0 z-10 h-5 bg-card px-1.5 py-0.5 text-xs">Cadet</TableHead>
                       {tableEvents.map((e) => (
-                        <TableHead key={e.id} className="whitespace-nowrap text-center" title={e.title}>
+                        <TableHead key={e.id} className="h-5 min-w-9 whitespace-nowrap px-0.5 py-0.5 text-center text-xs" title={e.title}>
                           {new Date(e.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                         </TableHead>
                       ))}
-                      <TableHead className="whitespace-nowrap text-center">Standing</TableHead>
+                      <TableHead className="h-5 whitespace-nowrap px-1.5 py-0.5 text-center text-xs">Standing</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -924,19 +927,18 @@ export function AccountabilityAnalyticsView({
                       const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
                       return (
                         <TableRow key={cadet.id}>
-                          <TableCell className="sticky left-0 z-10 bg-card whitespace-nowrap">
-                            <span className="sm:hidden">{formatCadetNameCompact(cadet)}</span>
-                            <span className="hidden sm:inline">{formatCadetName(cadet)}</span>
+                          <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-card px-1.5 py-0.5 text-xs">
+                            {formatCadetNameCompact(cadet)}
                           </TableCell>
                           {tableEvents.map((e) => {
                             const record = cellByKey.get(`${cadet.id}__${e.id}`);
                             return (
-                              <TableCell key={e.id} className="text-center">
+                              <TableCell key={e.id} className="h-5 px-0.5 py-0.5 text-center">
                                 {record ? <StatusDot status={record.status} /> : <span className="text-muted-foreground">—</span>}
                               </TableCell>
                             );
                           })}
-                          <TableCell className="text-center">{standing ? <StandingBadge standing={standing} /> : <span className="text-muted-foreground">—</span>}</TableCell>
+                          <TableCell className="h-5 px-1.5 py-0.5 text-center">{standing ? <StandingBadge standing={standing} /> : <span className="text-muted-foreground">—</span>}</TableCell>
                         </TableRow>
                       );
                     })}

@@ -24,7 +24,8 @@ const STROKE_COLOR = "#dc2626"; // matches pdf-lib rgb(0.86, 0.15, 0.15) below
 interface Props {
   pdfUrl: string;
   cadetId: string;
-  onClose: () => void;
+  /** Omitted when embedded inside a larger dialog that already has its own close affordance. */
+  onClose?: () => void;
   /** Called once the marked-up copy has been flattened and uploaded -- the caller saves the resulting URL. */
   onSaved: (markupUrl: string) => void;
 }
@@ -34,6 +35,12 @@ interface Props {
  * then export a flattened marked-up COPY (the original `pdfUrl` is never touched) uploaded alongside
  * it in Storage (Section 12). Deliberately simple -- fixed pen color/width, `window.prompt` for
  * comment text -- this is a markup pass for cadre giving feedback, not a general-purpose PDF editor.
+ *
+ * Fetches the PDF's bytes itself (once) and hands pdfjs `data` instead of `url` -- pdfjs's own
+ * URL-fetching defaults to HTTP Range requests for progressive loading, which need extra
+ * CORS-exposed headers (`Content-Range`/`Accept-Ranges`) that Firebase Storage's download endpoint
+ * doesn't advertise, surfacing as a bare "Failed to fetch". A single plain fetch has no such
+ * requirement, and reusing those same bytes for the pdf-lib export avoids fetching the file twice.
  */
 export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,6 +48,7 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const drawingRef = useRef(false);
   const currentStrokeRef = useRef<Point[]>([]);
+  const sourceBytesRef = useRef<Uint8Array | undefined>(undefined);
 
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | undefined>();
   const [numPages, setNumPages] = useState(0);
@@ -57,14 +65,23 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    pdfjsLib
-      .getDocument({ url: pdfUrl })
-      .promise.then((doc) => {
+    (async () => {
+      try {
+        const response = await fetch(pdfUrl);
+        if (!response.ok) throw new Error(`Couldn't download the PDF (${response.status}).`);
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if (cancelled) return;
+        sourceBytesRef.current = bytes;
+        // A copy goes to pdfjs -- passing `data` transfers the underlying buffer to its worker
+        // thread, which would otherwise detach `bytes` and break the pdf-lib export reusing it.
+        const doc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
         if (cancelled) return;
         setPdfDoc(doc);
         setNumPages(doc.numPages);
-      })
-      .catch((e) => !cancelled && setLoadError(e instanceof Error ? e.message : "Failed to load the PDF."));
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : "Failed to load the PDF.");
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -216,10 +233,11 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
   }, [renderTick]);
 
   const handleExport = async () => {
+    const sourceBytes = sourceBytesRef.current;
+    if (!sourceBytes) return;
     setExporting(true);
     setExportError(undefined);
     try {
-      const sourceBytes = await (await fetch(pdfUrl)).arrayBuffer();
       const outDoc = await PDFDocument.load(sourceBytes);
       const font = await outDoc.embedFont(StandardFonts.Helvetica);
       const markColor = rgb(0.86, 0.15, 0.15);
@@ -313,11 +331,13 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button type="button" variant="secondary" onClick={onClose}>
-          Close
-        </Button>
-      </div>
+      {onClose && (
+        <div className="flex justify-end">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -133,10 +133,6 @@ export function DeviationMemosScreen({
   const [reviewNotes, setReviewNotes] = useState("");
   const [deciding, setDeciding] = useState(false);
 
-  // PDF markup/export (Section 12) -- opened from inside the review dialog, on top of it.
-  const [markingUpId, setMarkingUpId] = useState<string | undefined>();
-  const markingUp = memos.find((m) => m.id === markingUpId);
-
   const [overrideId, setOverrideId] = useState<string | undefined>();
   const [overrideStatus, setOverrideStatus] = useState<DeviationMemoStatus>("Assigned");
   const [overrideNotes, setOverrideNotes] = useState("");
@@ -659,7 +655,7 @@ export function DeviationMemosScreen({
       </Dialog>
 
       <Dialog open={!!reviewing} onOpenChange={(o) => !o && setReviewingId(undefined)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-4xl">
           {reviewing && (
             <>
               <DialogHeader>
@@ -686,23 +682,27 @@ export function DeviationMemosScreen({
                         <ExternalLink className="h-3 w-3" />
                         View submitted PDF
                       </a>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 text-primary underline"
-                        onClick={() => setMarkingUpId(reviewing.id)}
-                      >
-                        <Highlighter className="h-3 w-3" />
-                        {reviewing.markupPdfUrl ? "Redo markup" : "Markup PDF"}
-                      </button>
                       {reviewing.markupPdfUrl && (
                         <a href={reviewing.markupPdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                          <ExternalLink className="h-3 w-3" />
-                          View marked-up copy
+                          <Highlighter className="h-3 w-3" />
+                          View last-saved marked-up copy
                         </a>
                       )}
                     </div>
                   )}
                 </div>
+
+                {/* The PDF markup canvas IS the review view now -- opens automatically with Review, no extra click. */}
+                {reviewing.pdfUrl && (
+                  <PdfMarkupReview
+                    pdfUrl={reviewing.pdfUrl}
+                    cadetId={reviewing.cadetId}
+                    onSaved={async (markupUrl) => {
+                      await updateMemo(reviewing.id, { markupPdfUrl: markupUrl });
+                    }}
+                  />
+                )}
+
                 <div className="grid gap-1.5">
                   <Label>Your name</Label>
                   <Input value={reviewerName} onChange={(e) => setReviewerName(e.target.value)} placeholder="Who's reviewing this" />
@@ -720,27 +720,6 @@ export function DeviationMemosScreen({
                   Accept
                 </Button>
               </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!markingUp} onOpenChange={(o) => !o && setMarkingUpId(undefined)}>
-        <DialogContent className="max-w-4xl">
-          {markingUp?.pdfUrl && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Markup PDF — {markingUp.cadetName}</DialogTitle>
-              </DialogHeader>
-              <PdfMarkupReview
-                pdfUrl={markingUp.pdfUrl}
-                cadetId={markingUp.cadetId}
-                onClose={() => setMarkingUpId(undefined)}
-                onSaved={async (markupUrl) => {
-                  await updateMemo(markingUp.id, { markupPdfUrl: markupUrl });
-                  setMarkingUpId(undefined);
-                }}
-              />
             </>
           )}
         </DialogContent>

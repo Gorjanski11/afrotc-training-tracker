@@ -15,7 +15,7 @@ function isoWeekStart(d: Date): Date {
 const EVENT_TYPE_STYLES: Record<string, string> = {
   PT: "bg-primary/10 text-primary",
   LLAB: "bg-success/15 text-success",
-  FM: "bg-warning/20 text-warning-foreground",
+  FM: "bg-warning/20 text-warning",
   "D&C": "bg-secondary text-secondary-foreground",
 };
 

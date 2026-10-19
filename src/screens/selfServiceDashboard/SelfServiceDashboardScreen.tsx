@@ -15,7 +15,7 @@ import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } fr
 import { Stepper } from "../../components/analytics/Stepper";
 import { WeekView } from "../../components/WeekView";
 import { StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
-import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
+import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   cadet: Cadet;
@@ -23,6 +23,7 @@ interface Props {
   attendance: Attendance[];
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
+  permissionsConfig: PermissionsConfig;
   /** Only needed to compute the SAE Review glance, shown only when `cadet` is Cortes Garay -- every
    * other viewer's dashboard ignores these entirely, so callers can pass the full roster/catalog. */
   fullRoster?: Cadet[];
@@ -35,7 +36,7 @@ interface Props {
 
 const TONE_CLASSES: Record<"success" | "warning" | "critical", { badge: string; value: string }> = {
   success: { badge: "bg-success/10 text-success", value: "text-success" },
-  warning: { badge: "bg-warning/10 text-warning-foreground", value: "text-warning-foreground" },
+  warning: { badge: "bg-warning/10 text-warning", value: "text-warning" },
   critical: { badge: "bg-destructive/10 text-destructive", value: "text-destructive" },
 };
 
@@ -108,20 +109,21 @@ export function SelfServiceDashboardScreen({
   attendance,
   absenceMemos,
   deviationMemos,
+  permissionsConfig,
   fullRoster,
   catalog,
   completions,
   onOpenSaeReview,
   onOpenMissingMemos,
 }: Props) {
-  const isSae = isCortesGaray(cadet.email);
+  const isSae = isCortesGaray(cadet.email, permissionsConfig);
   const [bucketChoice, setBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
   const saeFlags = useMemo(() => {
     if (!isSae || !fullRoster || !catalog || !completions) return undefined;
-    return { acct: accountabilityFlags(events, fullRoster, attendance), to: toFlags(events, catalog, fullRoster, completions) };
-  }, [isSae, fullRoster, catalog, completions, events, attendance]);
+    return { acct: accountabilityFlags(events, fullRoster, attendance, permissionsConfig), to: toFlags(events, catalog, fullRoster, completions, permissionsConfig) };
+  }, [isSae, fullRoster, catalog, completions, events, attendance, permissionsConfig]);
 
   // Flat table version of the same two flag lists SAE Review groups by Training Week -- lets the
   // SAE see every outstanding item right on the dashboard without opening the full page. Flags that

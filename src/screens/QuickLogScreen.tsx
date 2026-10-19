@@ -80,10 +80,10 @@ function defaultNotPassCode(required: ProficiencyCode): ProficiencyCode {
 
 const ATTENDANCE_BADGE: Record<Attendance["status"], string> = {
   P: "bg-success/20 text-success",
-  L: "bg-warning/20 text-warning-foreground",
+  L: "bg-warning/20 text-warning",
   A: "bg-destructive/20 text-destructive",
   AE: "bg-success/20 text-success",
-  PE: "bg-warning/20 text-warning-foreground",
+  PE: "bg-warning/20 text-warning",
 };
 
 /** Small corner badge on a Quick Log cell -- that cadet's attendance status for the specific PMT this column grades, so a grader can see at a glance whether they were even there. */

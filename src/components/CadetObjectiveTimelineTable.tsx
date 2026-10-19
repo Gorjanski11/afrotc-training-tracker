@@ -191,12 +191,12 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                             : hasEntry
                               ? satisfied
                                 ? "bg-success/15 text-success"
-                                : "bg-warning/15 text-warning-foreground"
+                                : "bg-warning/15 text-warning"
                               : optional || !isPast
                                 ? "text-muted-foreground"
                                 : columnMissed
                                   ? "bg-destructive/15 text-destructive"
-                                  : "bg-warning/15 text-warning-foreground"
+                                  : "bg-warning/15 text-warning"
                         )}
                         onClick={() => onOpenObjective(objective)}
                         title={hasEntry && !notCovered && !satisfied ? "Partial" : undefined}

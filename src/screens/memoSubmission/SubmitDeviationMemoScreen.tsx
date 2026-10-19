@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { ClipboardList, Upload, CheckCircle2 } from "lucide-react";
+import { Upload, CheckCircle2 } from "lucide-react";
 import { SubmissionRequirementsDialog } from "../../components/SubmissionRequirementsDialog";
 import { uploadMemoPdf } from "../../lib/storage";
-import { shortDate } from "../../domain/memoAnalytics";
+import { shortDate, memoStatusVariant } from "../../domain/memoAnalytics";
+import { Badge } from "@/components/ui/badge";
 import type { DeviationMemo, Cadet } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
@@ -146,11 +147,6 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <ClipboardList className="h-5 w-5 text-primary" />
-        Deviation Memo
-      </h2>
-
       {justSubmitted && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-success/50 bg-success/10 p-3 text-sm text-success">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -169,9 +165,10 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
               <TableHeader>
                 <TableRow>
                   {showCombineColumn && <TableHead />}
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Assigned by</TableHead>
-                  <TableHead>Due</TableHead>
+                  <TableHead>Date Due</TableHead>
+                  <TableHead>Reason + Purpose</TableHead>
+                  <TableHead>Addressed to</TableHead>
+                  <TableHead>CC</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -185,15 +182,16 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                         )}
                       </TableCell>
                     )}
+                    <TableCell className={isOverdue(m) ? "whitespace-nowrap text-destructive" : "whitespace-nowrap"}>
+                      {shortDate(m.dueDate)}
+                      {isOverdue(m) && " (overdue)"}
+                    </TableCell>
                     <TableCell className="max-w-sm">
                       <div>{reasonDisplay(m)}</div>
                       {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
                     </TableCell>
                     <TableCell>{m.assignedBy}</TableCell>
-                    <TableCell className={isOverdue(m) ? "text-destructive" : undefined}>
-                      {shortDate(m.dueDate)}
-                      {isOverdue(m) && " (overdue)"}
-                    </TableCell>
+                    <TableCell>{m.cc.length > 0 ? m.cc.map((c) => c.name).join(", ") : "N/A"}</TableCell>
                     <TableCell>
                       {submittingId === m.id ? (
                         <div className="flex items-center gap-2">
@@ -227,7 +225,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                 ))}
                 {myAssigned.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={showCombineColumn ? 5 : 4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={showCombineColumn ? 6 : 5} className="text-center text-muted-foreground">
                       Nothing assigned to you right now.
                     </TableCell>
                   </TableRow>
@@ -327,17 +325,24 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
               <Table aria-label="My submitted deviation memos">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Reason</TableHead>
+                    <TableHead>Date Submitted</TableHead>
+                    <TableHead>Reason + Purpose</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Submitted</TableHead>
+                    <TableHead>Assigned by</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {mySubmitted.map((m) => (
                     <TableRow key={m.id}>
-                      <TableCell className="max-w-sm">{reasonDisplay(m)}</TableCell>
-                      <TableCell>{m.status}</TableCell>
-                      <TableCell>{shortDate(m.submittedAt)}</TableCell>
+                      <TableCell className="whitespace-nowrap">{shortDate(m.submittedAt)}</TableCell>
+                      <TableCell className="max-w-sm">
+                        <div>{reasonDisplay(m)}</div>
+                        {m.purpose && <div className="text-xs text-muted-foreground">{m.purpose}</div>}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={memoStatusVariant(m.status)}>{m.status}</Badge>
+                      </TableCell>
+                      <TableCell>{m.assignedBy}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

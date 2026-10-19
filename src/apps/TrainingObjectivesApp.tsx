@@ -1,30 +1,27 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutDashboard, UserRound, BookOpen, ListChecks, ArrowLeft } from "lucide-react";
+import { LayoutDashboard, UserRound, BookOpen, ListChecks } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
-import { GMC_DEV_LEVELS, POC_DEV_LEVELS, type DevLevel } from "../domain/constants";
+import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS, type DevLevel } from "../domain/constants";
 import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
-import { HomeScreen } from "../screens/HomeScreen";
+import { Stepper } from "../components/analytics/Stepper";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { CadetDetailScreen } from "../screens/CadetDetailScreen";
 import { ReferenceLibraryScreen } from "../screens/ReferenceLibraryScreen";
 import { QuickLogScreen } from "../screens/QuickLogScreen";
 
-type TopLevel = "home" | "poc" | "gmc";
-type Screen = "dashboard" | "cadet" | "reference" | "quicklog";
+type Screen = "dashboard" | "cadet" | "reference" | "pocLog" | "gmcLog";
 
 const COHORT_DEV_LEVELS: Record<"poc" | "gmc", readonly DevLevel[]> = {
   poc: POC_DEV_LEVELS,
   gmc: GMC_DEV_LEVELS,
 };
-const COHORT_LABEL: Record<"poc" | "gmc", string> = { poc: "POC", gmc: "GMC" };
 
 /** Fades/settles a tab panel in on mount -- replays each time a tab becomes active, since Radix Tabs mounts each panel fresh. */
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
@@ -36,14 +33,14 @@ function AnimatedPanel({ children }: { children: React.ReactNode }) {
 }
 
 interface Props {
-  /** "poc"/"gmc" skips the Home cohort-picker entirely and locks to that one cohort; "full" behaves as before (Home picker, either cohort). Never rendered at all when "none" -- the hub simply doesn't show this tab. */
+  /** "poc"/"gmc" only shows that cohort's Log tab and locks the Dashboard to it; "full" shows both Log tabs and adds a GMC/POC toggle to Dashboard. Never rendered at all when "none" -- the hub simply doesn't show this tab. */
   cohortAccess: TrainingObjectivesAccess;
   /** Group/Flight Commanders only ever see their own unit's cadets, everywhere in this sub-app (Section 5/8). */
   unitScope: UnitScope;
   userEmail: string | null | undefined;
 }
 
-/** POC/GMC "TO's" tracking -- Dashboard, Cadet Detail, Reference Library, Quick Log. Roster/Calendar moved to Settings (Section 6). */
+/** POC/GMC "TO's" tracking -- Dashboard, Cadet Review, Reference Library, POC Log, GMC Log. Roster/Calendar moved to Settings (Section 6). */
 export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Props) {
   const cadetsState = useCadets();
   const catalogState = useTrainingObjectives();
@@ -51,42 +48,51 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   const pmtEventsState = usePmtEvents();
   const attendanceState = useAttendance();
 
-  const singleCohort = cohortAccess === "poc" || cohortAccess === "gmc" ? cohortAccess : undefined;
-  const [topLevel, setTopLevel] = useState<TopLevel>(singleCohort ?? "home");
+  const showPoc = cohortAccess === "poc" || cohortAccess === "full";
+  const showGmc = cohortAccess === "gmc" || cohortAccess === "full";
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [selectedCadetId, setSelectedCadetId] = useState<string | undefined>();
+  // Dashboard-only GMC/POC toggle, for a viewer with access to both cohorts -- a poc-only or
+  // gmc-only viewer's Dashboard is just always their one cohort, no toggle shown.
+  const [dashboardCohort, setDashboardCohort] = useState<"poc" | "gmc">("poc");
+  const effectiveDashboardCohort = cohortAccess === "full" ? dashboardCohort : cohortAccess === "gmc" ? "gmc" : "poc";
 
   const goToCadet = (cadetId: string) => {
     setSelectedCadetId(cadetId);
     setScreen("cadet");
   };
 
-  const enterCohort = (cohort: "poc" | "gmc") => {
-    setTopLevel(cohort);
-    setScreen("dashboard");
-    setSelectedCadetId(undefined);
-  };
-
-  const goHome = () => {
-    setTopLevel("home");
-    setSelectedCadetId(undefined);
-  };
-
   /**
-   * "POC TO's" and "GMC TO's" are the same screens reading the same shared roster/catalog/PMT
-   * calendar -- they're just scoped to their cohort's cadets here, not a parallel data model.
-   * Cadre supervise, they're never a tracked subject (Section 4) -- excluded right alongside cohort/unit scoping.
-   * An Inactive cadet is no longer tracked here either.
+   * The whole roster this viewer has access to, cohort-filtered only down to whichever cohort(s)
+   * their own access actually grants -- a "full" viewer's Cadet Review/Reference Library span both
+   * cohorts (there's no cohort "door" to have entered through anymore), while a poc/gmc-only viewer
+   * is still restricted to their one. Cadre supervise, they're never a tracked subject (Section 4) --
+   * excluded right alongside unit scoping. An Inactive cadet is no longer tracked here either.
    */
-  const cohortCadets = useMemo(() => {
-    if (topLevel === "home") return [];
-    const levels = COHORT_DEV_LEVELS[topLevel];
-    const inCohort = cadetsState.cadets.filter((c) => c.devLevel && (levels as readonly string[]).includes(c.devLevel));
-    return excludeInactive(excludeCadre(applyUnitScope(unitScope, inCohort)));
-  }, [topLevel, cadetsState.cadets, unitScope]);
+  const accessLevels = useMemo(
+    () => (cohortAccess === "full" ? DEV_LEVELS : cohortAccess === "gmc" ? GMC_DEV_LEVELS : cohortAccess === "poc" ? POC_DEV_LEVELS : []),
+    [cohortAccess]
+  );
+  const accessCadets = useMemo(() => {
+    const inAccess = cadetsState.cadets.filter((c) => c.devLevel && (accessLevels as readonly string[]).includes(c.devLevel));
+    return excludeInactive(excludeCadre(applyUnitScope(unitScope, inAccess)));
+  }, [cadetsState.cadets, unitScope, accessLevels]);
+
+  const dashboardCadets = useMemo(
+    () => accessCadets.filter((c) => c.devLevel && (COHORT_DEV_LEVELS[effectiveDashboardCohort] as readonly string[]).includes(c.devLevel)),
+    [accessCadets, effectiveDashboardCohort]
+  );
+  const pocLogCadets = useMemo(
+    () => accessCadets.filter((c) => c.devLevel && (POC_DEV_LEVELS as readonly string[]).includes(c.devLevel)),
+    [accessCadets]
+  );
+  const gmcLogCadets = useMemo(
+    () => accessCadets.filter((c) => c.devLevel && (GMC_DEV_LEVELS as readonly string[]).includes(c.devLevel)),
+    [accessCadets]
+  );
 
   // Evaluator autofill (Section 5) needs the POC-class evaluator pool from the FULL roster, not just
-  // this cohort's cadets -- a POC evaluator must be selectable even while logging a GMC cadet.
+  // this app's accessible cadets -- a POC evaluator must be selectable even while logging a GMC cadet.
   const fullRosterNoCadre = useMemo(() => excludeInactive(excludeCadre(cadetsState.cadets)), [cadetsState.cadets]);
 
   const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading || attendanceState.loading;
@@ -94,19 +100,6 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
 
   return (
     <div className="flex h-full flex-col">
-      {(topLevel !== "home" || !singleCohort) && (
-        <div className="flex items-center gap-3 border-b border-input bg-background px-3 py-2 sm:px-8">
-          {topLevel !== "home" && !singleCohort && (
-            <Button variant="ghost" size="icon" onClick={goHome} aria-label="Back to Home">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <span className="text-sm text-muted-foreground">
-            AFROTCI 36-2011 Vol 1{topLevel !== "home" && ` — ${COHORT_LABEL[topLevel]}`}
-          </span>
-        </div>
-      )}
-
       {dataLoading ? (
         <div className="space-y-4 p-3 sm:p-6">
           <div className="flex gap-4">
@@ -122,13 +115,9 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
         <div className="flex h-full items-center justify-center">
           <span className="text-destructive">{loadError}</span>
         </div>
-      ) : topLevel === "home" ? (
-        <main className="flex-1 overflow-auto p-3 sm:p-6">
-          <HomeScreen onEnterPoc={() => enterCohort("poc")} onEnterGmc={() => enterCohort("gmc")} />
-        </main>
       ) : (
         <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-          <nav className="px-3 sm:px-8">
+          <nav className="flex flex-wrap items-center gap-3 px-3 sm:px-8">
             <TabsList>
               <TabsTrigger value="dashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
@@ -136,26 +125,44 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
               </TabsTrigger>
               <TabsTrigger value="cadet" disabled={!selectedCadetId}>
                 <UserRound className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Cadet Detail</span>
+                <span className="hidden sm:inline">Cadet Review</span>
               </TabsTrigger>
               <TabsTrigger value="reference">
                 <BookOpen className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Reference Library</span>
               </TabsTrigger>
-              <TabsTrigger value="quicklog">
-                <ListChecks className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Quick Log</span>
-              </TabsTrigger>
+              {showPoc && (
+                <TabsTrigger value="pocLog">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">POC Log</span>
+                </TabsTrigger>
+              )}
+              {showGmc && (
+                <TabsTrigger value="gmcLog">
+                  <ListChecks className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">GMC Log</span>
+                </TabsTrigger>
+              )}
             </TabsList>
+            {screen === "dashboard" && cohortAccess === "full" && (
+              <Stepper
+                options={[
+                  { value: "poc", label: "POC" },
+                  { value: "gmc", label: "GMC" },
+                ]}
+                value={dashboardCohort}
+                onChange={(v) => setDashboardCohort(v as "poc" | "gmc")}
+              />
+            )}
           </nav>
 
           <main className="flex-1 overflow-auto p-3 sm:p-6">
             <TabsContent value="dashboard">
               <AnimatedPanel>
                 <DashboardScreen
-                  cohort={topLevel}
-                  levels={COHORT_DEV_LEVELS[topLevel]}
-                  cadets={cohortCadets}
+                  cohort={effectiveDashboardCohort}
+                  levels={COHORT_DEV_LEVELS[effectiveDashboardCohort]}
+                  cadets={dashboardCadets}
                   catalog={catalogState.catalog}
                   completions={completionsState.completions}
                   pmtEvents={pmtEventsState.events}
@@ -168,7 +175,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                 {selectedCadetId && (
                   <CadetDetailScreen
                     cadetId={selectedCadetId}
-                    cadets={cohortCadets}
+                    cadets={accessCadets}
                     sections={catalogState.sections}
                     completions={completionsState.completions}
                     pmtEvents={pmtEventsState.events}
@@ -183,28 +190,51 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
             </TabsContent>
             <TabsContent value="reference">
               <AnimatedPanel>
-                <ReferenceLibraryScreen sections={catalogState.sections} devLevels={COHORT_DEV_LEVELS[topLevel]} />
+                <ReferenceLibraryScreen sections={catalogState.sections} devLevels={accessLevels} />
               </AnimatedPanel>
             </TabsContent>
-            <TabsContent value="quicklog">
-              <AnimatedPanel>
-                <QuickLogScreen
-                  cadets={cohortCadets}
-                  catalog={catalogState.catalog}
-                  completions={completionsState.completions}
-                  pmtEvents={pmtEventsState.events}
-                  attendance={attendanceState.attendance}
-                  createCompletion={completionsState.createCompletion}
-                  updateCompletion={completionsState.updateCompletion}
-                  deleteCompletion={completionsState.deleteCompletion}
-                  refetchCompletions={completionsState.refetch}
-                  onSelectCadet={goToCadet}
-                  hideFlightFilter={unitScope.kind === "flight"}
-                  userEmail={userEmail}
-                  roster={fullRosterNoCadre}
-                />
-              </AnimatedPanel>
-            </TabsContent>
+            {showPoc && (
+              <TabsContent value="pocLog">
+                <AnimatedPanel>
+                  <QuickLogScreen
+                    cadets={pocLogCadets}
+                    catalog={catalogState.catalog}
+                    completions={completionsState.completions}
+                    pmtEvents={pmtEventsState.events}
+                    attendance={attendanceState.attendance}
+                    createCompletion={completionsState.createCompletion}
+                    updateCompletion={completionsState.updateCompletion}
+                    deleteCompletion={completionsState.deleteCompletion}
+                    refetchCompletions={completionsState.refetch}
+                    onSelectCadet={goToCadet}
+                    hideFlightFilter
+                    userEmail={userEmail}
+                    roster={fullRosterNoCadre}
+                  />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
+            {showGmc && (
+              <TabsContent value="gmcLog">
+                <AnimatedPanel>
+                  <QuickLogScreen
+                    cadets={gmcLogCadets}
+                    catalog={catalogState.catalog}
+                    completions={completionsState.completions}
+                    pmtEvents={pmtEventsState.events}
+                    attendance={attendanceState.attendance}
+                    createCompletion={completionsState.createCompletion}
+                    updateCompletion={completionsState.updateCompletion}
+                    deleteCompletion={completionsState.deleteCompletion}
+                    refetchCompletions={completionsState.refetch}
+                    onSelectCadet={goToCadet}
+                    hideFlightFilter={unitScope.kind === "flight"}
+                    userEmail={userEmail}
+                    roster={fullRosterNoCadre}
+                  />
+                </AnimatedPanel>
+              </TabsContent>
+            )}
           </main>
         </Tabs>
       )}

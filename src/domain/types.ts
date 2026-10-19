@@ -48,6 +48,38 @@ export interface Cadet {
    * treated as false, never retroactively forced.
    */
   mustChangePassword: boolean | undefined;
+  /** Permissions tab (Settings) override of their resolved tab access -- undefined means "no override," falls through to the roster isCadre/CADET_ONLY default. Replaces the old hardcoded ACCESS_BY_EMAIL table. */
+  accessOverride: AccessOverride | undefined;
+  /** Permissions tab override of their Deviation Memo assign authority -- undefined falls through to the Cadre/cannot-assign default. Replaces the old hardcoded DEVIATION_ASSIGN_OVERRIDES table. */
+  deviationAssignOverride: DeviationAssignOverrideInput | undefined;
+}
+
+export type AccessTierKind = "all" | "toFullOnly" | "deviationOnly" | "pocGroup" | "pocGroupPlusGmc" | "gmcFlight" | "gmcWide";
+
+export interface AccessOverride {
+  tier: AccessTierKind;
+  group: Group | undefined;
+  flight: Flight | undefined;
+}
+
+export type DeviationScopeKind = "everyone" | "everyone-except-cadre" | "any-gmc" | "flight" | "group" | "cannot-assign";
+
+export interface DeviationAssignOverrideInput {
+  scope: DeviationScopeKind;
+  group: Group | undefined;
+  flight: Flight | undefined;
+  reviewOwnOnly: boolean;
+  alsoVisibleEmails: string[] | undefined;
+}
+
+/** Settings -> Permissions' global/structural tables (Section 3-5 of that plan) -- everything that isn't naturally "one person's own record." Single Firestore doc, `permissionsConfig/global`. */
+export interface PermissionsConfig {
+  groupCommanderEmail: Record<Group, string>;
+  flightCommanderEmail: Record<Flight, string>;
+  asClassInstructorEmail: Record<AbsenceAsClass, string>;
+  generalAbsenceReviewerEmail: string;
+  eventEditOverrideEmails: string[];
+  rootEmail: string;
 }
 
 /**

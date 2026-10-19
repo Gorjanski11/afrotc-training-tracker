@@ -31,6 +31,7 @@ import { useTheme, THEMES, type Theme } from "./hooks/useTheme";
 import { shortDateTime } from "./domain/memoAnalytics";
 import { resolveTabAccess, isCortesGaray } from "./domain/access";
 import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
+import { usePermissionsConfig } from "./hooks/usePermissionsConfig";
 import { SignInScreen } from "./components/SignInScreen";
 import { ChangePasswordDialog } from "./components/ChangePasswordDialog";
 import { TrainingObjectivesApp } from "./apps/TrainingObjectivesApp";
@@ -98,6 +99,7 @@ function App() {
   const [forcedPasswordChange, setForcedPasswordChange] = useState(false);
   const [pendingCurrentPassword, setPendingCurrentPassword] = useState<string | undefined>();
   const cadetsState = useCadets();
+  const permissionsState = usePermissionsConfig();
   const { mode: viewMode, toggle: toggleViewMode } = useViewMode();
   const { theme, setTheme } = useTheme();
   const [themeMenuOpen, setThemeMenuOpen] = useState(false);
@@ -184,7 +186,7 @@ function App() {
     setNavIntent(intent);
   };
 
-  if (authLoading || cadetsState.loading) {
+  if (authLoading || cadetsState.loading || permissionsState.loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <Skeleton className="h-10 w-48" />
@@ -196,7 +198,7 @@ function App() {
     return <SignInScreen signIn={handleSignIn} />;
   }
 
-  if (maintenance.inEffect && !isCortesGaray(user.email) && !isCortesGaray(impersonatedBy)) {
+  if (maintenance.inEffect && !isCortesGaray(user.email, permissionsState.config) && !isCortesGaray(impersonatedBy, permissionsState.config)) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <Wrench className="h-10 w-10 text-muted-foreground" />
@@ -342,7 +344,7 @@ function App() {
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>
                 <AnimatedPanel>
-                  <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} userEmail={user.email} />
+                  <AccountabilityApp key="accountability" unitScope={tabAccess.unitScope} userEmail={user.email} permissionsConfig={permissionsState.config} />
                 </AnimatedPanel>
               </TabsContent>
             )}
@@ -360,17 +362,19 @@ function App() {
                     <GmcDashboardApp
                       key="gmcDashboard"
                       userEmail={user.email}
+                      permissionsConfig={permissionsState.config}
                       onOpenMissingMemos={(screen) => navigateTo("memoSubmission", { kind: "memoSubmission", screen })}
                     />
                   ) : tabAccess.pocDashboard ? (
                     <PocDashboardApp
                       key="pocDashboard"
                       userEmail={user.email}
+                      permissionsConfig={permissionsState.config}
                       onOpenSaeReview={() => navigateTo("settings", { kind: "settings", section: "saeReview" })}
                       onOpenMissingMemos={(screen) => navigateTo("memoSubmission", { kind: "memoSubmission", screen })}
                     />
                   ) : (
-                    <CadreDashboardApp key="cadreDashboard" userEmail={user.email} navigateTo={navigateTo} />
+                    <CadreDashboardApp key="cadreDashboard" userEmail={user.email} permissionsConfig={permissionsState.config} navigateTo={navigateTo} />
                   )}
                 </AnimatedPanel>
               </TabsContent>
@@ -394,6 +398,7 @@ function App() {
                     key="memoReview"
                     showAbsence={tabAccess.memoReviewAbsence}
                     userEmail={user.email}
+                    permissionsConfig={permissionsState.config}
                     initialScreen={navIntent?.kind === "memoReview" ? navIntent.screen : undefined}
                     initialOpenMemoId={navIntent?.kind === "memoReview" ? navIntent.openMemoId : undefined}
                     onConsumeInitialScreen={() => setNavIntent(undefined)}
@@ -414,6 +419,7 @@ function App() {
                     initialAccountabilityFilter={navIntent?.kind === "accountabilityAnalytics" ? navIntent : undefined}
                     onConsumeInitialFilter={() => setNavIntent(undefined)}
                     userEmail={user.email}
+                    permissionsConfig={permissionsState.config}
                   />
                 </AnimatedPanel>
               </TabsContent>

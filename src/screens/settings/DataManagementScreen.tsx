@@ -15,7 +15,7 @@ import { listAllMemoPdfs, deleteMemoPdf, type StoredMemoPdf } from "../../lib/st
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
 import { shortDate } from "../../domain/memoAnalytics";
-import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
+import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   roster: Cadet[];
@@ -26,6 +26,7 @@ interface Props {
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   reauthenticate: (password: string) => Promise<void>;
 }
 
@@ -40,8 +41,8 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
-export function DataManagementScreen({ roster, events, attendance, catalog, completions, absenceMemos, deviationMemos, userEmail, reauthenticate }: Props) {
-  const canDelete = isCortesGaray(userEmail);
+export function DataManagementScreen({ roster, events, attendance, catalog, completions, absenceMemos, deviationMemos, userEmail, permissionsConfig, reauthenticate }: Props) {
+  const canDelete = isCortesGaray(userEmail, permissionsConfig);
   const rosterById = new Map(roster.map((p) => [p.id, p]));
 
   const [selected, setSelected] = useState<Set<ExportCategory>>(new Set(["accountability", "trainingObjectives", "memorandums"]));

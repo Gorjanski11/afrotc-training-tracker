@@ -15,6 +15,7 @@ import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
 import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canEditEvents, resolveTabAccess } from "../domain/access";
+import { usePermissionsConfig } from "../hooks/usePermissionsConfig";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
 import { QuickLinksScreen } from "../screens/settings/QuickLinksScreen";
@@ -23,8 +24,10 @@ import { DataManagementScreen } from "../screens/settings/DataManagementScreen";
 import { NewSemesterScreen } from "../screens/settings/NewSemesterScreen";
 import { SaeReviewScreen } from "../screens/settings/SaeReviewScreen";
 import { MaintenanceScreen } from "../screens/settings/MaintenanceScreen";
+import { PermissionsScreen } from "../screens/settings/PermissionsScreen";
+import { ShieldCheck } from "lucide-react";
 
-type Section = "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance";
+type Section = "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance" | "permissions";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -52,15 +55,16 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
   const emailTemplatesState = useEmailTemplates();
+  const permissionsState = usePermissionsConfig();
   const { reauthenticate, resetOtherPassword, impersonate, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
-  const eventEditAccess = canEditEvents(userEmail, cadetsState.cadets);
+  const eventEditAccess = canEditEvents(userEmail, cadetsState.cadets, permissionsState.config);
   const unitScope = resolveTabAccess(userEmail, cadetsState.cadets).unitScope;
-  const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
+  const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets, permissionsState.config);
   // SOP (1 Oct 2026) Sections 3/4's review flags are literally "for review by the SAE" -- narrower
   // than Cadre, matching isCortesGaray (the same tier that gates New Semester's riskiest actions).
-  const saeReviewAccess = isCortesGaray(userEmail);
+  const saeReviewAccess = isCortesGaray(userEmail, permissionsState.config);
   const [section, setSection] = useState<Section>("roster");
 
   useEffect(() => {
@@ -91,7 +95,8 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
     completionsState.loading ||
     absenceState.loading ||
     deviationState.loading ||
-    emailTemplatesState.loading;
+    emailTemplatesState.loading ||
+    permissionsState.loading;
   const loadError =
     cadetsState.error ||
     eventsState.error ||
@@ -109,6 +114,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
     ...(fullAccess ? [{ value: "templates" as const, label: "Auto-email Templates", icon: Mail }] : []),
     ...(fullAccess ? [{ value: "data" as const, label: "Data Management", icon: Database }] : []),
+    ...(fullAccess ? [{ value: "permissions" as const, label: "Permissions", icon: ShieldCheck }] : []),
     ...(newSemesterAccess ? [{ value: "newSemester" as const, label: "New Semester", icon: CalendarPlus }] : []),
     ...(saeReviewAccess ? [{ value: "saeReview" as const, label: "SAE Review", icon: ShieldAlert }] : []),
     ...(saeReviewAccess ? [{ value: "maintenance" as const, label: "Maintenance Mode", icon: Wrench }] : []),
@@ -159,6 +165,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 }}
                 unitScope={unitScope}
                 userEmail={userEmail}
+                permissionsConfig={permissionsState.config}
                 reauthenticate={reauthenticate}
                 resetOtherPassword={resetOtherPassword}
                 impersonate={impersonate}
@@ -192,6 +199,16 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 absenceMemos={absenceState.memos}
                 deviationMemos={deviationState.memos}
                 userEmail={userEmail}
+                permissionsConfig={permissionsState.config}
+                reauthenticate={reauthenticate}
+              />
+            )}
+            {activeSection === "permissions" && (
+              <PermissionsScreen
+                roster={cadetsState.cadets}
+                updateCadetFields={cadetsState.updateCadetFields}
+                config={permissionsState.config}
+                updateConfig={permissionsState.updateConfig}
                 reauthenticate={reauthenticate}
               />
             )}
@@ -205,6 +222,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 absenceMemos={absenceState.memos}
                 deviationMemos={deviationState.memos}
                 userEmail={userEmail}
+                permissionsConfig={permissionsState.config}
                 reauthenticate={reauthenticate}
                 createCadet={cadetsState.createCadet}
                 updateCadet={cadetsState.updateCadet}
@@ -223,6 +241,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                 attendance={attendanceState.attendance}
                 catalog={catalogState.catalog}
                 completions={completionsState.completions}
+                permissionsConfig={permissionsState.config}
               />
             )}
             {activeSection === "maintenance" && saeReviewAccess && <MaintenanceScreen />}

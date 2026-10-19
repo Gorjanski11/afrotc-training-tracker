@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { effectiveAbsenceMemoDeadline } from "../../domain/constants";
 import { shortDate } from "../../domain/memoAnalytics";
 import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
-import type { AbsenceMemo, Cadet, DeviationMemo, PmtEvent } from "../../domain/types";
+import type { AbsenceMemo, Cadet, DeviationMemo, PermissionsConfig, PmtEvent } from "../../domain/types";
 
 interface Props {
   events: PmtEvent[];
@@ -14,6 +14,7 @@ interface Props {
   deviationMemos: DeviationMemo[];
   roster: Cadet[];
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Jumps to the Absence Memos screen with this specific memo's review popup opened -- undefined when the viewer can't see Absence Memos at all. */
   onOpenAbsence?: (memoId: string) => void;
   /** Jumps to the Deviation Memos screen with this specific memo's review popup opened. */
@@ -44,8 +45,8 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
 }
 
 /** Section 2 -- same "concerning this viewer" scoping as the Absence/Deviation Memos screens and Memorandums Analytics, so every count on this landing page agrees with what's actually in the lists behind it. */
-export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, onOpenAbsence, onOpenDeviation }: Props) {
-  const myAbsenceMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, absenceMemos), [absenceMemos, roster, userEmail]);
+export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, permissionsConfig, onOpenAbsence, onOpenDeviation }: Props) {
+  const myAbsenceMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, absenceMemos, permissionsConfig), [absenceMemos, roster, userEmail, permissionsConfig]);
   const myDeviationMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, deviationMemos), [deviationMemos, roster, userEmail]);
 
   const pendingAbsence = useMemo(() => myAbsenceMemos.filter((m) => m.status === "Pending"), [myAbsenceMemos]);

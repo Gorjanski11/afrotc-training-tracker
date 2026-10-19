@@ -1,7 +1,6 @@
 import { meetsRequirement } from "./progress";
 import { deriveClass, GROUPS, FLIGHTS, PROFICIENCY_CODES, type ProficiencyCode, type Group, type Flight } from "./constants";
-import { GROUP_COMMANDER_EMAIL, FLIGHT_COMMANDER_EMAIL } from "./access";
-import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "./types";
+import type { Attendance, Cadet, Completion, PermissionsConfig, PmtEvent, TrainingObjective } from "./types";
 
 /** "late" = past its deadline but still within the 2-hour grace window (SOP: 2000 deadline, late until 2200). "missing" = past that window, still incomplete. */
 export type DeadlineStatus = "late" | "missing";
@@ -40,7 +39,7 @@ function accountabilityDeadlineMs(event: PmtEvent): number {
 }
 
 /** Every Group/Flight still missing at least one cadet's attendance for a PMT already past its 2000 deadline. */
-export function accountabilityFlags(events: PmtEvent[], roster: Cadet[], attendance: Attendance[], now = Date.now()): AccountabilityFlag[] {
+export function accountabilityFlags(events: PmtEvent[], roster: Cadet[], attendance: Attendance[], config: PermissionsConfig, now = Date.now()): AccountabilityFlag[] {
   const flags: AccountabilityFlag[] = [];
   const active = activeNonCadre(roster);
 
@@ -54,13 +53,13 @@ export function accountabilityFlags(events: PmtEvent[], roster: Cadet[], attenda
       const unitCadets = active.filter((c) => c.group === group && deriveClass(c.asClass, c.isCadre) === "POC");
       if (unitCadets.length === 0) continue;
       const missing = unitCadets.filter((c) => !recorded.has(c.id)).length;
-      if (missing > 0) flags.push({ event, unitKind: "group", unitValue: group, responsibleEmail: GROUP_COMMANDER_EMAIL[group], status, missing, total: unitCadets.length });
+      if (missing > 0) flags.push({ event, unitKind: "group", unitValue: group, responsibleEmail: config.groupCommanderEmail[group], status, missing, total: unitCadets.length });
     }
     for (const flight of FLIGHTS) {
       const unitCadets = active.filter((c) => c.flight === flight && deriveClass(c.asClass, c.isCadre) === "GMC");
       if (unitCadets.length === 0) continue;
       const missing = unitCadets.filter((c) => !recorded.has(c.id)).length;
-      if (missing > 0) flags.push({ event, unitKind: "flight", unitValue: flight, responsibleEmail: FLIGHT_COMMANDER_EMAIL[flight], status, missing, total: unitCadets.length });
+      if (missing > 0) flags.push({ event, unitKind: "flight", unitValue: flight, responsibleEmail: config.flightCommanderEmail[flight], status, missing, total: unitCadets.length });
     }
   }
   return flags;
@@ -72,8 +71,6 @@ export function accountabilityFlags(events: PmtEvent[], roster: Cadet[], attenda
 // responsible for POC, which has no per-unit split. Deadline is Friday 2000
 // of that Training Week.
 // ---------------------------------------------------------------------------
-
-const SAE_EMAIL = "jorge.cortes4@upr.edu";
 
 /** Friday 2000 of the Monday-Sunday calendar week containing this date -- works from any event date in that week, since PT can land on other days than LLAB/FM/D&C. */
 export function trainingWeekFridayDeadline(anyEventDateInWeek: string): Date {
@@ -138,7 +135,7 @@ export interface ToFlag {
 }
 
 /** Every (Training Week, PMT, objective, unit) still not fully graded, for every week whose own Friday-2000 deadline has passed. */
-export function toFlags(events: PmtEvent[], catalog: TrainingObjective[], roster: Cadet[], completions: Completion[], now = Date.now()): ToFlag[] {
+export function toFlags(events: PmtEvent[], catalog: TrainingObjective[], roster: Cadet[], completions: Completion[], config: PermissionsConfig, now = Date.now()): ToFlag[] {
   const active = activeNonCadre(roster);
   const catalogById = new Map(catalog.map((o) => [o.id, o]));
   const occurrencesByObjective = new Map<string, PmtEvent[]>();
@@ -166,7 +163,7 @@ export function toFlags(events: PmtEvent[], catalog: TrainingObjective[], roster
         if (pocRoster.some((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "")) {
           if (!isObjectiveGradedFor(objective, event, occurrences, pocRoster, completions)) {
             const { missing, total } = countUngradedForObjective(objective, event, occurrences, pocRoster, completions);
-            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "POC", responsibleEmail: SAE_EMAIL, status, missing, total });
+            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "POC", responsibleEmail: config.rootEmail, status, missing, total });
           }
         }
         for (const flight of FLIGHTS) {
@@ -174,7 +171,7 @@ export function toFlags(events: PmtEvent[], catalog: TrainingObjective[], roster
           if (flightRoster.length === 0 || !flightRoster.some((c) => c.devLevel && objective.proficiencyByLevel[c.devLevel] !== "")) continue;
           if (!isObjectiveGradedFor(objective, event, occurrences, flightRoster, completions)) {
             const { missing, total } = countUngradedForObjective(objective, event, occurrences, flightRoster, completions);
-            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "GMC", unitValue: flight, responsibleEmail: FLIGHT_COMMANDER_EMAIL[flight], status, missing, total });
+            flags.push({ trainingWeek: tw, deadline, event, objective, cohort: "GMC", unitValue: flight, responsibleEmail: config.flightCommanderEmail[flight], status, missing, total });
           }
         }
       }

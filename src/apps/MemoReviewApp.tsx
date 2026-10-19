@@ -13,6 +13,7 @@ import { excludeInactive, excludeInactiveRows } from "../domain/access";
 import { DashboardScreen } from "../screens/memoReview/DashboardScreen";
 import { AbsenceMemosScreen } from "../screens/memoReview/AbsenceMemosScreen";
 import { DeviationMemosScreen } from "../screens/memoReview/DeviationMemosScreen";
+import type { PermissionsConfig } from "../domain/types";
 
 type Screen = "dashboard" | "absence" | "deviation";
 
@@ -28,6 +29,7 @@ interface Props {
   /** Absence Memos tab/queue only shows for full-access users -- everyone else with Memo Review access sees Deviation Memos only. */
   showAbsence: boolean;
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Set by a Cadre/SAE Dashboard tile click (e.g. "Absence Memos pending review") -- jumps straight to that sub-screen on mount, then `onConsumeInitialScreen` clears it so it doesn't re-fire on a later remount. */
   initialScreen?: "absence" | "deviation";
   /** Set alongside `initialScreen` when the dashboard click was on a SPECIFIC memo row (not just the count tile) -- opens that memo's review popup immediately instead of just landing on the list. */
@@ -36,7 +38,7 @@ interface Props {
 }
 
 /** Cadre review of Absence/Deviation memos -- Dashboard, Absence (full-access only), Deviation. Memorandum Templates and History moved to Settings (Section 6). */
-export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOpenMemoId, onConsumeInitialScreen }: Props) {
+export function MemoReviewApp({ showAbsence, userEmail, permissionsConfig, initialScreen, initialOpenMemoId, onConsumeInitialScreen }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const absenceState = useAbsenceMemos();
@@ -119,6 +121,7 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                     deviationMemos={deviationMemos}
                     roster={roster}
                     userEmail={userEmail}
+                    permissionsConfig={permissionsConfig}
                     onOpenAbsence={showAbsence ? (memoId) => openFromOwnDashboard("absence", memoId) : undefined}
                     onOpenDeviation={(memoId) => openFromOwnDashboard("deviation", memoId)}
                   />
@@ -136,6 +139,7 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                       applyMemoDecision={attendanceLink.applyMemoDecision}
                       reauthenticate={reauthenticate}
                       userEmail={userEmail}
+                      permissionsConfig={permissionsConfig}
                       initialReviewId={screen === "absence" ? openMemoId : undefined}
                       onConsumeInitialReview={() => setOpenMemoId(undefined)}
                     />

@@ -11,7 +11,7 @@ import { visibleAbsenceMemos, visibleDeviationMemos } from "../domain/access";
 import { deriveClass, type Standing } from "../domain/constants";
 import { formatCadetName } from "../domain/nameUtils";
 import { shortDate } from "../domain/memoAnalytics";
-import type { AbsenceMemo, Attendance, Cadet, DeviationMemo, PmtEvent } from "../domain/types";
+import type { AbsenceMemo, Attendance, Cadet, DeviationMemo, PermissionsConfig, PmtEvent } from "../domain/types";
 import type { DashboardNavIntent } from "../domain/dashboardNav";
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   navigateTo: (tab: "memoReview" | "analytics", intent: DashboardNavIntent) => void;
 }
 
@@ -64,7 +65,7 @@ function HeroStat({
 const STANDING_SEVERITY: Record<Standing, number> = { Good: 0, Warning: 1, "Hard Limit": 2 };
 
 /** Section 7 -- true Cadre's landing dashboard (My Dashboard tab), since they no longer see Accountability/TO's/Memo Submission directly. */
-export function CadreDashboardScreen({ roster, events, attendance, absenceMemos, deviationMemos, userEmail, navigateTo }: Props) {
+export function CadreDashboardScreen({ roster, events, attendance, absenceMemos, deviationMemos, userEmail, permissionsConfig, navigateTo }: Props) {
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const activeRoster = useMemo(() => roster.filter((c) => !c.isCadre && c.status === "Active"), [roster]);
 
@@ -72,8 +73,8 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
   // AS-Class for absence memos; assigned by them or CC'd for deviation memos (same rule the Memo
   // Review screens and Memorandums Analytics use, so every count agrees).
   const pendingAbsence = useMemo(
-    () => visibleAbsenceMemos(userEmail, roster, absenceMemos).filter((m) => m.status === "Pending"),
-    [absenceMemos, roster, userEmail]
+    () => visibleAbsenceMemos(userEmail, roster, absenceMemos, permissionsConfig).filter((m) => m.status === "Pending"),
+    [absenceMemos, roster, userEmail, permissionsConfig]
   );
   const pendingDeviation = useMemo(
     () => visibleDeviationMemos(userEmail, roster, deviationMemos).filter((m) => m.status === "Submitted"),
@@ -101,7 +102,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
 
   const memoHistory = useMemo(() => {
     const rows = [
-      ...visibleAbsenceMemos(userEmail, roster, absenceMemos).map((m) => ({
+      ...visibleAbsenceMemos(userEmail, roster, absenceMemos, permissionsConfig).map((m) => ({
         kind: "Absence" as const,
         cadetName: m.cadetName,
         date: m.submittedAt || m.assignedAt || "",
@@ -115,7 +116,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
       })),
     ];
     return rows.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 15);
-  }, [absenceMemos, deviationMemos, roster, userEmail]);
+  }, [absenceMemos, deviationMemos, roster, userEmail, permissionsConfig]);
 
   const goToCadetAccountability = (cadet: Cadet) => {
     const isGmc = deriveClass(cadet.asClass, cadet.isCadre) === "GMC";

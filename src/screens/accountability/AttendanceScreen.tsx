@@ -12,7 +12,7 @@ import { shortDateTime } from "../../domain/memoAnalytics";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { isCortesGaray, type UnitScope } from "../../domain/access";
 import type { AttendanceInput } from "../../hooks/useAttendance";
-import type { Attendance, PmtEvent, Cadet, TrainingObjective } from "../../domain/types";
+import type { Attendance, PermissionsConfig, PmtEvent, Cadet, TrainingObjective } from "../../domain/types";
 
 interface Props {
   roster: Cadet[];
@@ -43,6 +43,7 @@ interface Props {
   unitScope: UnitScope;
   /** Gates the Flight/Group Commander-mistake correction option (Cortes Garay only) below. */
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
 }
 
 const NONE = "__none__";
@@ -69,8 +70,9 @@ export function AttendanceScreen({
   initialPmtEventId,
   unitScope,
   userEmail,
+  permissionsConfig,
 }: Props) {
-  const canUseLateCorrection = isCortesGaray(userEmail);
+  const canUseLateCorrection = isCortesGaray(userEmail, permissionsConfig);
   // A "group" or "flight" scoped commander's roster only ever has one Group or one Flight value in
   // it -- hide BOTH selects for them, since the other one would only ever show a meaningless
   // empty-or-single-value option (Section A2). But "gmc" (all 4 flights, e.g. Montalvo) and

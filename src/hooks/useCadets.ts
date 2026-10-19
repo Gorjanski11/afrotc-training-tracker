@@ -3,7 +3,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, serverTimestamp, updateDoc
 import { db } from "../lib/firebase";
 import { sanitizeForFirestore } from "../lib/firestoreUtils";
 import type { AsClass, CadetStatus, DevLevel, Flight, Group } from "../domain/constants";
-import type { Cadet } from "../domain/types";
+import type { AccessOverride, Cadet, DeviationAssignOverrideInput } from "../domain/types";
 
 export interface CadetInput {
   name: string;
@@ -21,6 +21,9 @@ export interface CadetInput {
   statusChangedDate: string | undefined;
   /** Optional -- omitted on most saves (Cadet Form's edit path) so updateDoc leaves whatever's already there untouched instead of overwriting it with undefined/null. */
   mustChangePassword?: boolean;
+  /** Optional -- only ever set via the Permissions tab's per-person dialogs (RosterScreen/CadetFormDialog never touch these). */
+  accessOverride?: AccessOverride;
+  deviationAssignOverride?: DeviationAssignOverrideInput;
 }
 
 const COLLECTION = "cadets";
@@ -42,6 +45,8 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
     position: (data.position as string | null | undefined) ?? undefined,
     statusChangedDate: (data.statusChangedDate as string | null | undefined) ?? undefined,
     mustChangePassword: (data.mustChangePassword as boolean | undefined) ?? undefined,
+    accessOverride: (data.accessOverride as AccessOverride | null | undefined) ?? undefined,
+    deviationAssignOverride: (data.deviationAssignOverride as DeviationAssignOverrideInput | null | undefined) ?? undefined,
   };
 }
 
@@ -75,7 +80,13 @@ export function useCadets() {
     async (input: CadetInput) => {
       const ref = await addDoc(collection(db, COLLECTION), { ...sanitizeForFirestore(input), createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id: ref.id, ...input, mustChangePassword: input.mustChangePassword } satisfies Cadet;
+      return {
+        id: ref.id,
+        ...input,
+        mustChangePassword: input.mustChangePassword,
+        accessOverride: input.accessOverride,
+        deviationAssignOverride: input.deviationAssignOverride,
+      } satisfies Cadet;
     },
     [refetch]
   );
@@ -84,7 +95,13 @@ export function useCadets() {
     async (id: string, input: CadetInput) => {
       await updateDoc(doc(db, COLLECTION, id), { ...sanitizeForFirestore(input), updatedAt: serverTimestamp() });
       await refetch(true);
-      return { id, ...input, mustChangePassword: input.mustChangePassword } satisfies Cadet;
+      return {
+        id,
+        ...input,
+        mustChangePassword: input.mustChangePassword,
+        accessOverride: input.accessOverride,
+        deviationAssignOverride: input.deviationAssignOverride,
+      } satisfies Cadet;
     },
     [refetch]
   );

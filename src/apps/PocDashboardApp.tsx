@@ -8,9 +8,11 @@ import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
 import { isCortesGaray } from "../domain/access";
 import { SelfServiceDashboardScreen } from "../screens/selfServiceDashboard/SelfServiceDashboardScreen";
+import type { PermissionsConfig } from "../domain/types";
 
 interface Props {
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Only Cortes Garay's dashboard ever uses this (its "Open full SAE Review" link). */
   onOpenSaeReview?: () => void;
   /** Jumps to Memo Submission's Absence or Deviation tab -- set by the My Dashboard "Missing Memos" tile. */
@@ -18,13 +20,13 @@ interface Props {
 }
 
 /** Same as GmcDashboardApp, for every POC cadet. Cortes Garay (SAE) additionally fetches the catalog/completions his dashboard's SAE Review glance needs. */
-export function PocDashboardApp({ userEmail, onOpenSaeReview, onOpenMissingMemos }: Props) {
+export function PocDashboardApp({ userEmail, permissionsConfig, onOpenSaeReview, onOpenMissingMemos }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
   const absenceState = useAbsenceMemos();
   const deviationState = useDeviationMemos();
-  const isSaeViewer = isCortesGaray(userEmail);
+  const isSaeViewer = isCortesGaray(userEmail, permissionsConfig);
   const catalogState = useTrainingObjectives();
   const completionsState = useCompletions();
 
@@ -74,6 +76,7 @@ export function PocDashboardApp({ userEmail, onOpenSaeReview, onOpenMissingMemos
         fullRoster={isSaeViewer ? cadetsState.cadets : undefined}
         catalog={isSaeViewer ? catalogState.catalog : undefined}
         completions={isSaeViewer ? completionsState.completions : undefined}
+        permissionsConfig={permissionsConfig}
         onOpenSaeReview={onOpenSaeReview}
         onOpenMissingMemos={onOpenMissingMemos}
       />

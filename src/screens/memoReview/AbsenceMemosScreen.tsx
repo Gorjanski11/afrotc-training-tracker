@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
 import { canDeleteAbsenceMemo, currentPersonName, visibleAbsenceMemos } from "../../domain/access";
 import { shortDate } from "../../domain/memoAnalytics";
-import type { AbsenceMemo, Cadet, PmtEvent } from "../../domain/types";
+import type { AbsenceMemo, Cadet, PermissionsConfig, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
 interface Props {
@@ -25,6 +25,7 @@ interface Props {
   applyMemoDecision: (cadetId: string, pmtEventIds: string[], newStatus: "AE" | "A") => Promise<number>;
   reauthenticate: (password: string) => Promise<void>;
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Set by a dashboard row click -- opens this specific memo's review popup on mount, then `onConsumeInitialReview` clears it. */
   initialReviewId?: string;
   onConsumeInitialReview?: () => void;
@@ -73,13 +74,14 @@ export function AbsenceMemosScreen({
   applyMemoDecision,
   reauthenticate,
   userEmail,
+  permissionsConfig,
   initialReviewId,
   onConsumeInitialReview,
 }: Props) {
-  const canDelete = canDeleteAbsenceMemo(userEmail, roster);
-  // Section G: true Cadre only see memos concerning them -- Capt Deaton (general reviewer) sees
-  // everything, everyone else only their own AS-Class. Cortes Garay/CWL stay unrestricted.
-  const visibleMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, memos), [memos, roster, userEmail]);
+  const canDelete = canDeleteAbsenceMemo(userEmail, roster, permissionsConfig);
+  // Section G: true Cadre only see memos concerning them -- the general reviewer sees everything,
+  // everyone else only their own AS-Class. Cortes Garay/CWL stay unrestricted.
+  const visibleMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, memos, permissionsConfig), [memos, roster, userEmail, permissionsConfig]);
   const [reviewingId, setReviewingId] = useState<string | undefined>();
   const [reviewNotes, setReviewNotes] = useState("");
   const [returnReason, setReturnReason] = useState("");

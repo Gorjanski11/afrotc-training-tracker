@@ -36,7 +36,7 @@ import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 import type { AbsenceMemoStatus, DeviationMemoStatus } from "../../domain/constants";
 import type { UnitScope } from "../../domain/access";
-import type { AbsenceMemo, Attendance, DeviationMemo, Cadet, PmtEvent } from "../../domain/types";
+import type { AbsenceMemo, Attendance, DeviationMemo, Cadet, PermissionsConfig, PmtEvent } from "../../domain/types";
 
 interface Props {
   /** Unit-scoped, Cadre-excluded -- who the table rows can be ABOUT. */
@@ -56,6 +56,7 @@ interface Props {
   /** A Flight/Group Commander only gets the Cadet filter -- Flight/Group selects hide entirely (Section A3). Defaults to unscoped for callers that don't pass it. */
   unitScope?: UnitScope;
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Lifted up to AnalyticsApp so the Flight/Group/Cadet selection survives switching between the Accountability/Training Objectives/Memorandums sub-tabs. */
   flightFilter: Flight | "All";
   onFlightFilterChange: (v: Flight | "All") => void;
@@ -111,6 +112,7 @@ export function MemorandumsAnalyticsView({
   applyMemoDecision,
   unitScope,
   userEmail,
+  permissionsConfig,
   flightFilter,
   onFlightFilterChange,
   groupFilter,
@@ -145,8 +147,8 @@ export function MemorandumsAnalyticsView({
 
   const absenceMemosIfAllowed = useMemo(() => (showAbsence ? absenceMemos : []), [showAbsence, absenceMemos]);
   const ownerScopedAbsence = useMemo(
-    () => (effectivelyShowAll ? absenceMemosIfAllowed : filterVisibleAbsenceMemos(userEmail, fullRoster, absenceMemosIfAllowed)),
-    [effectivelyShowAll, absenceMemosIfAllowed, userEmail, fullRoster]
+    () => (effectivelyShowAll ? absenceMemosIfAllowed : filterVisibleAbsenceMemos(userEmail, fullRoster, absenceMemosIfAllowed, permissionsConfig)),
+    [effectivelyShowAll, absenceMemosIfAllowed, userEmail, fullRoster, permissionsConfig]
   );
   const ownerScopedDeviation = useMemo(
     () => (effectivelyShowAll ? deviationMemos : filterVisibleDeviationMemos(userEmail, fullRoster, deviationMemos)),

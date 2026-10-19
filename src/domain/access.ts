@@ -1,6 +1,14 @@
-import { deriveClass, type AbsenceAsClass, type Flight, type Group } from "./constants";
+import { deriveClass, type Flight, type Group } from "./constants";
 import { formatCadetName } from "./nameUtils";
-import type { AbsenceMemo, Cadet, DeviationMemo } from "./types";
+import type { AbsenceMemo, AccessOverride, Cadet, DeviationAssignOverrideInput, DeviationMemo, PermissionsConfig } from "./types";
+
+/**
+ * The real Cortes Garay (SAE) email, baked into code and never shown as editable -- a deliberate
+ * break-glass safety net (Permissions tab plan, Section 1 "Root email safety net"): a typo or bad
+ * save in the editable `PermissionsConfig.rootEmail` field can never fully lock the real owner out
+ * of impersonation/data-delete/maintenance-bypass. `isCortesGaray` checks this OR the editable field.
+ */
+const BREAK_GLASS_ROOT_EMAIL = "jorge.cortes4@upr.edu";
 
 /** Which parts of the hub a signed-in person can see. */
 export type TrainingObjectivesAccess = "none" | "poc" | "gmc" | "full";
@@ -110,7 +118,7 @@ function pocGroupAccess(group: Group): TabAccess {
 
 /**
  * A POC Group Commander who's ALSO been given unrestricted GMC access across the board (e.g.
- * Santiago, TRG -- see ACCESS_BY_EMAIL). TO's shows both cohorts (home picker). Accountability +
+ * Santiago, TRG -- a "pocGroupPlusGmc" accessOverride). TO's shows both cohorts. Accountability +
  * TO's + Accountability Analytics are all scoped to their own group for POC, but see every GMC
  * cadet unrestricted regardless of flight -- confirmed with the user this covers GMC accountability
  * submission and analytics too, not just TO's, since all three read the same `unitScope`.
@@ -158,64 +166,35 @@ const GMC_WIDE_ACCESS: TabAccess = {
 };
 
 /**
- * Reverse lookup of ACCESS_BY_EMAIL's unit-scoped commanders -- who to hold responsible when a
- * Group's/Flight's Accountability or TO reporting is late or missing (SAE Review, Section: SOP
- * Sections 3/4 responsibility attribution). Kept as its own explicit table rather than derived from
- * ACCESS_BY_EMAIL at runtime, matching this file's existing "explicit per-person" convention.
+ * Turns a Permissions-tab `AccessOverride` (Cadet.accessOverride) into the `TabAccess` it represents
+ * -- the editable replacement for the old hardcoded ACCESS_BY_EMAIL table. `group`/`flight` are only
+ * meaningful for the tiers that need them; absent for the rest.
  */
-export const GROUP_COMMANDER_EMAIL: Record<Group, string> = {
-  OG: "lorean.delgado@upr.edu",
-  MSG: "hector.belen@upr.edu",
-  WSG: "edgardo.puente.afrotc@upr.edu",
-  TRG: "john.santiago12@upr.edu",
-  // CWL isn't an accountability-reporting unit in practice (no dedicated cadet body of its own) --
-  // mapped to Saltiel only so this stays a total function; never expected to actually fire.
-  CWL: "francisco.saltiel@upr.edu",
-};
-export const FLIGHT_COMMANDER_EMAIL: Record<Flight, string> = {
-  P: "alexis.rodriguez53@upr.edu",
-  M: "fabiola.merle@upr.edu",
-  N: "julian.vivas@upr.edu",
-  O: "jakob.garcia@upr.edu",
-};
+function tierFromOverride(override: AccessOverride): TabAccess {
+  switch (override.tier) {
+    case "all":
+      return ALL_ACCESS;
+    case "toFullOnly":
+      return TO_FULL_ONLY;
+    case "deviationOnly":
+      return MEMO_DEVIATION_ONLY;
+    case "pocGroup":
+      return pocGroupAccess(override.group ?? "OG");
+    case "pocGroupPlusGmc":
+      return pocGroupPlusAllGmcAccess(override.group ?? "OG");
+    case "gmcFlight":
+      return gmcFlightAccess(override.flight ?? "M");
+    case "gmcWide":
+      return GMC_WIDE_ACCESS;
+  }
+}
 
 /**
- * Fully explicit per-person access -- deliberately not derived from roster Group/Flight, since
- * several people below are themselves in TRG/CWL groups but get a restricted subset rather than
- * full access (confirmed directly with the user; group membership alone grants nothing).
- * Add/remove an email here and redeploy to change someone's access.
- */
-const ACCESS_BY_EMAIL: Record<string, TabAccess> = {
-  "jorge.cortes4@upr.edu": ALL_ACCESS,
-  "francisco.saltiel@upr.edu": ALL_ACCESS, // Saltiel Lima, Francisco (CWL)
-  "jossie.mo@upr.edu": ALL_ACCESS, // Mo Velez, Jossie (CWL)
-  "michael.deaton@upr.edu": ALL_ACCESS, // Capt Deaton (Cadre, OFC)
-  "jason.laboy@upr.edu": ALL_ACCESS, // Lt Col Laboy (Cadre)
-  "jalen.jackson@upr.edu": ALL_ACCESS, // Capt Jackson (Cadre)
-  "adolfo.reynoso@upr.edu": ALL_ACCESS, // TSgt Reynoso (Cadre)
-  "trinity.dance@upr.edu": ALL_ACCESS, // Dance, Trinity (Cadre)
-
-  "john.santiago12@upr.edu": pocGroupPlusAllGmcAccess("TRG"), // Santiago Ruiz, John (TRG Group Commander) -- also given unrestricted GMC TO access
-  "lorean.delgado@upr.edu": pocGroupAccess("OG"), // Delgado Ortiz, Lorean (OG Group Commander)
-  "hector.belen@upr.edu": pocGroupAccess("MSG"), // Belen Caraballo, Hector (MSG Group Commander)
-  "edgardo.puente.afrotc@upr.edu": pocGroupAccess("WSG"), // Puente Bonilla, Edgardo (WSG Group Commander)
-
-  "alexis.rodriguez53@upr.edu": gmcFlightAccess("P"), // Rodriguez Rivera, Alexis (P Flight Commander)
-  "fabiola.merle@upr.edu": gmcFlightAccess("M"), // Merle Cintron, Fabiola (M Flight Commander)
-  "julian.vivas@upr.edu": gmcFlightAccess("N"), // Vivas Gandarillas, Julian (N Flight Commander)
-  "jakob.garcia@upr.edu": gmcFlightAccess("O"), // Garcia Feliberty, Jakob (O Flight Commander)
-  "sebastian.montalvo3@upr.edu": GMC_WIDE_ACCESS, // Montalvo Nieves, Sebastian (CTO -- all GMC, TRG group)
-
-  "angel.huertas2@upr.edu": TO_FULL_ONLY, // Huertas Pabón, Angel
-  "edgar.feliciano3@upr.edu": MEMO_DEVIATION_ONLY, // Feliciano Feliciano, Edgar (PFO)
-};
-
-/**
- * Resolves what a signed-in person can see. Cadre (roster `isCadre` flag) get full access
- * automatically even without being individually listed above; everyone else not listed gets
- * Memo Submission only. `gmcDashboard`/`pocDashboard` (Section 13) are resolved as an independent
- * extra step on top of whichever tier above applies -- every GMC or POC cadet gets their own
- * dashboard, regardless of tier.
+ * Resolves what a signed-in person can see. A Permissions-tab `accessOverride` wins first; failing
+ * that, Cadre (roster `isCadre` flag) get full access automatically; everyone else gets Memo
+ * Submission only. `gmcDashboard`/`pocDashboard` (Section 13) are resolved as an independent extra
+ * step on top of whichever tier above applies -- every GMC or POC cadet gets their own dashboard,
+ * regardless of tier.
  */
 export function resolveTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {
   const base = resolveBaseTabAccess(email, roster);
@@ -229,9 +208,8 @@ export function resolveTabAccess(email: string | null | undefined, roster: Cadet
 function resolveBaseTabAccess(email: string | null | undefined, roster: Cadet[]): TabAccess {
   if (!email) return CADET_ONLY;
   const normalized = email.trim().toLowerCase();
-  const explicit = ACCESS_BY_EMAIL[normalized];
-  if (explicit) return explicit;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  if (match?.accessOverride) return tierFromOverride(match.accessOverride);
   if (match?.isCadre === true) return ALL_ACCESS;
   return CADET_ONLY;
 }
@@ -271,13 +249,15 @@ export function isFullAccess(email: string | null | undefined, roster: Cadet[]):
   return resolveBaseTabAccess(email, roster) === ALL_ACCESS;
 }
 
-/** Cadre, Cortes Garay, or CWL (Saltiel/Mo Velez) -- gates Settings' Manage Passwords screen and the New Semester feature. The Cloud Function independently re-checks this same rule server-side. */
-export function isCadreOrCortesGaray(email: string | null | undefined, roster: Cadet[]): boolean {
-  if (!email) return false;
-  const normalized = email.trim().toLowerCase();
-  if (normalized === "jorge.cortes4@upr.edu" || normalized === "francisco.saltiel@upr.edu" || normalized === "jossie.mo@upr.edu") return true;
-  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
-  return match?.isCadre === true;
+/**
+ * Cadre, Cortes Garay, or CWL -- gates Settings' Manage Passwords screen and the New Semester
+ * feature. The Cloud Function independently re-checks this same rule server-side. Simplifies to
+ * "root OR full access" now that CWL (Saltiel/Mo Velez) hold their access via the editable
+ * `accessOverride: {tier:"all"}` -- `isFullAccess` already covers them, so no separate hardcoded
+ * email list is needed here.
+ */
+export function isCadreOrCortesGaray(email: string | null | undefined, roster: Cadet[], config: PermissionsConfig): boolean {
+  return isCortesGaray(email, config) || isFullAccess(email, roster);
 }
 
 /**
@@ -293,21 +273,32 @@ export function canManageAccounts(email: string | null | undefined, roster: Cade
 }
 
 /** Everyone `canManageAccounts` covers can also reset passwords -- scoped to their own unit via `TabAccess.unitScope`, full roster for the full-access tier. Cloud Function re-checks server-side (isCadreOrCortesGaray or roster-scoped equivalent). */
-export function canResetPasswordsFor(email: string | null | undefined, roster: Cadet[], target: Cadet): boolean {
-  if (isCadreOrCortesGaray(email, roster)) return true;
+export function canResetPasswordsFor(email: string | null | undefined, roster: Cadet[], config: PermissionsConfig, target: Cadet): boolean {
+  if (isCadreOrCortesGaray(email, roster, config)) return true;
   const access = resolveBaseTabAccess(email, roster);
   if (access.unitScope.kind === "all") return false; // full-access-but-not-reset tier (none exist today, but keep the distinction)
   return applyUnitScope(access.unitScope, roster).some((p) => p.id === target.id);
 }
 
-/** Cortes Garay alone -- narrower even than `isCadreOrCortesGaray`. Gates Data Management's PDF delete and the whole New Semester screen (it can wipe/recreate the entire roster, calendar, and cadet logins). The createCadetAccounts/disableCadetAccounts Cloud Functions independently re-check this same rule server-side. */
-export function isCortesGaray(email: string | null | undefined): boolean {
-  return (email ?? "").trim().toLowerCase() === "jorge.cortes4@upr.edu";
+/**
+ * Cortes Garay alone -- narrower even than `isCadreOrCortesGaray`. Gates Data Management's PDF
+ * delete and the whole New Semester screen (it can wipe/recreate the entire roster, calendar, and
+ * cadet logins), plus impersonation and the maintenance-mode bypass. The
+ * createCadetAccounts/disableCadetAccounts Cloud Functions independently re-check this same rule
+ * server-side (against the hardcoded break-glass email only -- they don't read Firestore config).
+ * Checks the editable `config.rootEmail` OR the hardcoded break-glass email (see
+ * `BREAK_GLASS_ROOT_EMAIL` above) -- either one is accepted, so a bad edit in the Permissions tab
+ * can never fully lock the real owner out.
+ */
+export function isCortesGaray(email: string | null | undefined, config: PermissionsConfig): boolean {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized) return false;
+  return normalized === BREAK_GLASS_ROOT_EMAIL || normalized === config.rootEmail.trim().toLowerCase();
 }
 
 /** Cortes Garay or Cadre (roster `isCadre` flag) only -- deliberately narrower than `isCadreOrCortesGaray` (excludes CWL). Gates the permanent Absence Memo delete action in Memo Review. */
-export function canDeleteAbsenceMemo(email: string | null | undefined, roster: Cadet[]): boolean {
-  if (isCortesGaray(email)) return true;
+export function canDeleteAbsenceMemo(email: string | null | undefined, roster: Cadet[], config: PermissionsConfig): boolean {
+  if (isCortesGaray(email, config)) return true;
   const normalized = (email ?? "").trim().toLowerCase();
   if (!normalized) return false;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
@@ -318,26 +309,18 @@ export function canDeleteAbsenceMemo(email: string | null | undefined, roster: C
 // Event add/edit -- restricted to 4 named staff positions + Cadre (Section A5)
 // ---------------------------------------------------------------------------
 
-/** OG Commander (Delgado), DO (Ferrer), ETO (Huertas), SAE (Cortes Garay) -- everyone else with Settings access sees Events read-only. */
-const EVENT_EDIT_OVERRIDE_EMAILS = new Set([
-  "lorean.delgado@upr.edu", // Delgado Ortiz, Lorean (OG Commander)
-  "sebastian.ferrer@upr.edu", // Ferrer Aponte, Sebastian (DO)
-  "angel.huertas2@upr.edu", // Huertas Pabón, Angel (ETO)
-  "jorge.cortes4@upr.edu", // Cortes Garay (SAE)
-]);
-
-/** Can add/edit/delete PMT and Extra Events. Everyone else with Settings access still views the calendar read-only. */
-export function canEditEvents(email: string | null | undefined, roster: Cadet[]): boolean {
+/** OG Commander, DO, ETO, SAE by default -- editable via the Permissions tab's "Event Edit Authority" section (`config.eventEditOverrideEmails`). Everyone else with Settings access sees Events read-only. */
+export function canEditEvents(email: string | null | undefined, roster: Cadet[], config: PermissionsConfig): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
-  if (EVENT_EDIT_OVERRIDE_EMAILS.has(normalized)) return true;
+  if (config.eventEditOverrideEmails.some((e) => e.trim().toLowerCase() === normalized)) return true;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
   return match?.isCadre === true;
 }
 
 // ---------------------------------------------------------------------------
 // AS-class instructor visibility (Section G) -- Capt Jackson (AS100), Lt Laboy (AS200), TSgt
-// Reynoso (AS300), and Capt Deaton (AS400) are all named Cadre already (ACCESS_BY_EMAIL above),
+// Reynoso (AS300), and Capt Deaton (AS400) are all true Cadre already (roster isCadre flag),
 // and every Cadre-flagged person -- named or not, via the resolveBaseTabAccess roster fallback --
 // already resolves to ALL_ACCESS, which includes memoReviewAbsence. So every AS-class instructor
 // already sees every absence memo, including memos for AS classes they don't personally teach --
@@ -361,65 +344,44 @@ export interface DeviationAssignRule {
   alsoVisibleAssignerEmails?: string[];
 }
 
-const RULE_EVERYONE: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: false };
-/** CWL -- assign to anyone like Cortes Garay/Cadre, but (per the user) only reviews what they personally assigned, not everyone's. */
+/** CWL/Cadre fallback -- assign to anyone, but (per the user) only reviews what they personally assigned, not everyone's. */
 const RULE_EVERYONE_OWN_REVIEW: DeviationAssignRule = { canAssign: true, assignScope: "everyone", reviewOwnOnly: true };
-/** Montalvo (CTO) -- assigns GMC-wide like any Flight Commander, but can also SEE (view only, never review/decide) every deviation memo any of the 4 GMC Flight Commanders assigned, not just his own. */
-const RULE_ANY_GMC: DeviationAssignRule = {
-  canAssign: true,
-  assignScope: "any-gmc",
-  reviewOwnOnly: true,
-  alsoVisibleAssignerEmails: Object.values(FLIGHT_COMMANDER_EMAIL),
-};
 const RULE_CANNOT_ASSIGN: DeviationAssignRule = { canAssign: false, assignScope: "any-gmc", reviewOwnOnly: true };
 
-function flightRule(flight: Flight): DeviationAssignRule {
-  return { canAssign: true, assignScope: { flight }, reviewOwnOnly: true };
-}
-
-/** A POC Group Commander -- can assign to POC (and any GMC holding a staff position) in their own group only, and reviews only what they assigned. */
-function groupRule(group: Group): DeviationAssignRule {
-  return { canAssign: true, assignScope: { group }, reviewOwnOnly: true };
-}
-
 /**
- * Per-email overrides, checked before the roster-driven Cadre fallback below -- the only rule left
- * to a fallback is Cadre (canAssign to everyone, full review); every named commander below is an
- * explicit entry, matching the "only Group Commanders, Cortes Garay, CWL, and Cadre can target POC"
- * rule -- Flight Commanders stay GMC-only within their own flight.
+ * Turns a Permissions-tab `DeviationAssignOverrideInput` (Cadet.deviationAssignOverride) into the
+ * internal `DeviationAssignRule` -- the editable replacement for the old hardcoded
+ * DEVIATION_ASSIGN_OVERRIDES table. `alsoVisibleEmails` (e.g. Montalvo seeing every GMC Flight
+ * Commander's memos) is now part of the override data itself rather than derived from a separate
+ * table, so it survives independently of who currently holds which Flight Commander email.
  */
-const DEVIATION_ASSIGN_OVERRIDES: Record<string, DeviationAssignRule> = {
-  "jorge.cortes4@upr.edu": RULE_EVERYONE,
-  "francisco.saltiel@upr.edu": RULE_EVERYONE_OWN_REVIEW, // Saltiel Lima, Francisco (CWL)
-  "jossie.mo@upr.edu": RULE_EVERYONE_OWN_REVIEW, // Mo Velez, Jossie (CWL)
-
-  "john.santiago12@upr.edu": groupRule("TRG"), // Santiago Ruiz, John (TRG Group Commander)
-  "lorean.delgado@upr.edu": groupRule("OG"), // Delgado Ortiz, Lorean (OG Group Commander)
-  "hector.belen@upr.edu": groupRule("MSG"), // Belen Caraballo, Hector (MSG Group Commander)
-  "edgardo.puente.afrotc@upr.edu": groupRule("WSG"), // Puente Bonilla, Edgardo (WSG Group Commander)
-
-  "sebastian.montalvo3@upr.edu": RULE_ANY_GMC, // Montalvo -- TRG-group by roster, but scoped to GMC only (CTO, not a Group Commander)
-  "alexis.rodriguez53@upr.edu": flightRule("P"),
-  "fabiola.merle@upr.edu": flightRule("M"),
-  "julian.vivas@upr.edu": flightRule("N"),
-  "jakob.garcia@upr.edu": flightRule("O"),
-  // Feliciano Feliciano, Edgar -- PFO (Physical Fitness Officer), one of the 5 roles the SOP (1 Oct
-  // 2026, Section 5) names with full deviation-memo assignment authority, same tier as CWL.
-  "edgar.feliciano3@upr.edu": RULE_EVERYONE_OWN_REVIEW,
-};
+function deviationRuleFromOverride(override: DeviationAssignOverrideInput): DeviationAssignRule {
+  const assignScope: DeviationAssignScope =
+    override.scope === "flight"
+      ? { flight: override.flight ?? "M" }
+      : override.scope === "group"
+        ? { group: override.group ?? "OG" }
+        : override.scope === "cannot-assign"
+          ? "everyone" // irrelevant once canAssign is false below
+          : override.scope;
+  return {
+    canAssign: override.scope !== "cannot-assign",
+    assignScope,
+    reviewOwnOnly: override.reviewOwnOnly,
+    alsoVisibleAssignerEmails: override.alsoVisibleEmails,
+  };
+}
 
 /**
- * Who can assign a Deviation Memo, to whom, and whether they only ever review their own. Explicit
- * per-email overrides first, then Cadre (roster `isCadre`) get everyone/own-review automatically
- * (true Cadre only ever see memos concerning them -- assigned by them or CC'd, same as CWL/unit
- * commanders; only Cortes Garay keeps unrestricted full review); everyone else cannot assign at all.
+ * Who can assign a Deviation Memo, to whom, and whether they only ever review their own. A
+ * Permissions-tab `deviationAssignOverride` wins first; failing that, Cadre (roster `isCadre`) get
+ * everyone/own-review automatically; everyone else cannot assign at all.
  */
 export function resolveDeviationAssignRule(email: string | null | undefined, roster: Cadet[]): DeviationAssignRule {
   if (!email) return RULE_CANNOT_ASSIGN;
   const normalized = email.trim().toLowerCase();
-  const override = DEVIATION_ASSIGN_OVERRIDES[normalized];
-  if (override) return override;
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  if (match?.deviationAssignOverride) return deviationRuleFromOverride(match.deviationAssignOverride);
   if (match?.isCadre === true) return RULE_EVERYONE_OWN_REVIEW;
   return RULE_CANNOT_ASSIGN;
 }
@@ -447,36 +409,23 @@ export function isDeviationMemoViaCc(email: string | null | undefined, memo: Dev
 }
 
 /**
- * Which AS-Class each instructor reviews absence memos for (SOP Section G) -- reverse of
- * domain/constants.ts's INSTRUCTOR_BY_AS_CLASS (that one maps AS-Class -> display name for
- * auto-filling the Instructor field; this one maps AS-Class -> email for access scoping).
+ * True Cadre only see an Absence Memo if they're the general reviewer (`config.generalAbsenceReviewerEmail`,
+ * sees everything) or it's an AS-Class memo for the specific class they instruct
+ * (`config.asClassInstructorEmail`). Cortes Garay/CWL are unrestricted, same as today -- only true
+ * Cadre narrows. Memo Submission/everyone-else never had memoReviewAbsence access to begin with, so
+ * this is only ever consulted for the full-access tier.
  */
-const AS_CLASS_INSTRUCTOR_EMAIL: Record<AbsenceAsClass, string> = {
-  AS100: "jalen.jackson@upr.edu", // Capt Jackson
-  AS200: "jason.laboy@upr.edu", // Lt Col Laboy
-  AS300: "adolfo.reynoso@upr.edu", // TSgt Reynoso
-  AS400: "michael.deaton@upr.edu", // Capt Deaton
-};
-/** Capt Deaton is the detachment's general Absence Memo reviewer -- sees every memo, not just AS400's. */
-const GENERAL_ABSENCE_REVIEWER_EMAIL = "michael.deaton@upr.edu";
-
-/**
- * True Cadre only see an Absence Memo if they're Capt Deaton (the general reviewer, sees
- * everything) or it's an AS-Class memo for the specific class they instruct. Cortes Garay/CWL are
- * unrestricted, same as today -- only true Cadre narrows. Memo Submission/everyone-else never had
- * memoReviewAbsence access to begin with, so this is only ever consulted for the full-access tier.
- */
-export function canSeeAbsenceMemo(email: string | null | undefined, roster: Cadet[], memo: AbsenceMemo): boolean {
+export function canSeeAbsenceMemo(email: string | null | undefined, roster: Cadet[], memo: AbsenceMemo, config: PermissionsConfig): boolean {
   if (!email) return false;
   const normalized = email.trim().toLowerCase();
   const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
   if (match?.isCadre !== true) return true; // Cortes Garay/CWL -- unrestricted
-  if (normalized === GENERAL_ABSENCE_REVIEWER_EMAIL) return true;
-  return !!memo.asClass && AS_CLASS_INSTRUCTOR_EMAIL[memo.asClass] === normalized;
+  if (normalized === config.generalAbsenceReviewerEmail.trim().toLowerCase()) return true;
+  return !!memo.asClass && config.asClassInstructorEmail[memo.asClass]?.trim().toLowerCase() === normalized;
 }
 /** Every Absence Memo `email` is allowed to see, per `canSeeAbsenceMemo`. */
-export function visibleAbsenceMemos(email: string | null | undefined, roster: Cadet[], memos: AbsenceMemo[]): AbsenceMemo[] {
-  return memos.filter((m) => canSeeAbsenceMemo(email, roster, m));
+export function visibleAbsenceMemos(email: string | null | undefined, roster: Cadet[], memos: AbsenceMemo[], config: PermissionsConfig): AbsenceMemo[] {
+  return memos.filter((m) => canSeeAbsenceMemo(email, roster, m, config));
 }
 
 /** True roster Cadre (the detachment's officer/NCO staff) -- distinct from Cortes Garay/CWL, who are POC-cohort with ALL_ACCESS. Drives Memorandums Analytics' "show all" toggle, since only true Cadre default to a scoped-to-them view. */

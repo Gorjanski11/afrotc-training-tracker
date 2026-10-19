@@ -24,10 +24,28 @@ service cloud.firestore {
     // Still written by the TO Tracker, which has no login of its own -- requiring auth here would
     // break it. Closing this gap for real needs giving the TO Tracker its own login too, which
     // wasn't asked for here.
-    match /cadets/{id} { allow write: if true; }
+    //
+    // accessOverride/deviationAssignOverride (Settings -> Permissions) are the one exception: the
+    // old hardcoded ACCESS_BY_EMAIL/DEVIATION_ASSIGN_OVERRIDES tables they replace could only ever
+    // be changed by someone with code-deploy access, so letting them inherit this doc's wide-open
+    // `allow write: if true` would be a real privilege-escalation regression -- anyone, signed in or
+    // not, could otherwise self-grant full access by writing straight to their own cadet doc.
+    // Touching either field specifically now requires a signed-in account (the same floor every
+    // other sensitive collection below already uses) -- the real gate is still the Permissions
+    // screen's own isFullAccess client-side check, same as everywhere else in this app.
+    match /cadets/{id} {
+      allow create, delete: if true;
+      allow update: if request.auth != null
+        || !request.resource.data.diff(resource.data).affectedKeys().hasAny(["accessOverride", "deviationAssignOverride"]);
+    }
     match /pmtEvents/{id} { allow write: if true; }
     match /trainingObjectives/{id} { allow write: if true; }
     match /completions/{id} { allow write: if true; }
+
+    // Settings -> Permissions' global/structural tables (Section 3-5) -- same auth floor as
+    // attendance/absenceMemos/etc above; the Permissions screen's own isFullAccess check is the
+    // real gate, matching this app's existing convention throughout.
+    match /permissionsConfig/{id} { allow write: if request.auth != null; }
 
     // Maintenance mode -- locks every signed-in user except Cortes Garay out of the whole app
     // (App.tsx), so only he may toggle it. A real server-enforced boundary, not just a client-side

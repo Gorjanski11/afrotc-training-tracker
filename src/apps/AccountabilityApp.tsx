@@ -9,6 +9,7 @@ import { useAutoFailCompletions } from "../hooks/useAutoFailCompletions";
 import { useAbsenceMemoAssignments } from "../hooks/useAbsenceMemoAssignments";
 import { applyUnitScope, excludeCadre, excludeInactive, type UnitScope } from "../domain/access";
 import { AttendanceScreen } from "../screens/accountability/AttendanceScreen";
+import type { PermissionsConfig } from "../domain/types";
 
 function AnimatedPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -23,6 +24,7 @@ interface Props {
   unitScope: UnitScope;
   /** Gates the Flight/Group Commander-mistake correction option (Cortes Garay only) in Attendance. */
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
 }
 
 /**
@@ -31,7 +33,7 @@ interface Props {
  * the Cadre Dashboard and SAE Review, which cover the same ground detachment-wide instead of per
  * unit-scoped viewer). Roster/Events moved to Settings (Section 6).
  */
-export function AccountabilityApp({ unitScope, userEmail }: Props) {
+export function AccountabilityApp({ unitScope, userEmail, permissionsConfig }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -84,6 +86,7 @@ export function AccountabilityApp({ unitScope, userEmail }: Props) {
             refetchAbsenceMemoAssignments={absenceMemoAssignmentsState.refetch}
             unitScope={unitScope}
             userEmail={userEmail}
+            permissionsConfig={permissionsConfig}
           />
         </AnimatedPanel>
       )}

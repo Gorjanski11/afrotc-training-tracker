@@ -32,7 +32,7 @@ import { downloadWorkbook, todayForFilename } from "../../lib/exportWorkbook";
 import { downloadMemoPdfZip } from "../../lib/exportZip";
 import { deleteAllInCollection } from "../../lib/firestoreBulk";
 import { listAllMemoPdfs, deleteMemoPdf } from "../../lib/storage";
-import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PmtEvent, TrainingObjective } from "../../domain/types";
+import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
 import type { CadetInput } from "../../hooks/useCadets";
 import type { PmtEventInput } from "../../hooks/usePmtEvents";
 import type { AccountOpResult } from "../../hooks/useAuth";
@@ -46,6 +46,7 @@ interface Props {
   absenceMemos: AbsenceMemo[];
   deviationMemos: DeviationMemo[];
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   reauthenticate: (password: string) => Promise<void>;
   createCadet: (input: CadetInput) => Promise<Cadet>;
   updateCadet: (id: string, input: CadetInput) => Promise<Cadet>;
@@ -167,6 +168,7 @@ export function NewSemesterScreen({
   absenceMemos,
   deviationMemos,
   userEmail,
+  permissionsConfig,
   reauthenticate,
   createCadet,
   updateCadet,
@@ -177,7 +179,7 @@ export function NewSemesterScreen({
   disableCadetAccounts,
   refetchAll,
 }: Props) {
-  const authorized = isCadreOrCortesGaray(userEmail, roster);
+  const authorized = isCadreOrCortesGaray(userEmail, roster, permissionsConfig);
 
   const [step, setStep] = useState<Step>("upload");
   const [cadetFile, setCadetFile] = useState<File | undefined>();

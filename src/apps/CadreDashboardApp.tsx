@@ -6,14 +6,16 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { CadreDashboardScreen } from "../screens/CadreDashboardScreen";
 import type { DashboardNavIntent } from "../domain/dashboardNav";
+import type { PermissionsConfig } from "../domain/types";
 
 interface Props {
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   navigateTo: (tab: "memoReview" | "analytics", intent: DashboardNavIntent) => void;
 }
 
 /** Section 7 -- true Cadre's landing dashboard (My Dashboard tab). */
-export function CadreDashboardApp({ userEmail, navigateTo }: Props) {
+export function CadreDashboardApp({ userEmail, permissionsConfig, navigateTo }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
   const attendanceState = useAttendance();
@@ -48,6 +50,7 @@ export function CadreDashboardApp({ userEmail, navigateTo }: Props) {
         absenceMemos={absenceState.memos}
         deviationMemos={deviationState.memos}
         userEmail={userEmail}
+        permissionsConfig={permissionsConfig}
         navigateTo={navigateTo}
       />
     </div>

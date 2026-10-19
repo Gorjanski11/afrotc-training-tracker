@@ -19,6 +19,7 @@ import { MemorandumsAnalyticsView } from "../screens/analytics/MemorandumsAnalyt
 import { DeviationsLogView } from "../screens/analytics/DeviationsLogView";
 import { ALL_CADETS } from "../components/accountability/CadetFilterCombobox";
 import type { DashboardNavIntent } from "../domain/dashboardNav";
+import type { PermissionsConfig } from "../domain/types";
 
 type Screen = "accountability" | "trainingObjectives" | "memorandums" | "deviations";
 
@@ -41,6 +42,7 @@ interface Props {
   onConsumeInitialFilter?: () => void;
   /** Memorandums Analytics' owner-based scoping (Section 2) needs to know who's looking. */
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
 }
 
 /** Consolidated hub-level Analytics tab (Section 6) -- replaces the old per-sub-app Analytics screens (Accountability's, Training Objectives') and Memo Review's History screen. */
@@ -53,6 +55,7 @@ export function AnalyticsApp({
   initialAccountabilityFilter,
   onConsumeInitialFilter,
   userEmail,
+  permissionsConfig,
 }: Props) {
   const cadetsState = useCadets();
   const eventsState = usePmtEvents();
@@ -218,6 +221,7 @@ export function AnalyticsApp({
                       deviationMemos={deviationState.memos}
                       showAbsence={memoReviewAbsenceAccess}
                       userEmail={userEmail}
+                      permissionsConfig={permissionsConfig}
                       updateAbsenceMemo={absenceState.updateMemo}
                       updateDeviationMemo={deviationState.updateMemo}
                       applyMemoDecision={attendanceLink.applyMemoDecision}

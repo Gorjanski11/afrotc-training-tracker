@@ -6,7 +6,7 @@ import { isEntryOutsideWindow } from "../../domain/attendance";
 import { shortDate, shortDateTime } from "../../domain/memoAnalytics";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
 import { formatCadetName } from "../../domain/nameUtils";
-import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
+import type { Attendance, Cadet, Completion, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
 
 interface Props {
   roster: Cadet[];
@@ -14,6 +14,7 @@ interface Props {
   attendance: Attendance[];
   catalog: TrainingObjective[];
   completions: Completion[];
+  permissionsConfig: PermissionsConfig;
 }
 
 interface LateEntry {
@@ -35,7 +36,7 @@ function StatusBadge({ status }: { status: "late" | "missing" }) {
  *   already resolved, just flagged for awareness).
  * Purely informational -- nothing here blocks or auto-corrects anything.
  */
-export function SaeReviewScreen({ roster, events, attendance, catalog, completions }: Props) {
+export function SaeReviewScreen({ roster, events, attendance, catalog, completions, permissionsConfig }: Props) {
   const rosterById = useMemo(() => new Map(roster.map((c) => [c.id, c])), [roster]);
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
   const nameFor = (email: string): string => {
@@ -43,8 +44,8 @@ export function SaeReviewScreen({ roster, events, attendance, catalog, completio
     return match ? formatCadetName(match) : email;
   };
 
-  const acctFlags = useMemo(() => accountabilityFlags(events, roster, attendance), [events, roster, attendance]);
-  const toFlagList = useMemo(() => toFlags(events, catalog, roster, completions), [events, catalog, roster, completions]);
+  const acctFlags = useMemo(() => accountabilityFlags(events, roster, attendance, permissionsConfig), [events, roster, attendance, permissionsConfig]);
+  const toFlagList = useMemo(() => toFlags(events, catalog, roster, completions, permissionsConfig), [events, catalog, roster, completions, permissionsConfig]);
 
   const lateRecordedEntries = useMemo(() => {
     const byEvent = new Map<string, LateEntry[]>();

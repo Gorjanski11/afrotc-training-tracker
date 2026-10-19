@@ -14,7 +14,7 @@ import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
 import { applyUnitScope, canManageAccounts, isCortesGaray, isFullAccess, resolveTabAccess, type UnitScope } from "../../domain/access";
 import { CadetFormDialog } from "../../components/CadetFormDialog";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import type { Attendance, Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
+import type { Attendance, Cadet, Completion, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
 import type { CadetInput } from "../../hooks/useCadets";
 
 interface Props {
@@ -30,6 +30,7 @@ interface Props {
   /** A Flight/Group Commander only sees and looks up cadets in their own unit here (Section A4) -- no Add/Edit/Delete. */
   unitScope: UnitScope;
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   reauthenticate: (password: string) => Promise<void>;
   resetOtherPassword: (targetEmail: string, newPassword: string) => Promise<void>;
   /** Cortes Garay only -- signs the current browser session in as another account entirely, no password needed or changed. */
@@ -84,6 +85,7 @@ export function RosterScreen({
   deleteCadet,
   unitScope,
   userEmail,
+  permissionsConfig,
   reauthenticate,
   resetOtherPassword,
   impersonate,
@@ -99,7 +101,7 @@ export function RosterScreen({
   // Narrower than canManage -- CWL and unit-scoped commanders can reset a password, but only Cortes
   // Garay can sign in AS someone else outright, since that's strictly more powerful (it bypasses
   // Cadre's own password entirely, no reset or notice to them required).
-  const canImpersonate = isCortesGaray(userEmail);
+  const canImpersonate = isCortesGaray(userEmail, permissionsConfig);
   const scopedRoster = useMemo(() => applyUnitScope(unitScope, roster), [unitScope, roster]);
   const [search, setSearch] = useState("");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");

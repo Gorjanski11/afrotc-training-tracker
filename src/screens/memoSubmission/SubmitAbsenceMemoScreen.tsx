@@ -10,6 +10,7 @@ import { SubmissionRequirementsDialog } from "../../components/SubmissionRequire
 import { uploadMemoPdf } from "../../lib/storage";
 import { flipAttendanceToPendingExcuse } from "../../lib/attendanceLink";
 import { ABSENCE_AS_CLASSES, ABSENCE_REASONS, INSTRUCTOR_BY_AS_CLASS, effectiveAbsenceMemoDeadline } from "../../domain/constants";
+import { asClassDateOptions } from "../../domain/attendance";
 import { formatCadetName } from "../../domain/nameUtils";
 import { shortDate, shortDateTime } from "../../domain/memoAnalytics";
 import type { AbsenceAsClass, AbsenceReason } from "../../domain/constants";
@@ -61,6 +62,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const cadetId = cadet.id;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [addAsClass, setAddAsClass] = useState(false);
+  const [asClassTw, setAsClassTw] = useState<string>(NONE);
   const [asClass, setAsClass] = useState<AbsenceAsClass | typeof NONE>(NONE);
   const [classDate, setClassDate] = useState("");
   const [medicalDocSent, setMedicalDocSent] = useState(false);
@@ -163,10 +165,29 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
     setFutureFile(undefined);
   };
 
+  // Future AS-Class absence: no TW picker of its own -- it reuses whichever TW the cadet already
+  // picked above for the PMT-absence portion of this same form (futureTw/futureEventsForTw).
+  const futureAsClassDateOptions = useMemo(
+    () => (futureAsClass === NONE ? [] : asClassDateOptions(futureEventsForTw, futureAsClass as AbsenceAsClass)),
+    [futureEventsForTw, futureAsClass]
+  );
   const hasFutureClassInfo = futureAddAsClass && futureAsClass !== NONE && futureClassDate.trim();
   const canSubmitFuture =
     futureSelectedIds.size > 0 && futureReason !== NONE && (futureReason !== "Other" || futureReasonOther.trim()) && !!futureFile;
 
+  // Immediate AS-Class absence: it can be submitted standalone (no covered PMT selected at all), so
+  // it needs its own TW picker -- built from every known TW on the calendar, not just upcoming ones,
+  // since this flow is for a class that's already happened.
+  const asClassTwOptions = useMemo(() => {
+    const weeks = new Set<number>();
+    for (const e of events) if (e.trainingWeek !== undefined) weeks.add(e.trainingWeek);
+    return [...weeks].sort((a, b) => b - a).map((tw) => ({ value: String(tw), label: `TW ${tw}` }));
+  }, [events]);
+  const eventsForAsClassTw = useMemo(() => (asClassTw === NONE ? [] : events.filter((e) => String(e.trainingWeek) === asClassTw)), [events, asClassTw]);
+  const asClassDateOpts = useMemo(
+    () => (asClass === NONE ? [] : asClassDateOptions(eventsForAsClassTw, asClass as AbsenceAsClass)),
+    [eventsForAsClassTw, asClass]
+  );
   const hasClassInfo = addAsClass && asClass !== NONE && classDate.trim();
   const canSubmit = (selectedIds.size > 0 || hasClassInfo) && !!file;
 
@@ -182,6 +203,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
   const resetForm = () => {
     setSelectedIds(new Set());
     setAddAsClass(false);
+    setAsClassTw(NONE);
     setAsClass(NONE);
     setClassDate("");
     setMedicalDocSent(false);
@@ -219,7 +241,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         attendanceIds,
         assignedAt: undefined,
         asClass: hasClassInfo ? (asClass as AbsenceAsClass) : undefined,
-        classDate: hasClassInfo ? new Date(classDate).toISOString() : undefined,
+        classDate: hasClassInfo ? classDate : undefined,
         instructor: hasClassInfo ? INSTRUCTOR_BY_AS_CLASS[asClass as AbsenceAsClass] : undefined,
         reason,
         reasonOther,
@@ -274,7 +296,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
         attendanceIds: pmtEventIds.map(() => ""),
         assignedAt: undefined,
         asClass: hasFutureClassInfo ? (futureAsClass as AbsenceAsClass) : undefined,
-        classDate: hasFutureClassInfo ? new Date(futureClassDate).toISOString() : undefined,
+        classDate: hasFutureClassInfo ? futureClassDate : undefined,
         instructor: hasFutureClassInfo ? INSTRUCTOR_BY_AS_CLASS[futureAsClass as AbsenceAsClass] : undefined,
         reason: futureReason as AbsenceReason,
         reasonOther: futureReason === "Other" ? futureReasonOther.trim() : undefined,
@@ -335,11 +357,6 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <FileText className="h-5 w-5 text-primary" />
-        Absence Memo
-      </h2>
-
       {justSubmitted && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-success/50 bg-success/10 p-3 text-sm text-success">
           <CheckCircle2 className="h-4 w-4 shrink-0" />
@@ -436,10 +453,39 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                       Remove
                     </Button>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <Label>Training Week</Label>
+                      <Select
+                        value={asClassTw}
+                        onValueChange={(v) => {
+                          setAsClassTw(v);
+                          setClassDate("");
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>Select</SelectItem>
+                          {asClassTwOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-1.5">
                       <Label>AS Class</Label>
-                      <Select value={asClass} onValueChange={(v) => setAsClass(v as AbsenceAsClass | typeof NONE)}>
+                      <Select
+                        value={asClass}
+                        onValueChange={(v) => {
+                          setAsClass(v as AbsenceAsClass | typeof NONE);
+                          setClassDate("");
+                        }}
+                        disabled={asClassTw === NONE}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
@@ -455,7 +501,18 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     </div>
                     <div className="space-y-1.5">
                       <Label>Date of class</Label>
-                      <Input type="date" value={classDate} onChange={(e) => setClassDate(e.target.value)} />
+                      <Select value={classDate} onValueChange={setClassDate} disabled={asClass === NONE}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {asClassDateOpts.map((o) => (
+                            <SelectItem key={o.iso} value={o.iso}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   {asClass !== NONE && (
@@ -524,6 +581,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     onValueChange={(v) => {
                       setFutureTw(v);
                       setFutureSelectedIds(new Set());
+                      setFutureClassDate("");
                     }}
                   >
                     <SelectTrigger>
@@ -560,14 +618,16 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               )}
 
               {!futureAddAsClass ? (
-                <Button type="button" variant="outline" size="sm" onClick={() => setFutureAddAsClass(true)}>
+                <Button type="button" variant="outline" size="sm" onClick={() => setFutureAddAsClass(true)} disabled={futureTw === NONE}>
                   <Plus className="h-3.5 w-3.5" />
                   Add an AS-Class absence
                 </Button>
+              ) : futureTw === NONE ? (
+                <p className="text-sm text-muted-foreground">Select a Training Week above first.</p>
               ) : (
                 <div className="space-y-3 rounded-md border border-input p-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">AS-Class absence</p>
+                    <p className="text-sm font-medium">AS-Class absence -- {futureTwOptions.find((o) => o.value === futureTw)?.label}</p>
                     <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setFutureAddAsClass(false)}>
                       Remove
                     </Button>
@@ -575,7 +635,13 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label>AS Class</Label>
-                      <Select value={futureAsClass} onValueChange={(v) => setFutureAsClass(v as AbsenceAsClass | typeof NONE)}>
+                      <Select
+                        value={futureAsClass}
+                        onValueChange={(v) => {
+                          setFutureAsClass(v as AbsenceAsClass | typeof NONE);
+                          setFutureClassDate("");
+                        }}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
@@ -591,7 +657,18 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     </div>
                     <div className="space-y-1.5">
                       <Label>Date of class</Label>
-                      <Input type="date" value={futureClassDate} onChange={(e) => setFutureClassDate(e.target.value)} />
+                      <Select value={futureClassDate} onValueChange={setFutureClassDate} disabled={futureAsClass === NONE}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {futureAsClassDateOptions.map((o) => (
+                            <SelectItem key={o.iso} value={o.iso}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   {futureAsClass !== NONE && (

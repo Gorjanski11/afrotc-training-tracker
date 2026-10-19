@@ -1,4 +1,5 @@
-import { ATTENDANCE_WEIGHT, PERMITTED_ABSENCES_PER_SEMESTER, SEMESTER_PMT_TOTALS, bucketForEventType, standingForAbsencesLeft, type AttendanceStatus, type Standing } from "./constants";
+import { ATTENDANCE_WEIGHT, PERMITTED_ABSENCES_PER_SEMESTER, SEMESTER_PMT_TOTALS, bucketForEventType, standingForAbsencesLeft, type AbsenceAsClass, type AttendanceStatus, type Standing } from "./constants";
+import { shortDate } from "./memoAnalytics";
 import type { Attendance, PmtEvent } from "./types";
 
 export interface BucketTally {
@@ -136,6 +137,41 @@ export function isFutureCalendarDay(eventDate: string, now: Date = new Date()): 
 /** True once a Post-Accountability entry lands after its window has already closed -- a visible flag, never a block. */
 export function isEntryOutsideWindow(event: PmtEvent, recordedAt: string): boolean {
   return new Date(recordedAt).getTime() > isPostAccountabilityCloseTime(event).getTime();
+}
+
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Each AS-Class's fixed weekday(s) within its own Training Week, confirmed with cadre. */
+const AS_CLASS_WEEKDAYS: Record<AbsenceAsClass, number[]> = {
+  AS100: [2], // Tuesday
+  AS200: [4], // Thursday
+  AS300: [2, 4], // Tuesday + Thursday
+  AS400: [1, 3], // Monday + Wednesday
+};
+
+/** The Monday (00:00 local) of the calendar week containing this date -- device-local, matching every other date display in this app (shortDate included). */
+function mondayOfWeek(dateIso: string): Date {
+  const d = new Date(dateIso);
+  const day = d.getDay(); // Sun=0 .. Sat=6
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+  return monday;
+}
+
+/**
+ * The AS-Class absence date option(s) for a Training Week -- there's no stored "TW date range," so
+ * this anchors on any one PMT event already known to be in that week (any of `eventsForTw` works,
+ * they all share a calendar week) and derives that week's Monday, then the fixed weekday(s) this
+ * AS-Class meets on. AS100->Tue only, AS200->Thu only, AS300->Tue+Thu, AS400->Mon+Wed.
+ */
+export function asClassDateOptions(eventsForTw: PmtEvent[], asClass: AbsenceAsClass): { iso: string; label: string }[] {
+  if (eventsForTw.length === 0) return [];
+  const monday = mondayOfWeek(eventsForTw[0].eventDate);
+  return AS_CLASS_WEEKDAYS[asClass].map((weekday) => {
+    const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + (weekday - 1));
+    const iso = date.toISOString();
+    return { iso, label: `${WEEKDAY_SHORT[weekday]}, ${shortDate(iso)}` };
+  });
 }
 
 function isPostAccountabilityCloseTime(event: PmtEvent): Date {

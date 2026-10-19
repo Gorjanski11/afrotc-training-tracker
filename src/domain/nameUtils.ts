@@ -24,12 +24,14 @@ export function formatCadetName(cadet: { name: string; rank: string | undefined;
 }
 
 /**
- * Narrow-width display format: "C/{rank} {first surname only}" (e.g. "C/2d Lt Rodriguez"), dropping
- * the first name and any second surname that `formatCadetName` keeps. Cadre names have no comma to
- * split on, so they pass through unchanged, same as `formatCadetName`.
+ * Narrow-width display format: "C/{rank} Last Names" (e.g. "C/2d Lt Rodriguez Rivera"), dropping only
+ * the first name that `formatCadetName` keeps -- both surnames stay (most of this roster uses the
+ * two-surname Hispanic naming convention, and dropping the second would misidentify people who share
+ * a first surname). Cadre names have no comma to split on, so they pass through unchanged, same as
+ * `formatCadetName`.
  */
 export function formatCadetNameCompact(cadet: { name: string; rank: string | undefined; isCadre: boolean }): string {
   if (cadet.isCadre) return cadet.name;
-  const firstSurname = cadet.name.split(",")[0]!.trim().split(/\s+/)[0]!;
-  return cadet.rank ? `C/${cadet.rank} ${firstSurname}` : firstSurname;
+  const lastNames = cadet.name.split(",")[0]!.trim();
+  return cadet.rank ? `C/${cadet.rank} ${lastNames}` : lastNames;
 }

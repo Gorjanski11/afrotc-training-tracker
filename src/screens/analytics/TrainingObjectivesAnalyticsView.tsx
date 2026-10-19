@@ -416,7 +416,7 @@ export function TrainingObjectivesAnalyticsView({
                             key={objective.id}
                             title={objective.title}
                             className={cn(
-                              "sticky top-5 z-10 h-5 min-w-9 bg-background px-1 py-0.5 text-center text-[10px] font-medium leading-tight",
+                              "sticky top-5 z-10 h-5 min-w-11 whitespace-nowrap bg-background px-1 py-0.5 text-center text-[10px] font-medium leading-tight",
                               i === 0 && "border-l border-input"
                             )}
                           >
@@ -442,7 +442,7 @@ export function TrainingObjectivesAnalyticsView({
                                 key={objective.id}
                                 title={objective.title}
                                 className={cn(
-                                  "h-5 px-1 py-0.5 text-center text-[11px]",
+                                  "h-5 whitespace-nowrap px-1 py-0.5 text-center text-[11px]",
                                   i === 0 && "border-l border-input",
                                   cell?.status === "complete" && "bg-success text-success-foreground font-medium",
                                   cell?.status === "partial" && "bg-warning text-warning-foreground font-medium",

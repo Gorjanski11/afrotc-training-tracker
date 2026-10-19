@@ -216,7 +216,7 @@ function App() {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="glass relative z-10 flex items-center justify-between gap-2 border-b px-3 py-3 sm:px-8">
+      <header className="flex items-center justify-between gap-2 border-b border-input bg-background px-3 py-3 sm:px-8">
         <button
           type="button"
           onClick={() => window.location.reload()}

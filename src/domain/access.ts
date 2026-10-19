@@ -1,4 +1,5 @@
 import { deriveClass, type AbsenceAsClass, type Flight, type Group } from "./constants";
+import { formatCadetName } from "./nameUtils";
 import type { AbsenceMemo, Cadet, DeviationMemo } from "./types";
 
 /** Which parts of the hub a signed-in person can see. */
@@ -515,4 +516,16 @@ export function getAuthorizedDeviationAssigners(roster: Cadet[]): Cadet[] {
 /** POC-class or Cadre -- who's eligible to be CC'd on a Deviation Memo. */
 export function getCcEligiblePeople(roster: Cadet[]): Cadet[] {
   return excludeInactive(roster).filter((p) => p.isCadre || deriveClass(p.asClass, p.isCadre) === "POC");
+}
+
+/**
+ * The signed-in person's own display name -- Absence Memo review now attributes `reviewedBy` to
+ * whoever is actually logged in (any Cadre or the SAE, all of whom are authorized to review) instead
+ * of a single hardcoded reviewer name. Falls back to the raw email if no roster match is found.
+ */
+export function currentPersonName(email: string | null | undefined, roster: Cadet[]): string {
+  if (!email) return "";
+  const normalized = email.trim().toLowerCase();
+  const match = roster.find((p) => p.email?.trim().toLowerCase() === normalized);
+  return match ? formatCadetName(match) : email;
 }

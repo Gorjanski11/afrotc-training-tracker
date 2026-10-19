@@ -11,7 +11,7 @@ import { FileText, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
-import { canDeleteAbsenceMemo, visibleAbsenceMemos } from "../../domain/access";
+import { canDeleteAbsenceMemo, currentPersonName, visibleAbsenceMemos } from "../../domain/access";
 import { shortDate } from "../../domain/memoAnalytics";
 import type { AbsenceMemo, Cadet, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
@@ -35,20 +35,33 @@ function StatusBadge({ status }: { status: AbsenceMemoStatus }) {
   return <Badge variant={variant}>{status}</Badge>;
 }
 
-/** What this memo is actually for -- a PMT absence, an AS-Class absence, or (rarely) both. */
-function coverageSummary(m: AbsenceMemo, eventLabel: (id: string) => string): string {
+/**
+ * What this memo is actually for -- a PMT absence, an AS-Class absence, or (rarely) both. PMTs
+ * covered the same calendar day are folded into one label (e.g. "PT + LLAB - 14 Oct 25") instead of
+ * one entry per PMT, since a memo covering two same-day sessions is really describing one absence.
+ */
+function coverageSummary(m: AbsenceMemo, events: PmtEvent[]): string {
+  const eventsById = new Map(events.map((e) => [e.id, e]));
+  const covered = m.pmtEventIds.map((id) => eventsById.get(id)).filter((e): e is PmtEvent => !!e);
   const parts: string[] = [];
-  if (m.pmtEventIds.length > 0) parts.push(m.pmtEventIds.map(eventLabel).join(", "));
-  if (m.asClass) parts.push(`${m.asClass} class (${m.classDate ? shortDate(m.classDate) : "no date"})`);
+  if (covered.length > 0) {
+    const byDay = new Map<string, PmtEvent[]>();
+    for (const e of covered) {
+      const day = e.eventDate.slice(0, 10);
+      byDay.set(day, [...(byDay.get(day) ?? []), e]);
+    }
+    const dayLabels = [...byDay.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([day, dayEvents]) => `${[...new Set(dayEvents.map((e) => e.eventType))].join(" + ")} - ${shortDate(day)}`);
+    parts.push(dayLabels.join(", "));
+  }
+  if (m.asClass) parts.push(`${m.asClass} class`);
   return parts.join(" + ") || "—";
 }
 
 function reasonDisplay(m: AbsenceMemo): string {
   return m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason;
 }
-
-// Only OFC reviews Absence Memos -- there's no other reviewer to pick, so this is fixed rather than a free-text field.
-const OFC_REVIEWER = "Capt Deaton";
 
 /** Submission now lives on the separate GMC/POC submission site -- this screen is cadre review only. */
 export function AbsenceMemosScreen({
@@ -119,7 +132,7 @@ export function AbsenceMemosScreen({
     await updateMemo(memo.id, {
       status,
       reviewedAt: now,
-      reviewedBy: OFC_REVIEWER,
+      reviewedBy: currentPersonName(userEmail, roster),
       reviewNotes: notes,
       returnReason: status === "Returned" ? returnReasonText : undefined,
       attendanceUpdatedAt,
@@ -225,8 +238,8 @@ export function AbsenceMemosScreen({
               <TableRow key={m.id}>
                 <TableCell>{shortDate(m.submittedAt)}</TableCell>
                 <TableCell>{m.cadetName}</TableCell>
-                <TableCell className="max-w-xs truncate" title={coverageSummary(m, eventLabel)}>
-                  {coverageSummary(m, eventLabel)}
+                <TableCell className="max-w-xs truncate" title={coverageSummary(m, events)}>
+                  {coverageSummary(m, events)}
                 </TableCell>
                 <TableCell className="max-w-xs truncate" title={reasonDisplay(m)}>
                   {reasonDisplay(m)}
@@ -357,7 +370,7 @@ export function AbsenceMemosScreen({
                   )}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Reviewing as: <strong>{OFC_REVIEWER}</strong>
+                  Reviewing as: <strong>{currentPersonName(userEmail, roster)}</strong>
                 </div>
                 <div className="grid gap-1.5">
                   <Label>Notes</Label>

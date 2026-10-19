@@ -102,6 +102,19 @@ const TEMPLATE_DEFS: TemplateDef[] = [
       "<strong>This is an automated message, DO NOT reply to this email.</strong>",
   },
   {
+    id: "deviation-resubmitted",
+    label: "Deviation Memo resubmitted",
+    trigger: "Sent to whoever assigned a Deviation Memo the moment a cadet fixes and resubmits it after it was returned (not sent if the resubmission lands as Not Submitted for being late).",
+    placeholders: ["greeting", "assignerName", "cadetName", "reason", "reviewLink"],
+    defaultSubject: "Deviation Memorandum resubmitted -- ready for review",
+    defaultBody:
+      "{{greeting}}, {{assignerName}},<br><br>" +
+      "{{cadetName}} fixed and resubmitted the Deviation Memorandum you assigned for the following reason:<br>" +
+      "{{reason}}<br><br>" +
+      "Review it here: {{reviewLink}}<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
     id: "accountability-reminder",
     label: "Accountability reminder (SOP Section 3)",
     trigger:

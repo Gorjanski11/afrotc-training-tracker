@@ -99,3 +99,37 @@ export function cadetDeviationRows(memos: DeviationMemo[], roster: Cadet[]): Cad
   }
   return [...rows.values()];
 }
+
+export interface CadetDeviationSummaryRow {
+  cadet: Cadet;
+  categoryCounts: Record<DeviationCategory, number>;
+  total: number;
+  /** Count of this cadet's memos with status "Accepted". */
+  accepted: number;
+  /** Count with status "Not Submitted" -- the terminal did-not-submit state for deviation memos (parallel to Absence Memos' "dns" lateSubmission). */
+  dns: number;
+}
+
+function emptyCategoryCounts(): Record<DeviationCategory, number> {
+  return Object.fromEntries(DEVIATION_REASONS.map((c) => [c, 0])) as Record<DeviationCategory, number>;
+}
+
+/** The big table's rows, collapsed to the 4 top-level categories plus Total/Accepted/DNS -- a coarser view than `cadetDeviationRows`' 6-row breakdown, used by Deviation's Log's main crosstab table. */
+export function cadetDeviationSummaryRows(memos: DeviationMemo[], roster: Cadet[]): CadetDeviationSummaryRow[] {
+  const rosterById = new Map(roster.map((c) => [c.id, c]));
+  const rows = new Map<string, CadetDeviationSummaryRow>();
+  for (const memo of memos) {
+    const cadet = rosterById.get(memo.cadetId);
+    if (!cadet) continue;
+    let row = rows.get(cadet.id);
+    if (!row) {
+      row = { cadet, categoryCounts: emptyCategoryCounts(), total: 0, accepted: 0, dns: 0 };
+      rows.set(cadet.id, row);
+    }
+    row.categoryCounts[categoryOf(memo)] += 1;
+    row.total += 1;
+    if (memo.status === "Accepted") row.accepted += 1;
+    if (memo.status === "Not Submitted") row.dns += 1;
+  }
+  return [...rows.values()];
+}

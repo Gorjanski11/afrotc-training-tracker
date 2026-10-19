@@ -7,18 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { ShieldAlert, CalendarClock, Shirt, Handshake, MoreHorizontal, BarChart2, PieChart as PieChartIcon, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
+import { DEVIATION_REASONS, FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
 import { filterByRosterScope } from "../../domain/memoAnalytics";
 import {
   countByCategory,
   countByRow,
   countByUnit,
-  cadetDeviationRows,
-  DEVIATION_ROW_LABELS,
+  cadetDeviationSummaryRows,
   type DeviationCategory,
   type DeviationRowLabel,
 } from "../../domain/deviationAnalytics";
-import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
+import { compareByLastName, formatCadetNameCompact } from "../../domain/nameUtils";
 import { Stepper } from "../../components/analytics/Stepper";
 import type { UnitScope } from "../../domain/access";
 import type { Cadet, DeviationMemo } from "../../domain/types";
@@ -114,11 +113,11 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
   const pieData = useMemo(() => unitCounts.map((u) => ({ name: u.unit, value: u.count })), [unitCounts]);
 
   const cadetRows = useMemo(() => {
-    const withDeviations = cadetDeviationRows(scopedMemos, roster);
+    const withDeviations = cadetDeviationSummaryRows(scopedMemos, roster);
     if (!showAllCadets) return withDeviations;
     const seen = new Set(withDeviations.map((r) => r.cadet.id));
-    const zeroCounts = Object.fromEntries(DEVIATION_ROW_LABELS.map((l) => [l, 0])) as Record<DeviationRowLabel, number>;
-    const rest = roster.filter((c) => !seen.has(c.id)).map((cadet) => ({ cadet, counts: zeroCounts, total: 0 }));
+    const zeroCounts = Object.fromEntries(DEVIATION_REASONS.map((c) => [c, 0])) as Record<DeviationCategory, number>;
+    const rest = roster.filter((c) => !seen.has(c.id)).map((cadet) => ({ cadet, categoryCounts: zeroCounts, total: 0, accepted: 0, dns: 0 }));
     return [...withDeviations, ...rest];
   }, [scopedMemos, roster, showAllCadets]);
 
@@ -261,24 +260,32 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
                   <TableHeader>
                     <TableRow>
                       <TableHead className="sticky left-0 top-0 z-20 bg-background px-2 py-1 text-xs">Cadet</TableHead>
-                      {DEVIATION_ROW_LABELS.map((label) => (
-                        <TableHead key={label} className="sticky top-0 z-10 min-w-20 bg-background px-1 py-1 text-center text-[10px] leading-tight">
-                          {label}
+                      {DEVIATION_REASONS.map((category) => (
+                        <TableHead key={category} className="sticky top-0 z-10 min-w-20 bg-background px-1 py-1 text-center text-[10px] leading-tight">
+                          {category}
                         </TableHead>
                       ))}
                       <TableHead className="sticky top-0 z-10 bg-background px-2 py-1 text-center text-xs font-semibold">Total</TableHead>
+                      <TableHead className="sticky top-0 z-10 bg-background px-2 py-1 text-center text-xs font-semibold text-success">Accepted</TableHead>
+                      <TableHead className="sticky top-0 z-10 bg-background px-2 py-1 text-center text-xs font-semibold text-destructive">DNS</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedCadetRows.map((row) => (
                       <TableRow key={row.cadet.id}>
-                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-2 py-1 text-xs">{formatCadetName(row.cadet)}</TableCell>
-                        {DEVIATION_ROW_LABELS.map((label) => (
-                          <TableCell key={label} className={cn("px-1 py-1 text-center text-xs", row.counts[label] > 0 && "font-semibold text-foreground")}>
-                            {row.counts[label] > 0 ? row.counts[label] : "—"}
+                        <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-2 py-1 text-xs">{formatCadetNameCompact(row.cadet)}</TableCell>
+                        {DEVIATION_REASONS.map((category) => (
+                          <TableCell key={category} className={cn("px-1 py-1 text-center text-xs", row.categoryCounts[category] > 0 && "font-semibold text-foreground")}>
+                            {row.categoryCounts[category] > 0 ? row.categoryCounts[category] : "—"}
                           </TableCell>
                         ))}
                         <TableCell className="px-2 py-1 text-center text-xs font-semibold">{row.total}</TableCell>
+                        <TableCell className={cn("px-2 py-1 text-center text-xs", row.accepted > 0 && "bg-success/15 font-semibold text-success")}>
+                          {row.accepted > 0 ? row.accepted : "—"}
+                        </TableCell>
+                        <TableCell className={cn("px-2 py-1 text-center text-xs", row.dns > 0 && "bg-destructive/15 font-semibold text-destructive")}>
+                          {row.dns > 0 ? row.dns : "—"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

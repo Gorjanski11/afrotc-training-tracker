@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { UserCog, Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert, Wrench } from "lucide-react";
+import { Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert, Wrench } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useExtraEvents } from "../hooks/useExtraEvents";
@@ -14,8 +14,7 @@ import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
 import { useDeviationMemos } from "../hooks/useDeviationMemos";
 import { useEmailTemplates } from "../hooks/useEmailTemplates";
 import { useAuth } from "../hooks/useAuth";
-import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canManageAccounts, canEditEvents, excludeInactive, resolveTabAccess } from "../domain/access";
-import { AccountManagerScreen } from "../screens/settings/AccountManagerScreen";
+import { isFullAccess, isCadreOrCortesGaray, isCortesGaray, canEditEvents, resolveTabAccess } from "../domain/access";
 import { RosterScreen } from "../screens/settings/RosterScreen";
 import { EventsScreen } from "../screens/settings/EventsScreen";
 import { QuickLinksScreen } from "../screens/settings/QuickLinksScreen";
@@ -25,7 +24,7 @@ import { NewSemesterScreen } from "../screens/settings/NewSemesterScreen";
 import { SaeReviewScreen } from "../screens/settings/SaeReviewScreen";
 import { MaintenanceScreen } from "../screens/settings/MaintenanceScreen";
 
-type Section = "accounts" | "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance";
+type Section = "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance";
 
 interface Props {
   userEmail: string | null | undefined;
@@ -56,17 +55,12 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
   const { reauthenticate, resetOtherPassword, impersonate, createCadetAccounts, disableCadetAccounts } = useAuth();
 
   const fullAccess = isFullAccess(userEmail, cadetsState.cadets);
-  const accountManagerAccess = canManageAccounts(userEmail, cadetsState.cadets);
   const eventEditAccess = canEditEvents(userEmail, cadetsState.cadets);
   const unitScope = resolveTabAccess(userEmail, cadetsState.cadets).unitScope;
   const newSemesterAccess = isCadreOrCortesGaray(userEmail, cadetsState.cadets);
   // SOP (1 Oct 2026) Sections 3/4's review flags are literally "for review by the SAE" -- narrower
   // than Cadre, matching isCortesGaray (the same tier that gates New Semester's riskiest actions).
   const saeReviewAccess = isCortesGaray(userEmail);
-  // Inactive cadets are excluded from Account Manager too -- an already-departed cadet's login isn't
-  // something anyone should be resetting/impersonating day to day. The Roster screen below is the one
-  // place in Settings that still needs the raw, unfiltered roster, to reactivate someone from it.
-  const activeRoster = useMemo(() => excludeInactive(cadetsState.cadets), [cadetsState.cadets]);
   const [section, setSection] = useState<Section>("roster");
 
   useEffect(() => {
@@ -109,8 +103,7 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
     deviationState.error ||
     emailTemplatesState.error;
 
-  const navItems: { value: Section; label: string; icon: typeof UserCog }[] = [
-    ...(accountManagerAccess ? [{ value: "accounts" as const, label: "Account Manager", icon: UserCog }] : []),
+  const navItems: { value: Section; label: string; icon: typeof Users }[] = [
     { value: "roster", label: "Roster", icon: Users },
     { value: "events", label: "Events", icon: CalendarDays },
     ...(fullAccess ? [{ value: "links" as const, label: "Quick Links", icon: Link2 }] : []),
@@ -150,16 +143,6 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
           </div>
         ) : (
           <AnimatedPanel>
-            {activeSection === "accounts" && accountManagerAccess && (
-              <AccountManagerScreen
-                roster={activeRoster}
-                updateCadetFields={cadetsState.updateCadetFields}
-                userEmail={userEmail}
-                reauthenticate={reauthenticate}
-                resetOtherPassword={resetOtherPassword}
-                impersonate={impersonate}
-              />
-            )}
             {activeSection === "roster" && (
               <RosterScreen
                 roster={cadetsState.cadets}
@@ -175,6 +158,10 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
                   await cadetsState.deleteCadet(id);
                 }}
                 unitScope={unitScope}
+                userEmail={userEmail}
+                reauthenticate={reauthenticate}
+                resetOtherPassword={resetOtherPassword}
+                impersonate={impersonate}
               />
             )}
             {activeSection === "events" && (

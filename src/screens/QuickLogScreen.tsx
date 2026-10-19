@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Save, ListChecks, X } from "lucide-react";
+import { Search, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
@@ -461,17 +461,7 @@ export function QuickLogScreen({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-2xl font-semibold">
-            <ListChecks className="h-5 w-5 text-primary" />
-            Quick Log
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Mark proficiency directly in the grid. Every entry here is logged as today ({todayIso()}) by{" "}
-            <strong>{evaluatorName || "you"}</strong> — to backdate an entry or credit a different evaluator, edit it from Cadet Detail instead.
-          </p>
-        </div>
+      <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}
           <Button onClick={handleSave} disabled={dirtyCount === 0 || saving}>
@@ -540,18 +530,24 @@ export function QuickLogScreen({
             </SelectContent>
           </Select>
         )}
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showAllCadets} onChange={(e) => setShowAllCadets(e.target.checked)} />
-          Show all cadets (default: only those with an overdue Training Objective)
-        </label>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={cn(showAllCadets && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
+          title="Default: only cadets with an overdue Training Objective"
+          onClick={() => setShowAllCadets((v) => !v)}
+        >
+          Show All
+        </Button>
         <Select value={columnScope} onValueChange={(v) => setColumnScope(v as ColumnScope)}>
-          <SelectTrigger className="w-80">
+          <SelectTrigger className="w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="overdue">Objectives: overdue only (default)</SelectItem>
-            <SelectItem value="overdueAndScheduledOptional">Objectives: everything on the PMT schedule (overdue, upcoming, and optional)</SelectItem>
-            <SelectItem value="all">Objectives: show all</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="overdueAndScheduledOptional">PMT Schedule</SelectItem>
+            <SelectItem value="all">Show All</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -206,6 +206,20 @@ body {
   line-height: 1.5;
 }
 
+/* "Liquid Glass" treatment -- translucent, blurred chrome for floating/overlay surfaces (header,
+   popovers, dialogs/sheets), across every theme and breakpoint. Built from the existing --card/
+   --foreground tokens via color-mix rather than new hardcoded colors, so it automatically follows
+   whichever theme (light/USSF/USAF) is active instead of needing its own per-theme overrides. */
+.glass {
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border-color: color-mix(in oklab, var(--foreground) 12%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, var(--foreground) 10%, transparent),
+    0 8px 24px -8px color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+
 /* Subtle entrance for Radix Dialog/Popover content -- plays on mount only (Radix unmounts on close rather
    than transitioning out, so no exit keyframe is defined). */
 @keyframes content-in {

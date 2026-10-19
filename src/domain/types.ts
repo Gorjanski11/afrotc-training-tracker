@@ -296,6 +296,8 @@ export interface DeviationMemo {
   status: DeviationMemoStatus;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
+  /** A cadre-drawn/commented copy of the submitted PDF, flattened and re-uploaded (Section 12) -- additive, undefined until someone marks one up. The original `pdfUrl` is never modified. */
+  markupPdfUrl: string | undefined;
   submittedAt: string | undefined;
   reviewedAt: string | undefined;
   reviewedBy: string | undefined;

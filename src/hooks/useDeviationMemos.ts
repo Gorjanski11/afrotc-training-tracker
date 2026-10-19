@@ -23,6 +23,7 @@ export interface DeviationMemoInput {
   status: DeviationMemoStatus;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
+  markupPdfUrl: string | undefined;
   submittedAt: string | undefined;
   reviewedAt: string | undefined;
   reviewedBy: string | undefined;
@@ -51,6 +52,7 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     status: ((data.status as DeviationMemoStatus) ?? "Assigned") as DeviationMemoStatus,
     pdfUrl: (data.pdfUrl as string | null | undefined) ?? undefined,
     pdfFileName: (data.pdfFileName as string | null | undefined) ?? undefined,
+    markupPdfUrl: (data.markupPdfUrl as string | null | undefined) ?? undefined,
     submittedAt: (data.submittedAt as string | null | undefined) ?? undefined,
     reviewedAt: (data.reviewedAt as string | null | undefined) ?? undefined,
     reviewedBy: (data.reviewedBy as string | null | undefined) ?? undefined,

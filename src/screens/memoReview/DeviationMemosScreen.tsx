@@ -8,9 +8,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2 } from "lucide-react";
+import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2, Highlighter } from "lucide-react";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
+import { PdfMarkupReview } from "../../components/PdfMarkupReview";
 import { shortDate } from "../../domain/memoAnalytics";
 import { PersonCombobox } from "../../components/memoReview/PersonCombobox";
 import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiCombobox";
@@ -132,6 +133,10 @@ export function DeviationMemosScreen({
   const [reviewNotes, setReviewNotes] = useState("");
   const [deciding, setDeciding] = useState(false);
 
+  // PDF markup/export (Section 12) -- opened from inside the review dialog, on top of it.
+  const [markingUpId, setMarkingUpId] = useState<string | undefined>();
+  const markingUp = memos.find((m) => m.id === markingUpId);
+
   const [overrideId, setOverrideId] = useState<string | undefined>();
   const [overrideStatus, setOverrideStatus] = useState<DeviationMemoStatus>("Assigned");
   const [overrideNotes, setOverrideNotes] = useState("");
@@ -216,6 +221,7 @@ export function DeviationMemosScreen({
         status: "Assigned",
         pdfUrl: undefined,
         pdfFileName: undefined,
+        markupPdfUrl: undefined,
         submittedAt: undefined,
         reviewedAt: undefined,
         reviewedBy: undefined,
@@ -545,7 +551,14 @@ export function DeviationMemosScreen({
                       <StatusBadge status={m.status} />
                     </TableCell>
                     <TableCell>
-                      <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                      <div className="flex items-center gap-1">
+                        <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                        {m.markupPdfUrl && (
+                          <a href={m.markupPdfUrl} target="_blank" rel="noreferrer" title="Marked-up copy" className="text-primary">
+                            <Highlighter className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.reviewNotes}</TableCell>
                     <TableCell>
@@ -668,10 +681,26 @@ export function DeviationMemosScreen({
                     </div>
                   )}
                   {reviewing.pdfUrl && (
-                    <a href={reviewing.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
-                      <ExternalLink className="h-3 w-3" />
-                      View submitted PDF
-                    </a>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <a href={reviewing.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
+                        <ExternalLink className="h-3 w-3" />
+                        View submitted PDF
+                      </a>
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-1 text-primary underline"
+                        onClick={() => setMarkingUpId(reviewing.id)}
+                      >
+                        <Highlighter className="h-3 w-3" />
+                        {reviewing.markupPdfUrl ? "Redo markup" : "Markup PDF"}
+                      </button>
+                      {reviewing.markupPdfUrl && (
+                        <a href={reviewing.markupPdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary underline">
+                          <ExternalLink className="h-3 w-3" />
+                          View marked-up copy
+                        </a>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="grid gap-1.5">
@@ -691,6 +720,27 @@ export function DeviationMemosScreen({
                   Accept
                 </Button>
               </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!markingUp} onOpenChange={(o) => !o && setMarkingUpId(undefined)}>
+        <DialogContent className="max-w-4xl">
+          {markingUp?.pdfUrl && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Markup PDF — {markingUp.cadetName}</DialogTitle>
+              </DialogHeader>
+              <PdfMarkupReview
+                pdfUrl={markingUp.pdfUrl}
+                cadetId={markingUp.cadetId}
+                onClose={() => setMarkingUpId(undefined)}
+                onSaved={async (markupUrl) => {
+                  await updateMemo(markingUp.id, { markupPdfUrl: markupUrl });
+                  setMarkingUpId(undefined);
+                }}
+              />
             </>
           )}
         </DialogContent>

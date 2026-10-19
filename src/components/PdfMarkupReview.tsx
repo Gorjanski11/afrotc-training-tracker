@@ -1,10 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { httpsCallable } from "firebase/functions";
 import { Button } from "@/components/ui/button";
 import { Pencil, MessageSquarePlus, Undo2, Eraser, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadMemoPdf } from "../lib/storage";
+import { functions } from "../lib/firebase";
+
+/** atob decodes to a binary string (one char per byte) -- this turns that into the Uint8Array pdfjs/pdf-lib actually want. */
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 // Bundled as its own asset by Vite (new URL(..., import.meta.url)) rather than loaded from a CDN --
 // the worker has to be served from the same origin/version as the main pdfjs-dist build it pairs with.
@@ -36,11 +46,12 @@ interface Props {
  * it in Storage (Section 12). Deliberately simple -- fixed pen color/width, `window.prompt` for
  * comment text -- this is a markup pass for cadre giving feedback, not a general-purpose PDF editor.
  *
- * Fetches the PDF's bytes itself (once) and hands pdfjs `data` instead of `url` -- pdfjs's own
- * URL-fetching defaults to HTTP Range requests for progressive loading, which need extra
- * CORS-exposed headers (`Content-Range`/`Accept-Ranges`) that Firebase Storage's download endpoint
- * doesn't advertise, surfacing as a bare "Failed to fetch". A single plain fetch has no such
- * requirement, and reusing those same bytes for the pdf-lib export avoids fetching the file twice.
+ * Fetches the PDF's bytes once via the `fetchMemoPdf` callable (afrotc-functions) rather than a
+ * direct browser fetch -- the Storage bucket has no CORS policy configured, so a script-initiated
+ * fetch/XHR straight to a download URL is blocked outright (a plain `<a href>`/new-tab link works
+ * fine, since navigation isn't subject to CORS, which is why nothing else in this app ever hit
+ * this). The callable downloads it server-side with the Admin SDK instead, sidestepping CORS
+ * entirely, and reuses the same bytes for both pdfjs rendering and the pdf-lib export.
  */
 export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,9 +78,9 @@ export function PdfMarkupReview({ pdfUrl, cadetId, onClose, onSaved }: Props) {
     let cancelled = false;
     (async () => {
       try {
-        const response = await fetch(pdfUrl);
-        if (!response.ok) throw new Error(`Couldn't download the PDF (${response.status}).`);
-        const bytes = new Uint8Array(await response.arrayBuffer());
+        const fetchMemoPdf = httpsCallable<{ url: string }, { base64: string }>(functions, "fetchMemoPdf");
+        const result = await fetchMemoPdf({ url: pdfUrl });
+        const bytes = base64ToBytes(result.data.base64);
         if (cancelled) return;
         sourceBytesRef.current = bytes;
         // A copy goes to pdfjs -- passing `data` transfers the underlying buffer to its worker

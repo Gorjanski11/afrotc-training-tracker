@@ -120,6 +120,7 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                     roster={roster}
                     userEmail={userEmail}
                     onOpenAbsence={showAbsence ? (memoId) => openFromOwnDashboard("absence", memoId) : undefined}
+                    onOpenDeviation={(memoId) => openFromOwnDashboard("deviation", memoId)}
                   />
                 </AnimatedPanel>
               </TabsContent>
@@ -152,6 +153,8 @@ export function MemoReviewApp({ showAbsence, userEmail, initialScreen, initialOp
                     deleteMemo={deviationState.deleteMemo}
                     reauthenticate={reauthenticate}
                     userEmail={userEmail}
+                    initialReviewId={screen === "deviation" ? openMemoId : undefined}
+                    onConsumeInitialReview={() => setOpenMemoId(undefined)}
                   />
                 </AnimatedPanel>
               </TabsContent>

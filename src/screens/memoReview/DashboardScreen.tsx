@@ -16,6 +16,8 @@ interface Props {
   userEmail: string | null | undefined;
   /** Jumps to the Absence Memos screen with this specific memo's review popup opened -- undefined when the viewer can't see Absence Memos at all. */
   onOpenAbsence?: (memoId: string) => void;
+  /** Jumps to the Deviation Memos screen with this specific memo's review popup opened. */
+  onOpenDeviation: (memoId: string) => void;
 }
 
 function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
@@ -42,7 +44,7 @@ function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; 
 }
 
 /** Section 2 -- same "concerning this viewer" scoping as the Absence/Deviation Memos screens and Memorandums Analytics, so every count on this landing page agrees with what's actually in the lists behind it. */
-export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, onOpenAbsence }: Props) {
+export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, onOpenAbsence, onOpenDeviation }: Props) {
   const myAbsenceMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, absenceMemos), [absenceMemos, roster, userEmail]);
   const myDeviationMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, deviationMemos), [deviationMemos, roster, userEmail]);
 
@@ -76,7 +78,7 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
         Dashboard
       </h2>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-5">
         <HeroStat
           icon={<FileText className="h-4.5 w-4.5" />}
           label="Absence Memos Pending For Review"
@@ -114,88 +116,120 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <FileText className="h-4 w-4 text-primary" />
-              Pending Absence Memos For Review
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {pendingAbsence.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing pending.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {pendingAbsence.map((m) =>
-                  onOpenAbsence ? (
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <FileText className="h-4 w-4 text-primary" />
+                Pending Absence Memos For Review
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pendingAbsence.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing pending.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {pendingAbsence.map((m) =>
+                    onOpenAbsence ? (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => onOpenAbsence(m.id)}
+                        className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
+                      >
+                        <span>{m.cadetName}</span>
+                        <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
+                      </button>
+                    ) : (
+                      <div key={m.id} className="flex items-center justify-between text-sm">
+                        <span>{m.cadetName}</span>
+                        <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <CalendarClock className="h-4 w-4 text-destructive" />
+                Overdue Absence Memos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overdueAbsence.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing overdue -- everyone's within their 72-hour window.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {overdueAbsence.map(({ memo, event }) => (
+                    <div key={memo.id} className="flex items-center justify-between text-sm">
+                      <span>{memo.cadetName}</span>
+                      <span className="text-muted-foreground">
+                        {event.eventType} — {event.title} ({shortDate(event.eventDate)})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <ClipboardList className="h-4 w-4 text-primary" />
+                Pending Deviation Memos For Review
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {awaitingReview.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing pending.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {awaitingReview.map((m) => (
                     <button
                       key={m.id}
                       type="button"
-                      onClick={() => onOpenAbsence(m.id)}
+                      onClick={() => onOpenDeviation(m.id)}
                       className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
                     >
                       <span>{m.cadetName}</span>
                       <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
                     </button>
-                  ) : (
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                <TriangleAlert className="h-4 w-4 text-destructive" />
+                Overdue Deviation Memos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overdueDeviations.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nothing overdue.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {overdueDeviations.map((m) => (
                     <div key={m.id} className="flex items-center justify-between text-sm">
                       <span>{m.cadetName}</span>
-                      <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
+                      <span className="text-muted-foreground">Due {shortDate(m.dueDate)}</span>
                     </div>
-                  )
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <CalendarClock className="h-4 w-4 text-destructive" />
-              Overdue Absence Memos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overdueAbsence.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing overdue -- everyone's within their 72-hour window.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {overdueAbsence.map(({ memo, event }) => (
-                  <div key={memo.id} className="flex items-center justify-between text-sm">
-                    <span>{memo.cadetName}</span>
-                    <span className="text-muted-foreground">
-                      {event.eventType} — {event.title} ({shortDate(event.eventDate)})
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              <TriangleAlert className="h-4 w-4 text-destructive" />
-              Overdue Deviation Memos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {overdueDeviations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nothing overdue.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {overdueDeviations.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-sm">
-                    <span>{m.cadetName}</span>
-                    <span className="text-muted-foreground">Due {shortDate(m.dueDate)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

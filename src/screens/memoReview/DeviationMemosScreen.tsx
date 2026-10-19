@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -38,6 +38,9 @@ interface Props {
   deleteMemo: (id: string) => Promise<void>;
   reauthenticate: (password: string) => Promise<void>;
   userEmail: string | null | undefined;
+  /** Set by the Memo Review Dashboard's "Pending Deviation Memos For Review" row click -- opens that memo's review popup immediately, then `onConsumeInitialReview` clears it. */
+  initialReviewId?: string;
+  onConsumeInitialReview?: () => void;
 }
 
 function StatusBadge({ status }: { status: DeviationMemoStatus }) {
@@ -83,7 +86,18 @@ function RelatedPmtCell({ labels }: { labels: string[] }) {
 }
 
 /** Section 9 -- single view (no more Assign/Submissions-&-Review tabs): Submitted, then Awaiting submission, then Processed, top to bottom. Assign lives in a popup instead of its own tab. */
-export function DeviationMemosScreen({ roster, memos, events, createMemo, updateMemo, deleteMemo, reauthenticate, userEmail: userEmailRaw }: Props) {
+export function DeviationMemosScreen({
+  roster,
+  memos,
+  events,
+  createMemo,
+  updateMemo,
+  deleteMemo,
+  reauthenticate,
+  userEmail: userEmailRaw,
+  initialReviewId,
+  onConsumeInitialReview,
+}: Props) {
   const userEmail = userEmailRaw ?? "";
   const rule = useMemo(() => resolveDeviationAssignRule(userEmail, roster), [userEmail, roster]);
   const eventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
@@ -223,6 +237,14 @@ export function DeviationMemosScreen({ roster, memos, events, createMemo, update
     setReviewerName(memo.assignedBy);
     setReviewNotes("");
   };
+
+  useEffect(() => {
+    if (!initialReviewId) return;
+    const target = memos.find((m) => m.id === initialReviewId);
+    if (target) openReview(target);
+    onConsumeInitialReview?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialReviewId]);
 
   const decide = async (memo: DeviationMemo, decision: "Accepted" | "Returned") => {
     setDeciding(true);

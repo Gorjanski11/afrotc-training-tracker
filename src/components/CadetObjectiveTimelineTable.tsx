@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getObjectiveStatus, isOverdue, completionForOccurrence, meetsRequirement } from "../domain/progress";
+import { getObjectiveStatus, isOverdue, completionForOccurrence, meetsRequirement, type ObjectiveStatusInfo } from "../domain/progress";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
 import { formatCadetName } from "../domain/nameUtils";
 import { PLO_SHORT_CODE, type PloSection } from "../domain/constants";
@@ -89,6 +89,23 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
     return <p className="text-sm text-muted-foreground">This cadet has no dev level set, so there's nothing to chart yet. Set it from the Roster screen.</p>;
   }
 
+  /**
+   * Row-level aggregate tone (Section 7): green once `getObjectiveStatus` itself says "completed"
+   * (it already does the any-occurrence-satisfies-it math); red once it says "missed" (every
+   * occurrence already passed with nothing satisfying it -- no future PMT left, full stop); yellow
+   * -- plus a highlight on the one remaining day's own cell -- when neither of those applies yet but
+   * exactly one of this objective's occurrences hasn't happened yet (the cadet's one remaining shot).
+   * More than one remaining occurrence, or none scheduled at all, gets no row tone.
+   */
+  function rowTone(info: ObjectiveStatusInfo): { tone: "completed" | "missed" | "lastChance" | undefined; lastChanceEventId?: string } {
+    if (info.status === "completed") return { tone: "completed" };
+    if (info.status === "missed") return { tone: "missed" };
+    const now = Date.now();
+    const remaining = info.occurrences.filter((occ) => new Date(occ.eventDate).getTime() > now);
+    if (remaining.length === 1) return { tone: "lastChance", lastChanceEventId: remaining[0].id };
+    return { tone: undefined };
+  }
+
   return (
     <div className="overflow-x-auto">
       <Table aria-label={`Objective x PMT timeline for ${formatCadetName(cadet)}`}>
@@ -125,9 +142,12 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
             const requiredCode = objective.proficiencyByLevel[devLevel];
             const shortCode = PLO_SHORT_CODE[objective.plo as PloSection] ?? "";
             const rowTitle = `${objective.title} — Required: ${requiredCode}${!objective.graded ? " (optional, never overdue)" : ""}`;
+            const { tone, lastChanceEventId } = rowTone(info);
+            const rowBg = tone === "completed" ? "bg-success/10" : tone === "missed" ? "bg-destructive/10" : tone === "lastChance" ? "bg-warning/10" : undefined;
+            const stickyBg = tone === "completed" ? "bg-success/10" : tone === "missed" ? "bg-destructive/10" : tone === "lastChance" ? "bg-warning/10" : "bg-background";
             return (
-              <TableRow key={objective.id}>
-                <TableCell className="sticky left-0 z-10 whitespace-nowrap bg-background px-1 py-0.5">
+              <TableRow key={objective.id} className={rowBg}>
+                <TableCell className={cn("sticky left-0 z-10 whitespace-nowrap px-1 py-0.5", stickyBg)}>
                   <button
                     type="button"
                     title={rowTitle}
@@ -160,8 +180,9 @@ export function CadetObjectiveTimelineTable({ cadet, objectives, pmtEvents, cade
                   const optional = !objective.graded;
                   const columnMissed = isMultiOccurrence ? isPast && !satisfied : info.status === "missed";
                   const notCovered = hasEntry && columnCompletion?.notCovered;
+                  const isLastChanceDay = event.id === lastChanceEventId;
                   return (
-                    <TableCell key={event.id} className="px-1 py-0.5 text-center">
+                    <TableCell key={event.id} className={cn("px-1 py-0.5 text-center", isLastChanceDay && "ring-2 ring-inset ring-warning")}>
                       <button
                         className={cn(
                           "w-full rounded px-1 py-0.5 text-[10px] leading-tight",

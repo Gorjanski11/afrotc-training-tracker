@@ -3,8 +3,10 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PMT_EVENT_TYPES, type PmtEventType } from "../../domain/constants";
 import { findTrainingWeekConflicts } from "../../domain/attendance";
 import { shortDateTime } from "../../domain/memoAnalytics";
 import { buildMonthGrid, isSameDay, isSameMonth, addMonths } from "../../domain/calendarUtils";
@@ -74,8 +76,12 @@ export function EventsScreen({
   const [editingExtra, setEditingExtra] = useState<ExtraEvent | undefined>();
   const [deletingExtra, setDeletingExtra] = useState<ExtraEvent | undefined>();
   const [calendarAnchor, setCalendarAnchor] = useState(new Date());
+  const [typeFilter, setTypeFilter] = useState<PmtEventType | "All">("All");
 
-  const sortedEvents = useMemo(() => [...events].sort((a, b) => a.eventDate.localeCompare(b.eventDate)), [events]);
+  const sortedEvents = useMemo(() => {
+    const sorted = [...events].sort((a, b) => a.eventDate.localeCompare(b.eventDate));
+    return typeFilter === "All" ? sorted : sorted.filter((e) => e.eventType === typeFilter);
+  }, [events, typeFilter]);
   const sortedExtraEvents = useMemo(() => [...extraEvents].sort((a, b) => a.eventDate.localeCompare(b.eventDate)), [extraEvents]);
   const conflicts = useMemo(() => findTrainingWeekConflicts(events), [events]);
   const conflictEventIds = useMemo(() => new Set(conflicts.flatMap((c) => c.eventIds)), [conflicts]);
@@ -131,8 +137,21 @@ export function EventsScreen({
 
       {tab === "pmt" ? (
         <>
-          {canEdit && (
-            <div className="mb-4 flex justify-end">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All types</SelectItem>
+                {PMT_EVENT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {canEdit && (
               <Button
                 onClick={() => {
                   setEditingPmt(undefined);
@@ -142,8 +161,8 @@ export function EventsScreen({
                 <Plus />
                 Add PMT
               </Button>
-            </div>
-          )}
+            )}
+          </div>
           <div className="overflow-x-auto">
           <Table aria-label="PMT events">
             <TableHeader>
@@ -200,7 +219,7 @@ export function EventsScreen({
               {sortedEvents.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    No PMT events yet.
+                    {typeFilter === "All" ? "No PMT events yet." : `No ${typeFilter} PMTs.`}
                   </TableCell>
                 </TableRow>
               )}

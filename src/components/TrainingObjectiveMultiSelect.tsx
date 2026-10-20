@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PLO_SHORT_CODE, type PloSection } from "../domain/constants";
 import type { TrainingObjective } from "../domain/types";
 
 interface Props {
@@ -37,14 +38,21 @@ export function TrainingObjectiveMultiSelect({ catalog, value, onChange }: Props
           <CommandList>
             <CommandEmpty>No Training Objective found.</CommandEmpty>
             <CommandGroup>
-              {catalog.map((objective) => (
-                <CommandItem key={objective.id} value={`${objective.number} ${objective.title}`} onSelect={() => toggle(objective.id)}>
-                  <Check className={cn("mr-2 h-4 w-4 shrink-0", selected.has(objective.id) ? "opacity-100" : "opacity-0")} />
-                  <span className="truncate">
-                    <strong>{objective.number}</strong> — {objective.title}
-                  </span>
-                </CommandItem>
-              ))}
+              {catalog.map((objective) => {
+                // "WF - 2.1" -- same PLO-short-code convention as the Dashboard/Analytics objective labels.
+                const shortCode = PLO_SHORT_CODE[objective.plo as PloSection] ?? "";
+                return (
+                  <CommandItem key={objective.id} value={`${shortCode} ${objective.number} ${objective.title}`} onSelect={() => toggle(objective.id)}>
+                    <Check className={cn("mr-2 h-4 w-4 shrink-0", selected.has(objective.id) ? "opacity-100" : "opacity-0")} />
+                    <span className="truncate">
+                      <strong>
+                        {shortCode} - {objective.number}
+                      </strong>{" "}
+                      — {objective.title}
+                    </span>
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

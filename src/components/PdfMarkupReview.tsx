@@ -135,6 +135,32 @@ export const PdfMarkupReview = forwardRef<PdfMarkupReviewHandle, Props>(function
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(a.number), a.x, a.y + 1);
+
+        // Preview of the actual "{number}. {text}" label the final exported PDF draws next to this
+        // marker (see exportIfNeeded's drawText below) -- so cadre sees the real comment text live
+        // while marking up, not just a bare numbered circle with no indication of what it says.
+        ctx.fillStyle = STROKE_COLOR;
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        const label = `${a.number}. ${a.text}`;
+        const maxWidth = 280;
+        const words = label.split(" ");
+        const lines: string[] = [];
+        let line = "";
+        for (const word of words) {
+          const test = line ? `${line} ${word}` : word;
+          if (line && ctx.measureText(test).width > maxWidth) {
+            lines.push(line);
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+        if (line) lines.push(line);
+        const lineHeight = 14;
+        const startY = a.y - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((l, i) => ctx.fillText(l, a.x + 16, startY + i * lineHeight));
       }
     }
     // The in-progress stroke, drawn live while the pointer is still down.

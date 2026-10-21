@@ -8,7 +8,18 @@ import { cn } from "@/lib/utils";
 import { meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
-import { DEV_LEVELS, FLIGHTS, PROFICIENCY_CODES, PROFICIENCY_RANK, proficiencyOptionsAtOrAbove, type DevLevel, type Flight, type ProficiencyCode } from "../domain/constants";
+import {
+  DEV_LEVELS,
+  FLIGHTS,
+  PLO_SHORT_CODE,
+  PROFICIENCY_CODES,
+  PROFICIENCY_RANK,
+  proficiencyOptionsAtOrAbove,
+  type DevLevel,
+  type Flight,
+  type PloSection,
+  type ProficiencyCode,
+} from "../domain/constants";
 import { shortDate } from "../domain/memoAnalytics";
 import { ObjectiveExplanationDialog } from "../components/ObjectiveExplanationDialog";
 import { CompletionEntryDialog } from "../components/CompletionEntryDialog";
@@ -99,9 +110,10 @@ function AttendanceCorner({ status }: { status: Attendance["status"] | undefined
   );
 }
 
+/** "LLAB - 5 Oct 26" -- the PMT's type and date, not its freeform title (which can be long/redundant). */
 function formatOccurrenceLabel(event: PmtEvent | undefined): string {
   if (!event) return "Not yet scheduled";
-  return `${event.title} · ${shortDate(event.eventDate)}`;
+  return `${event.eventType} - ${shortDate(event.eventDate)}`;
 }
 
 export function QuickLogScreen({
@@ -579,7 +591,7 @@ export function QuickLogScreen({
                       onClick={() => setExplanationObjective(objective)}
                     >
                       <div className="text-xs font-medium">
-                        {objective.number}
+                        {PLO_SHORT_CODE[objective.plo as PloSection] ?? ""}-{objective.number}
                         {!objective.graded && <span className="ml-1 font-normal text-muted-foreground">(optional)</span>}
                       </div>
                       <div className="text-[11px] font-normal text-muted-foreground">{formatOccurrenceLabel(occurrence)}</div>

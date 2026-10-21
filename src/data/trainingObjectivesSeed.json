@@ -193,7 +193,7 @@
     "additionalInfo": "Cadets commonly mistake end-of-scenario feedback for debriefs. While feedback is primarily focused on the individual being evaluated, a debrief is the team's opportunity to openly discuss \"how\" the mission was executed, drill down to the root cause for any issues that occurred during the mission and focus on areas of learning to help propel the team to future success. The debrief process is deeply rooted in the aviation community, however, the concepts can be applied cross-functionally. The instructor should strive to note the value of candid and constructive debriefs as a foundational element of continued officer professional development and mission accomplishment.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P3"
     }
@@ -243,8 +243,8 @@
     "instructor": "Detachment or Region SAPR Victim Advocate (VA) or other cadre member with current SAPR training certification.",
     "additionalInfo": "This objective frames sexual assault not merely as an issue of compliance, but as a critical test of ethical leadership. By requiring cadets to explain and summarize key concepts, this training ensures they have the foundational knowledge necessary to act as a Leader of Character. This understanding is the basis for developing the moral courage, empathy, and procedural knowledge required to effectively combat sexual assault, foster a culture of trust, and ensure the well-being of every Airman and Guardian entrusted to their care.",
     "proficiencyByLevel": {
-      "BC": "",
-      "BCL": "Kb",
+      "BC": "Kb",
+      "BCL": "",
       "ICL": "",
       "SCL": ""
     }
@@ -349,7 +349,7 @@
     "additionalInfo": "If a cadet is unable to serve in a leadership position see AFROTCI 36-2011, VOL 3 Cadet Operations for OFC waiver authority. Recommend introducing the Airman Comprehensive Assessment (ACA) forms to ICL cadets as early in the academic as possible.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P2"
     }
@@ -1001,10 +1001,10 @@
     "instructor": "Any POC Cadet",
     "additionalInfo": "To ensure cadets demonstrate active listening by accurately summarizing others' perspectives in group discussions (paying attention, providing feedback, deferring judgment, and employing paraphrasing techniques to capture main points), their articulation of ideas must be clear (using precise language and logical structure) and respectful (using appropriate tone and acknowledging diverse perspectives), assessed through peer feedback. They will also successfully facilitate a simulated collaborative problem-solving exercise within a given timeframe, evaluated on establishing clear goals, encouraging participation, and managing conflict, to achieve a mutually agreeable solution that addresses the needs of all parties and requires reflection on lessons learned and improvement goals.",
     "proficiencyByLevel": {
-      "BC": "",
-      "BCL": "P1",
-      "ICL": "P2",
-      "SCL": "P3"
+      "BC": "P1",
+      "BCL": "P2",
+      "ICL": "P3",
+      "SCL": ""
     }
   },
   {
@@ -1055,7 +1055,7 @@
     "additionalInfo": "Reflection papers and self-assessments will track progress, ensuring cadets develop the ability to effectively persuade stakeholders, negotiate favorable outcomes, and build consensus, all crucial for future Air Force leadership. Any performance-based exercise associated with this training objective (TBEX, SBE, GLP) should be evaluated on clarity, persuasiveness, and collaborative problem-solving skills.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P3"
     }
@@ -1108,8 +1108,8 @@
     "instructor": "Any POC Cadet",
     "additionalInfo": "They will be evaluated on their ability to clearly articulate a mission statement, prudently address concerns, and build consensus. Cadets will also mentor junior cadets on communication skills, lead small group exercises, gain leadership experience through their assigned positions, and document their progress through reflection papers and 360-degree feedback.",
     "proficiencyByLevel": {
-      "BC": "",
-      "BCL": "",
+      "BC": "P1",
+      "BCL": "P2",
       "ICL": "P3",
       "SCL": ""
     }
@@ -1161,7 +1161,7 @@
     "additionalInfo": "To ensure cadets demonstrate the ability to define clear and measurable communication objectives aligned with broader organizational goals, the training will incorporate specific examples of DAF and ROTC Detachment goals with guidance on aligning objectives with those goals.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P3"
     }
@@ -1218,7 +1218,7 @@
     "additionalInfo": "To ensure cadets demonstrate their ability to appropriately (ethically, securely, accessibly, and with cultural sensitivity) select and utilize communication channels to maximize targeted reach and impact (measured by engagement, conversion, and knowledge gain) throughout their respective ROTC detachments they may develop comprehensive communication plans outlining channel selection strategies, content calendars, and risk mitigation plans, then present and justify their choices. They will also analyze channel performance data, identifying key trends and making data-driven recommendations for optimization, all while adhering to established ethical, security, and branding standards.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P3"
     }
@@ -1316,8 +1316,8 @@
     "instructor": "ICL with cadre guidance or SCL",
     "additionalInfo": "This objective moves beyond conceptual understanding to focus on practical application. It is designed to instill the critical understanding that physical fitness is a foundational component of the human weapon system and a non-negotiable aspect of mission readiness. By requiring cadets to apply their knowledge in tangible ways—solving problems, leading peers, implementing plans, and adapting to new situations—this training directly supports the development of the critical thinking and warrior-minded leadership essential for winning our nation's wars.",
     "proficiencyByLevel": {
-      "BC": "",
-      "BCL": "",
+      "BC": "P1",
+      "BCL": "P2",
       "ICL": "P3",
       "SCL": ""
     }
@@ -1377,7 +1377,7 @@
     "additionalInfo": "This objective is designed to move cadets beyond theoretical knowledge of warfighting and into a dynamic environment where they must apply it. By engaging in a competitive wargame, cadets are forced to make decisions under pressure, manage limited resources, anticipate enemy actions, and adapt to unforeseen circumstances. This hands-on application develops the critical thinking, tactical acumen, and decisiveness required of warrior-minded leaders. It provides a direct, practical link between doctrinal concepts and their role in successfully employing warfighting assets, preparing them to lead in complex operational environments.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "P1",
       "ICL": "P2",
       "SCL": "P3"
     }
@@ -1425,7 +1425,7 @@
     "additionalInfo": "Cadets are most familiar with the Operation Order (OPORD) which details the daily/weekly AFROTC schedule. Changes to an OPORD are often communicated by word of mouth, text, social media/email, in the operational construct, these changes could be implemented using a fragmentary order (FRAGO). Warning orders are the least familiar to the AFROTC construct; however, real-world application can be demonstrated by looking at current events and understanding that when threats emerge or humanitarian crises arise, warning orders (WARNORDs) signal to specific units of forthcoming taskings.",
     "proficiencyByLevel": {
       "BC": "",
-      "BCL": "",
+      "BCL": "Ka",
       "ICL": "Kb",
       "SCL": ""
     }
@@ -1469,8 +1469,8 @@
     "instructor": "SCL with cadre guidance",
     "additionalInfo": "This lesson is not intended to be a PowerPoint briefing. Ideally, the instructor(s) use creative methods to reinforce the knowledge from the Airman's Manual in an expeditionary-like environment as the cadets will experience at Field Training. Ensure that cadets understand protecting the DAF's critical assets to include resources, people, and infrastructure is vital to effective mission accomplishment. Secured perimeters provide standoff protection from threats and only authorized individuals are allowed into areas based on authority granted to them considering several critical factors as described in the Airman's Manual. During elevated threat-levels and FPCONs, additional measures may be adopted. Understanding asset protection and OPSEC considerations limit exposure by Airman to threats. When deployed or operating in hostile environments, ROEs consider additional operational limits or instructions for use of force in hostile environments.",
     "proficiencyByLevel": {
-      "BC": "Ka",
-      "BCL": "Kb",
+      "BC": "",
+      "BCL": "Ka",
       "ICL": "Kb",
       "SCL": ""
     }

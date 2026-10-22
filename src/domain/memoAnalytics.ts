@@ -1,5 +1,19 @@
 import type { AbsenceMemo, DeviationMemo, Cadet, PmtEvent } from "./types";
 
+/**
+ * Same 48-hour resubmit window the Returned-memo notification emails already describe (both
+ * Absence and Deviation Memos) -- a pure display/escalation threshold, not stored anywhere. Shared
+ * so the Memo Review Dashboard's "Overdue Returned" column and the backend's
+ * `escalateStaleReturnedMemos` auto-escalation (afrotc-functions) agree on the exact same cutoff.
+ */
+export const RETURNED_RESUBMIT_WINDOW_MS = 48 * 3_600_000;
+
+/** True once a Returned memo's 48-hour resubmit window has passed with nothing resubmitted. */
+export function isReturnedOverdue(reviewedAt: string | undefined, now: number = Date.now()): boolean {
+  if (!reviewedAt) return false;
+  return now - new Date(reviewedAt).getTime() >= RETURNED_RESUBMIT_WINDOW_MS;
+}
+
 /** "PT, LLAB" from an absence memo's covered PMTs, or "AS100 class" for an AS-class-only memo -- used by both the dedicated Absence table's "Covers" column and the combined "All" table's "Subject" column. */
 export function coversLabel(memo: AbsenceMemo, pmtEventsById: Map<string, PmtEvent>): string {
   const types = memo.pmtEventIds.map((id) => pmtEventsById.get(id)?.eventType).filter((t): t is NonNullable<typeof t> => !!t);

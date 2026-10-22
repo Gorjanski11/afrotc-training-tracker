@@ -1,11 +1,11 @@
-import { useMemo } from "react";
-import { motion } from "motion/react";
+import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock } from "lucide-react";
+import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { effectiveAbsenceMemoDeadline } from "../../domain/constants";
-import { shortDate } from "../../domain/memoAnalytics";
+import { shortDate, isReturnedOverdue } from "../../domain/memoAnalytics";
 import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
+import { Stepper } from "../../components/analytics/Stepper";
 import type { AbsenceMemo, Cadet, DeviationMemo, PermissionsConfig, PmtEvent } from "../../domain/types";
 
 interface Props {
@@ -21,30 +21,69 @@ interface Props {
   onOpenDeviation: (memoId: string) => void;
 }
 
-function HeroStat({ icon, label, value, tone, index }: { icon: React.ReactNode; label: string; value: string; tone?: "critical"; index: number }) {
+type ReturnedKind = "Absence" | "Deviation";
+
+/** A single pending/overdue list card -- shared shape across all three dashboard columns. */
+function MemoListCard({
+  icon,
+  title,
+  tone,
+  rows,
+  emptyLabel,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone?: "critical";
+  rows: { key: string; left: string; right: string; onClick?: () => void }[];
+  emptyLabel: string;
+}) {
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05 }}>
-      <Card className="hover:shadow-md">
-        <CardContent className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-              tone === "critical" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"
+    <Card>
+      <CardHeader>
+        <CardTitle className={cn(tone === "critical" && "text-destructive")}>
+          {icon}
+          {title}
+          {rows.length > 0 && <span className="ml-auto text-sm font-normal text-muted-foreground">{rows.length}</span>}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+        ) : (
+          <div className="space-y-1.5">
+            {rows.map((row) =>
+              row.onClick ? (
+                <button
+                  key={row.key}
+                  type="button"
+                  onClick={row.onClick}
+                  className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
+                >
+                  <span>{row.left}</span>
+                  <span className="text-muted-foreground">{row.right}</span>
+                </button>
+              ) : (
+                <div key={row.key} className="flex items-center justify-between text-sm">
+                  <span>{row.left}</span>
+                  <span className="text-muted-foreground">{row.right}</span>
+                </div>
+              )
             )}
-          >
-            {icon}
-          </span>
-          <div>
-            <div className="text-xs font-medium text-muted-foreground">{label}</div>
-            <div className={cn("text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
           </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-/** Section 2 -- same "concerning this viewer" scoping as the Absence/Deviation Memos screens and Memorandums Analytics, so every count on this landing page agrees with what's actually in the lists behind it. */
+/**
+ * Section 2 -- same "concerning this viewer" scoping as the Absence/Deviation Memos screens and
+ * Memorandums Analytics, so every count on this landing page agrees with what's actually in the
+ * lists behind it. Three columns: Absence (Pending/Overdue-to-submit), Deviation
+ * (Pending-review/Overdue-to-submit), and Returned (Pending/Overdue-to-resubmit) -- the third
+ * toggles between Absence and Deviation on its own, independent of the first two, defaulting to
+ * Absence.
+ */
 export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, userEmail, permissionsConfig, onOpenAbsence, onOpenDeviation }: Props) {
   const myAbsenceMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, absenceMemos, permissionsConfig), [absenceMemos, roster, userEmail, permissionsConfig]);
   const myDeviationMemos = useMemo(() => visibleDeviationMemos(userEmail, roster, deviationMemos), [deviationMemos, roster, userEmail]);
@@ -72,6 +111,15 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
       );
   }, [myAbsenceMemos, events]);
 
+  // -- Column 3: Returned -- toggles independently between Absence and Deviation, default Absence.
+  const [returnedKind, setReturnedKind] = useState<ReturnedKind>("Absence");
+  const returnedAbsence = useMemo(() => myAbsenceMemos.filter((m) => m.status === "Returned"), [myAbsenceMemos]);
+  const returnedDeviation = useMemo(() => myDeviationMemos.filter((m) => m.status === "Returned"), [myDeviationMemos]);
+  const returnedForKind = returnedKind === "Absence" ? returnedAbsence : returnedDeviation;
+  const pendingReturned = useMemo(() => returnedForKind.filter((m) => !isReturnedOverdue(m.reviewedAt)), [returnedForKind]);
+  const overdueReturned = useMemo(() => returnedForKind.filter((m) => isReturnedOverdue(m.reviewedAt)), [returnedForKind]);
+  const openReturned = returnedKind === "Absence" ? onOpenAbsence : onOpenDeviation;
+
   return (
     <div>
       <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
@@ -79,157 +127,93 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
         Dashboard
       </h2>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-5">
-        <HeroStat
-          icon={<FileText className="h-4.5 w-4.5" />}
-          label="Absence Memos Pending For Review"
-          value={String(pendingAbsence.length)}
-          tone={pendingAbsence.length > 0 ? "critical" : undefined}
-          index={0}
-        />
-        <HeroStat
-          icon={<CalendarClock className="h-4.5 w-4.5" />}
-          label="Overdue Absence Memos"
-          value={String(overdueAbsence.length)}
-          tone={overdueAbsence.length > 0 ? "critical" : undefined}
-          index={1}
-        />
-        <HeroStat
-          icon={<Clock className="h-4.5 w-4.5" />}
-          label="Deviations awaiting submission"
-          value={String(awaitingSubmission.length)}
-          index={2}
-        />
-        <HeroStat
-          icon={<TriangleAlert className="h-4.5 w-4.5" />}
-          label="Deviations overdue"
-          value={String(overdueDeviations.length)}
-          tone={overdueDeviations.length > 0 ? "critical" : undefined}
-          index={3}
-        />
-        <HeroStat
-          icon={<ClipboardList className="h-4.5 w-4.5" />}
-          label="Pending Deviation Memos for Review"
-          value={String(awaitingReview.length)}
-          tone={awaitingReview.length > 0 ? "critical" : undefined}
-          index={4}
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3">
+        {/* Column 1: Absence */}
         <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <FileText className="h-4 w-4 text-primary" />
-                Pending Absence Memos For Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingAbsence.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing pending.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {pendingAbsence.map((m) =>
-                    onOpenAbsence ? (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => onOpenAbsence(m.id)}
-                        className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
-                      >
-                        <span>{m.cadetName}</span>
-                        <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
-                      </button>
-                    ) : (
-                      <div key={m.id} className="flex items-center justify-between text-sm">
-                        <span>{m.cadetName}</span>
-                        <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <CalendarClock className="h-4 w-4 text-destructive" />
-                Overdue Absence Memos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {overdueAbsence.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing overdue -- everyone's within their 72-hour window.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {overdueAbsence.map(({ memo, event }) => (
-                    <div key={memo.id} className="flex items-center justify-between text-sm">
-                      <span>{memo.cadetName}</span>
-                      <span className="text-muted-foreground">
-                        {event.eventType} — {event.title} ({shortDate(event.eventDate)})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <h3 className="text-sm font-semibold text-muted-foreground">Absence Memos</h3>
+          <MemoListCard
+            icon={<FileText className="h-4 w-4 text-primary" />}
+            title="Pending For Review"
+            tone={pendingAbsence.length > 0 ? "critical" : undefined}
+            rows={pendingAbsence.map((m) => ({
+              key: m.id,
+              left: m.cadetName,
+              right: shortDate(m.submittedAt),
+              onClick: onOpenAbsence ? () => onOpenAbsence(m.id) : undefined,
+            }))}
+            emptyLabel="Nothing pending."
+          />
+          <MemoListCard
+            icon={<CalendarClock className="h-4 w-4 text-destructive" />}
+            title="Overdue"
+            tone={overdueAbsence.length > 0 ? "critical" : undefined}
+            rows={overdueAbsence.map(({ memo, event }) => ({
+              key: memo.id,
+              left: memo.cadetName,
+              right: `${event.eventType} — ${event.title} (${shortDate(event.eventDate)})`,
+            }))}
+            emptyLabel="Nothing overdue -- everyone's within their 72-hour window."
+          />
         </div>
 
+        {/* Column 2: Deviation */}
         <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <ClipboardList className="h-4 w-4 text-primary" />
-                Pending Deviation Memos For Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {awaitingReview.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing pending.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {awaitingReview.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => onOpenDeviation(m.id)}
-                      className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
-                    >
-                      <span>{m.cadetName}</span>
-                      <span className="text-muted-foreground">{shortDate(m.submittedAt)}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <h3 className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
+            <span>Deviation Memos</span>
+            <span className="font-normal">Awaiting submission: {awaitingSubmission.length}</span>
+          </h3>
+          <MemoListCard
+            icon={<ClipboardList className="h-4 w-4 text-primary" />}
+            title="Pending For Review"
+            tone={awaitingReview.length > 0 ? "critical" : undefined}
+            rows={awaitingReview.map((m) => ({ key: m.id, left: m.cadetName, right: shortDate(m.submittedAt), onClick: () => onOpenDeviation(m.id) }))}
+            emptyLabel="Nothing pending."
+          />
+          <MemoListCard
+            icon={<TriangleAlert className="h-4 w-4 text-destructive" />}
+            title="Overdue"
+            tone={overdueDeviations.length > 0 ? "critical" : undefined}
+            rows={overdueDeviations.map((m) => ({ key: m.id, left: m.cadetName, right: `Due ${shortDate(m.dueDate)}` }))}
+            emptyLabel="Nothing overdue."
+          />
+        </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <TriangleAlert className="h-4 w-4 text-destructive" />
-                Overdue Deviation Memos
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {overdueDeviations.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nothing overdue.</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {overdueDeviations.map((m) => (
-                    <div key={m.id} className="flex items-center justify-between text-sm">
-                      <span>{m.cadetName}</span>
-                      <span className="text-muted-foreground">Due {shortDate(m.dueDate)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Column 3: Returned -- its own Absence/Deviation toggle, independent of columns 1-2. */}
+        <div className="flex flex-col gap-4">
+          <h3 className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
+            <span>Returned</span>
+            <Stepper
+              options={[
+                { value: "Absence", label: "Absence" },
+                { value: "Deviation", label: "Deviation" },
+              ]}
+              value={returnedKind}
+              onChange={(v) => setReturnedKind(v as ReturnedKind)}
+            />
+          </h3>
+          <MemoListCard
+            icon={<Undo2 className="h-4 w-4 text-primary" />}
+            title="Pending Resubmission"
+            rows={pendingReturned.map((m) => ({
+              key: m.id,
+              left: m.cadetName,
+              right: `Returned ${shortDate(m.reviewedAt)}`,
+              onClick: openReturned ? () => openReturned(m.id) : undefined,
+            }))}
+            emptyLabel="Nothing pending."
+          />
+          <MemoListCard
+            icon={<Clock className="h-4 w-4 text-destructive" />}
+            title="Overdue Resubmission"
+            tone={overdueReturned.length > 0 ? "critical" : undefined}
+            rows={overdueReturned.map((m) => ({
+              key: m.id,
+              left: m.cadetName,
+              right: `Returned ${shortDate(m.reviewedAt)}`,
+              onClick: openReturned ? () => openReturned(m.id) : undefined,
+            }))}
+            emptyLabel="Nothing overdue -- everyone's within their 48-hour resubmit window."
+          />
         </div>
       </div>
     </div>

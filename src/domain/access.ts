@@ -296,6 +296,13 @@ export function isCortesGaray(email: string | null | undefined, config: Permissi
   return normalized === BREAK_GLASS_ROOT_EMAIL || normalized === config.rootEmail.trim().toLowerCase();
 }
 
+/** The Operations Flight Commander (Permissions tab's editable `config.ofcEmail`) -- gates the "Needs OFC notes" queue in Deviation Memos (Section: DNS/OFC linking). */
+export function isOfc(email: string | null | undefined, config: PermissionsConfig): boolean {
+  const normalized = (email ?? "").trim().toLowerCase();
+  if (!normalized || !config.ofcEmail) return false;
+  return normalized === config.ofcEmail.trim().toLowerCase();
+}
+
 /** Cortes Garay or Cadre (roster `isCadre` flag) only -- deliberately narrower than `isCadreOrCortesGaray` (excludes CWL). Gates the permanent Absence Memo delete action in Memo Review. */
 export function canDeleteAbsenceMemo(email: string | null | undefined, roster: Cadet[], config: PermissionsConfig): boolean {
   if (isCortesGaray(email, config)) return true;

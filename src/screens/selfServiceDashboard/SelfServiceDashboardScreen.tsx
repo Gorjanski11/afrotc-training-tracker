@@ -214,19 +214,36 @@ export function SelfServiceDashboardScreen({
   const missingMemosCount = missingAbsenceCount + missingDeviationCount;
   const [showAllMemos, setShowAllMemos] = useState(false);
 
+  // The auto-created Deviation Memo covering a DNS escalation (if any) -- a DNS absence memo has no
+  // PDF of its own (the cadet never submitted one), so without this fallback its memo history row
+  // would show nothing at all where the explanation for the rejection actually lives.
+  const linkedDeviationByAbsenceId = useMemo(() => {
+    const map = new Map<string, DeviationMemo>();
+    for (const d of deviationMemos) {
+      for (const absenceId of d.relatedAbsenceMemoIds ?? []) {
+        const existing = map.get(absenceId);
+        if (!existing || (!existing.pdfUrl && d.pdfUrl)) map.set(absenceId, d);
+      }
+    }
+    return map;
+  }, [deviationMemos]);
+
   const memoHistory = useMemo(() => {
     const rows = [
-      ...myAbsenceMemos.map((m) => ({
-        kind: "Absence" as const,
-        assignedAt: m.assignedAt,
-        submittedAt: m.submittedAt,
-        sortDate: m.submittedAt || m.assignedAt || "",
-        status: m.status,
-        reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
-        pdfUrl: m.pdfUrl,
-        pdfFileName: m.pdfFileName,
-        markupPdfUrl: undefined as string | undefined,
-      })),
+      ...myAbsenceMemos.map((m) => {
+        const linkedDeviation = linkedDeviationByAbsenceId.get(m.id);
+        return {
+          kind: "Absence" as const,
+          assignedAt: m.assignedAt,
+          submittedAt: m.submittedAt,
+          sortDate: m.submittedAt || m.assignedAt || "",
+          status: m.status,
+          reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
+          pdfUrl: m.pdfUrl ?? linkedDeviation?.pdfUrl,
+          pdfFileName: m.pdfFileName ?? linkedDeviation?.pdfFileName,
+          markupPdfUrl: linkedDeviation?.markupPdfUrl,
+        };
+      }),
       ...myDeviationMemos.map((m) => ({
         kind: "Deviation" as const,
         assignedAt: m.dateAssigned,

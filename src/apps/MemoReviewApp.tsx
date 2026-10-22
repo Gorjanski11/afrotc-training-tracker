@@ -133,6 +133,7 @@ export function MemoReviewApp({ showAbsence, userEmail, permissionsConfig, initi
                     <AbsenceMemosScreen
                       events={eventsState.events}
                       memos={absenceMemos}
+                      deviationMemos={deviationMemos}
                       roster={roster}
                       updateMemo={absenceState.updateMemo}
                       deleteMemo={absenceState.deleteMemo}
@@ -157,6 +158,7 @@ export function MemoReviewApp({ showAbsence, userEmail, permissionsConfig, initi
                     deleteMemo={deviationState.deleteMemo}
                     reauthenticate={reauthenticate}
                     userEmail={userEmail}
+                    permissionsConfig={permissionsConfig}
                     initialReviewId={screen === "deviation" ? openMemoId : undefined}
                     onConsumeInitialReview={() => setOpenMemoId(undefined)}
                   />

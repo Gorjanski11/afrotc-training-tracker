@@ -13,12 +13,14 @@ import { Input } from "@/components/ui/input";
 import { ABSENCE_MEMO_STATUSES, type AbsenceMemoStatus } from "../../domain/constants";
 import { canDeleteAbsenceMemo, currentPersonName, visibleAbsenceMemos } from "../../domain/access";
 import { shortDate } from "../../domain/memoAnalytics";
-import type { AbsenceMemo, Cadet, PermissionsConfig, PmtEvent } from "../../domain/types";
+import type { AbsenceMemo, Cadet, DeviationMemo, PermissionsConfig, PmtEvent } from "../../domain/types";
 import type { AbsenceMemoInput } from "../../hooks/useAbsenceMemos";
 
 interface Props {
   events: PmtEvent[];
   memos: AbsenceMemo[];
+  /** Used to find a DNS-escalated absence memo's auto-created Deviation Memo, so its PDF (the only PDF on file for a never-submitted absence) shows up right here instead of leaving a bare "Rejected -- DNS" with nothing attached. */
+  deviationMemos: DeviationMemo[];
   roster: Cadet[];
   updateMemo: (id: string, input: Partial<AbsenceMemoInput>) => Promise<void>;
   deleteMemo: (id: string) => Promise<void>;
@@ -68,6 +70,7 @@ function reasonDisplay(m: AbsenceMemo): string {
 export function AbsenceMemosScreen({
   events,
   memos,
+  deviationMemos,
   roster,
   updateMemo,
   deleteMemo,
@@ -79,6 +82,19 @@ export function AbsenceMemosScreen({
   onConsumeInitialReview,
 }: Props) {
   const canDelete = canDeleteAbsenceMemo(userEmail, roster, permissionsConfig);
+  // The auto-created Deviation Memo covering a DNS escalation (if any) -- prefers whichever one
+  // actually has a submitted PDF, since more than one deviation memo linking to the same absence
+  // memo should never happen in practice but isn't worth crashing over if it ever does.
+  const linkedDeviationByAbsenceId = useMemo(() => {
+    const map = new Map<string, DeviationMemo>();
+    for (const d of deviationMemos) {
+      for (const absenceId of d.relatedAbsenceMemoIds ?? []) {
+        const existing = map.get(absenceId);
+        if (!existing || (!existing.pdfUrl && d.pdfUrl)) map.set(absenceId, d);
+      }
+    }
+    return map;
+  }, [deviationMemos]);
   // Section G: true Cadre only see memos concerning them -- the general reviewer sees everything,
   // everyone else only their own AS-Class. Cortes Garay/CWL stay unrestricted.
   const visibleMemos = useMemo(() => visibleAbsenceMemos(userEmail, roster, memos, permissionsConfig), [memos, roster, userEmail, permissionsConfig]);
@@ -308,7 +324,20 @@ export function AbsenceMemosScreen({
                       )}
                     </TableCell>
                     <TableCell>
-                      <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                      <div className="flex items-center gap-1">
+                        <PdfLinkButton url={m.pdfUrl} name={m.pdfFileName} />
+                        {!m.pdfUrl && linkedDeviationByAbsenceId.get(m.id)?.pdfUrl && (
+                          <a
+                            href={linkedDeviationByAbsenceId.get(m.id)!.pdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title="Linked Deviation Memo PDF (DNS)"
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-input text-primary hover:bg-accent"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{m.status === "Returned" ? m.returnReason : m.reviewNotes}</TableCell>
                     <TableCell>

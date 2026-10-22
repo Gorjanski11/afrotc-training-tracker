@@ -18,15 +18,17 @@ import { PersonMultiCombobox } from "../../components/memoReview/PersonMultiComb
 import { DEVIATION_MEMO_STATUSES, DEVIATION_REASONS, endOfDay, type DeviationMemoStatus, type DeviationReason } from "../../domain/constants";
 import {
   cadetsInAssignScope,
+  currentPersonName,
   getAuthorizedDeviationAssigners,
   getCcEligiblePeople,
   isDeviationMemoViaCc,
+  isOfc,
   isWithinDeviationAssignWindow,
   resolveDeviationAssignRule,
   visibleDeviationMemos,
 } from "../../domain/access";
 import { formatCadetName } from "../../domain/nameUtils";
-import type { DeviationMemo, Cadet, PersonRef, PmtEvent } from "../../domain/types";
+import type { DeviationMemo, Cadet, PermissionsConfig, PersonRef, PmtEvent } from "../../domain/types";
 import type { DeviationMemoInput } from "../../hooks/useDeviationMemos";
 
 interface Props {
@@ -39,6 +41,7 @@ interface Props {
   deleteMemo: (id: string) => Promise<void>;
   reauthenticate: (password: string) => Promise<void>;
   userEmail: string | null | undefined;
+  permissionsConfig: PermissionsConfig;
   /** Set by the Memo Review Dashboard's "Pending Deviation Memos For Review" row click -- opens that memo's review popup immediately, then `onConsumeInitialReview` clears it. */
   initialReviewId?: string;
   onConsumeInitialReview?: () => void;
@@ -96,6 +99,7 @@ export function DeviationMemosScreen({
   deleteMemo,
   reauthenticate,
   userEmail: userEmailRaw,
+  permissionsConfig,
   initialReviewId,
   onConsumeInitialReview,
 }: Props) {
@@ -153,6 +157,38 @@ export function DeviationMemosScreen({
   }, [memos, roster, userEmail, rule.reviewOwnOnly, mineOnly]);
 
   const canReview = (m: DeviationMemo) => !rule.reviewOwnOnly || m.assignedByEmail?.trim().toLowerCase() === userEmail.trim().toLowerCase();
+
+  // OFC's own dedicated queue -- auto-DNS deviation memos (autoCategory "absence-memo") that have
+  // reached Accepted but OFC hasn't written their own notes yet. `visibleMemos` already includes
+  // these (OFC is CC'd at creation, and CC'd memos are always visible), so this just narrows that
+  // down to the subset specifically waiting on OFC, same way `visibleDeviationMemos` -> `mineOnly`
+  // narrows to "assigned by me" above.
+  const amOfc = isOfc(userEmail, permissionsConfig);
+  const ofcQueue = useMemo(
+    () => (amOfc ? visibleMemos.filter((m) => m.autoCategory === "absence-memo" && m.status === "Accepted" && !m.ofcReviewedAt) : []),
+    [amOfc, visibleMemos]
+  );
+  const [ofcNotesTarget, setOfcNotesTarget] = useState<DeviationMemo | undefined>();
+  const [ofcNotesDraft, setOfcNotesDraft] = useState("");
+  const [ofcSaving, setOfcSaving] = useState(false);
+  const openOfcNotes = (memo: DeviationMemo) => {
+    setOfcNotesTarget(memo);
+    setOfcNotesDraft(memo.ofcNotes ?? "");
+  };
+  const saveOfcNotes = async () => {
+    if (!ofcNotesTarget) return;
+    setOfcSaving(true);
+    try {
+      await updateMemo(ofcNotesTarget.id, {
+        ofcNotes: ofcNotesDraft,
+        ofcReviewedAt: new Date().toISOString(),
+        ofcReviewedBy: currentPersonName(userEmail, roster),
+      });
+      setOfcNotesTarget(undefined);
+    } finally {
+      setOfcSaving(false);
+    }
+  };
 
   const submitted = useMemo(
     () => visibleMemos.filter((m) => m.status === "Submitted").sort((a, b) => (a.submittedAt ?? "").localeCompare(b.submittedAt ?? "")),
@@ -370,6 +406,35 @@ export function DeviationMemosScreen({
             ))}
         </div>
       </div>
+
+      {amOfc && (
+        <Card className="mb-4 border-primary/50">
+          <CardHeader>
+            <CardTitle>Needs OFC Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {ofcQueue.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nothing waiting on your notes.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {ofcQueue.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => openOfcNotes(m)}
+                    className="flex w-full items-center justify-between rounded-sm px-1 py-0.5 text-left text-sm hover:bg-accent"
+                  >
+                    <span>
+                      {m.cadetName} — {reasonDisplay(m)}
+                    </span>
+                    <span className="text-muted-foreground">Accepted {shortDate(m.reviewedAt)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-6">
         <Card>
@@ -816,6 +881,57 @@ export function DeviationMemosScreen({
                 </Button>
                 <Button variant="destructive" onClick={handleRevoke} disabled={revoking || !revokePassword}>
                   {revoking ? "Revoking..." : "Revoke"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!ofcNotesTarget} onOpenChange={(o) => !o && setOfcNotesTarget(undefined)}>
+        <DialogContent className="max-w-lg">
+          {ofcNotesTarget && (
+            <>
+              <DialogHeader>
+                <DialogTitle>OFC Notes — {ofcNotesTarget.cadetName}</DialogTitle>
+                <DialogDescription>
+                  Rejected DNS -- this memo was auto-created after a missed Absence Memo deadline and has already been accepted. Your notes here
+                  are separate from the original reviewer's.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="text-sm text-muted-foreground">
+                  <div>
+                    <strong>Reason:</strong> {reasonDisplay(ofcNotesTarget)}
+                  </div>
+                  {ofcNotesTarget.purpose && (
+                    <div>
+                      <strong>Purpose:</strong> {ofcNotesTarget.purpose}
+                    </div>
+                  )}
+                  {ofcNotesTarget.pdfUrl && (
+                    <a
+                      href={ofcNotesTarget.pdfUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary underline"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      View submitted PDF
+                    </a>
+                  )}
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Your notes</Label>
+                  <Textarea value={ofcNotesDraft} onChange={(e) => setOfcNotesDraft(e.target.value)} placeholder="Optional" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setOfcNotesTarget(undefined)} disabled={ofcSaving}>
+                  Cancel
+                </Button>
+                <Button onClick={saveOfcNotes} disabled={ofcSaving}>
+                  {ofcSaving ? "Saving..." : "Mark Reviewed"}
                 </Button>
               </DialogFooter>
             </>

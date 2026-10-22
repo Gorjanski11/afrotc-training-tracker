@@ -496,6 +496,23 @@ export function AccountabilityAnalyticsView({
   // The table now shares the single page-wide filter set -- same roster as the stat tiles (Section:
   // master table filters -> whole page).
   const tableRoster = statsRoster;
+  // Individual-cadet view only: PT and LLAB/FM/D&C combined into one table, one column per calendar
+  // DAY (not per bucket/toggle) -- a day with both a PT and an LLAB/FM/D&C PMT shares one column,
+  // its cell stacking both status dots; a day with only one still shows just that one dot.
+  const combinedTableDays = useMemo(() => {
+    const byDay = new Map<string, PmtEvent[]>();
+    for (const e of events) {
+      if (bucketForEventType(e.eventType) === "OTHER") continue;
+      const key = new Date(e.eventDate).toDateString();
+      const list = byDay.get(key) ?? [];
+      list.push(e);
+      byDay.set(key, list);
+    }
+    return [...byDay.values()]
+      .map((dayEvents) => [...dayEvents].sort((a, b) => a.eventDate.localeCompare(b.eventDate)))
+      .sort((a, b) => a[0]!.eventDate.localeCompare(b[0]!.eventDate));
+  }, [events]);
+  const isCombinedTableView = hasCadetFilter && !!selectedCadet;
   const cellByKey = useMemo(() => {
     const map = new Map<string, Attendance>();
     for (const record of attendance) map.set(`${record.cadetId}__${record.pmtEventId}`, record);
@@ -895,17 +912,85 @@ export function AccountabilityAnalyticsView({
               <Table2 className="h-4 w-4 text-primary" />
               Master attendance table
             </CardTitle>
-            <Stepper
-              options={[
-                { value: "PT", label: "PT" },
-                { value: "LLAB_FM", label: "LLAB/FM/D&C" },
-              ]}
-              value={tableBucketChoice}
-              onChange={(v) => setTableBucketChoice(v as "PT" | "LLAB_FM")}
-            />
+            {!isCombinedTableView && (
+              <Stepper
+                options={[
+                  { value: "PT", label: "PT" },
+                  { value: "LLAB_FM", label: "LLAB/FM/D&C" },
+                ]}
+                value={tableBucketChoice}
+                onChange={(v) => setTableBucketChoice(v as "PT" | "LLAB_FM")}
+              />
+            )}
           </CardHeader>
           <CardContent>
-            {tableEvents.length === 0 ? (
+            {isCombinedTableView ? (
+              combinedTableDays.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No PT or LLAB/FM/D&C sessions yet.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table aria-label="Master attendance table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="sticky left-0 z-10 h-5 bg-card px-1.5 py-0.5 text-xs">Cadet</TableHead>
+                        {combinedTableDays.map((dayEvents) => (
+                          <TableHead
+                            key={dayEvents[0]!.id}
+                            className="h-5 min-w-9 whitespace-nowrap px-0.5 py-0.5 text-center text-xs"
+                            title={dayEvents.map((e) => `${e.eventType} — ${e.title}`).join(" + ")}
+                          >
+                            {new Date(dayEvents[0]!.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </TableHead>
+                        ))}
+                        <TableHead className="h-5 whitespace-nowrap px-1.5 py-0.5 text-center text-xs">Standing</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tableRoster.map((cadet) => {
+                        const summary = computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById);
+                        return (
+                          <TableRow key={cadet.id}>
+                            <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-card px-1.5 py-0.5 text-xs">
+                              {formatCadetNameCompact(cadet)}
+                            </TableCell>
+                            {combinedTableDays.map((dayEvents) => (
+                              <TableCell key={dayEvents[0]!.id} className="h-5 px-0.5 py-0.5 text-center">
+                                <div className="flex flex-col items-center gap-0.5">
+                                  {dayEvents.map((e) => {
+                                    const record = cellByKey.get(`${cadet.id}__${e.id}`);
+                                    return record ? (
+                                      <StatusDot key={e.id} status={record.status} />
+                                    ) : (
+                                      <span key={e.id} className="text-muted-foreground">
+                                        —
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </TableCell>
+                            ))}
+                            <TableCell className="h-5 px-1.5 py-0.5 text-center">
+                              <div className="flex flex-col items-center gap-0.5">
+                                {summary.pt.standing && <StandingBadge standing={summary.pt.standing} />}
+                                {summary.llabFm.standing && <StandingBadge standing={summary.llabFm.standing} />}
+                                {!summary.pt.standing && !summary.llabFm.standing && <span className="text-muted-foreground">—</span>}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {tableRoster.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={combinedTableDays.length + 2} className="text-center text-muted-foreground">
+                            No active cadets match this filter.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
+            ) : tableEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No {tableBucketChoice === "PT" ? "PT" : "LLAB/FM/D&C"} sessions yet.</p>
             ) : (
               <div className="overflow-x-auto">

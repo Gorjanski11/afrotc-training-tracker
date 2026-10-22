@@ -158,7 +158,10 @@ export function AttendanceScreen({
     setSelectedEventId(defaultEvent?.id);
   }, [attendance, defaultEvent]);
   const [pending, setPending] = useState<
-    Record<string, { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined }>
+    Record<
+      string,
+      { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined; notes?: string }
+    >
   >({});
   // Cortes Garay only -- correcting a cadet's own saved "Present" to "Absent" because a Flight/Group
   // Commander marked them Present by mistake. When enabled (with a note), the cadet gets a flat 48h
@@ -266,12 +269,29 @@ export function AttendanceScreen({
 
   const getValue = (
     cadetId: string
-  ): { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined } => {
+  ): { status: AttendanceStatus | typeof NONE; absenceReason: AbsenceReason | undefined; absenceReasonOther: string | undefined; notes?: string } => {
     if (cadetId in pending) return pending[cadetId];
     const existing = existingByCadet.get(cadetId);
     return existing
-      ? { status: existing.status, absenceReason: existing.absenceReason, absenceReasonOther: existing.absenceReasonOther }
+      ? { status: existing.status, absenceReason: existing.absenceReason, absenceReasonOther: existing.absenceReasonOther, notes: existing.notes }
       : { status: NONE, absenceReason: undefined, absenceReasonOther: undefined };
+  };
+
+  /**
+   * C/Vivas-style sports waiver (general reusable `Cadet.sportsWaiver` flag) -- once per Training
+   * Week, cadre can auto-AE one PT PMT for a flagged cadet with no memo required. Marked by the
+   * exact `notes` string below, so "already used this week" just scans saved Attendance across
+   * every PT PMT in the same Training Week, no separate tracking field needed.
+   */
+  const SPORTS_WAIVER_NOTE = "Accepted Sports Waiver";
+  const weekPtEventIds = useMemo(() => {
+    if (!selectedEvent?.trainingWeek) return new Set<string>();
+    return new Set(events.filter((e) => e.eventType === "PT" && e.trainingWeek === selectedEvent.trainingWeek).map((e) => e.id));
+  }, [events, selectedEvent?.trainingWeek]);
+  const tokenUsedThisWeek = (cadetId: string): boolean =>
+    attendance.some((a) => a.cadetId === cadetId && weekPtEventIds.has(a.pmtEventId) && a.notes === SPORTS_WAIVER_NOTE);
+  const handleTokenClick = (cadetId: string) => {
+    setPending((prev) => ({ ...prev, [cadetId]: { status: "AE", absenceReason: undefined, absenceReasonOther: undefined, notes: SPORTS_WAIVER_NOTE } }));
   };
 
   const setValue = (cadetId: string, status: AttendanceStatus, absenceReason: AbsenceReason | undefined, absenceReasonOther?: string) => {
@@ -359,7 +379,7 @@ export function AttendanceScreen({
           absenceReason: value.status === "A" ? value.absenceReason : undefined,
           absenceReasonOther: value.status === "A" ? value.absenceReasonOther : undefined,
           recordedAt: nowIso(),
-          notes: existing?.notes ?? "",
+          notes: value.notes ?? existing?.notes ?? "",
         };
         let attendanceId: string;
         if (existing) {
@@ -675,7 +695,31 @@ export function AttendanceScreen({
                           </Button>
                         );
                       })}
-                      {value.status !== NONE && value.status !== "AE" && value.status !== "PE" && (
+                      {selectedEvent?.eventType === "PT" && cadet.sportsWaiver && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={tokenUsedThisWeek(cadet.id) && !(value.status === "AE" && value.notes === SPORTS_WAIVER_NOTE)}
+                          title={
+                            value.status === "AE" && value.notes === SPORTS_WAIVER_NOTE
+                              ? "Sports waiver Token used for this PT -- clear to undo"
+                              : tokenUsedThisWeek(cadet.id)
+                                ? "Already used this Training Week"
+                                : 'Auto-AE this PT with reason "Accepted Sports Waiver" -- once per Training Week, no memo needed'
+                          }
+                          className={cn(
+                            "h-7 px-2 text-[11px]",
+                            value.status === "AE" && value.notes === SPORTS_WAIVER_NOTE && "border-primary bg-primary text-primary-foreground",
+                            isDirty && value.status === "AE" && value.notes === SPORTS_WAIVER_NOTE && "ring-2 ring-primary"
+                          )}
+                          onClick={() => handleTokenClick(cadet.id)}
+                        >
+                          Token
+                        </Button>
+                      )}
+                      {(value.status !== NONE && value.status !== "AE" && value.status !== "PE") ||
+                      (value.status === "AE" && value.notes === SPORTS_WAIVER_NOTE) ? (
                         <Button
                           type="button"
                           size="sm"
@@ -686,7 +730,7 @@ export function AttendanceScreen({
                         >
                           <X className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -737,7 +781,11 @@ export function AttendanceScreen({
                     )}
                     {(value.status === "AE" || value.status === "PE") && (
                       <span className="text-[11px] text-muted-foreground">
-                        {value.absenceReason === "Other" && value.absenceReasonOther ? value.absenceReasonOther : value.absenceReason ?? "—"}
+                        {value.absenceReason === "Other" && value.absenceReasonOther
+                          ? value.absenceReasonOther
+                          : value.notes === SPORTS_WAIVER_NOTE
+                            ? SPORTS_WAIVER_NOTE
+                            : value.absenceReason ?? "—"}
                       </span>
                     )}
                   </TableCell>

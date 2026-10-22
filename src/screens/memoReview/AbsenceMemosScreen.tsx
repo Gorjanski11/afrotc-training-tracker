@@ -303,7 +303,7 @@ export function AbsenceMemosScreen({
                       <StatusBadge status={m.status} />
                       {m.lateSubmission && (
                         <Badge variant="destructive" className="text-[10px]">
-                          {m.lateSubmission === "dns" ? "DNS" : "Late"}
+                          {m.lateSubmission === "dns" ? "DNS" : m.lateSubmission === "returnedDns" ? "Returned DNS" : "Late"}
                         </Badge>
                       )}
                     </TableCell>

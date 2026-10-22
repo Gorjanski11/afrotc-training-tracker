@@ -22,7 +22,7 @@ export function buildMemoSheets(absenceMemos: AbsenceMemo[], deviationMemos: Dev
       covers: m.pmtEventIds.length > 0 ? `${m.pmtEventIds.length} PMT(s)` : m.asClass ? `${m.asClass} class` : "",
       reason: m.reason === "Other" && m.reasonOther ? `Other: ${m.reasonOther}` : m.reason,
       status: m.status,
-      late: m.lateSubmission === "dns" ? "DNS" : m.lateSubmission === "late" ? "Late" : "",
+      late: m.lateSubmission === "dns" ? "DNS" : m.lateSubmission === "returnedDns" ? "Returned DNS" : m.lateSubmission === "late" ? "Late" : "",
       reviewedBy: m.reviewedBy ?? "",
       notes: m.status === "Returned" ? (m.returnReason ?? "") : m.reviewNotes,
     })),

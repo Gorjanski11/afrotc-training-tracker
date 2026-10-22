@@ -52,6 +52,13 @@ export interface Cadet {
   accessOverride: AccessOverride | undefined;
   /** Permissions tab override of their Deviation Memo assign authority -- undefined falls through to the Cadre/cannot-assign default. Replaces the old hardcoded DEVIATION_ASSIGN_OVERRIDES table. */
   deviationAssignOverride: DeviationAssignOverrideInput | undefined;
+  /**
+   * General reusable flag (not hardcoded to any one cadet) -- when true, the Attendance screen
+   * shows a weekly "Token" button on this cadet's PT cells, letting cadre auto-AE one PT per
+   * Training Week with the reason "Accepted Sports Waiver" (no memo required). Off by default;
+   * first enabled for C/Vivas, but any cadet with a similar arrangement can get it via Roster.
+   */
+  sportsWaiver: boolean | undefined;
 }
 
 export type AccessTierKind = "all" | "toFullOnly" | "deviationOnly" | "pocGroup" | "pocGroupPlusGmc" | "gmcFlight" | "gmcWide";
@@ -80,6 +87,13 @@ export interface PermissionsConfig {
   generalAbsenceReviewerEmail: string;
   eventEditOverrideEmails: string[];
   rootEmail: string;
+  /**
+   * Operations Flight Commander -- CC'd on every Deviation Memo auto-created from a DNS Absence
+   * Memo escalation, and the sole viewer of the "Needs OFC notes" queue (Memo Review) once one of
+   * those reaches Accepted. Never modeled before this; one editable field even though today's OFC
+   * (Capt Deaton) already holds other roles (generalAbsenceReviewerEmail, AS400 instructor) too.
+   */
+  ofcEmail: string;
 }
 
 /**
@@ -266,9 +280,12 @@ export interface AbsenceMemo {
    * Set when this memo was auto-rejected for being late -- kept even if cadre later overrides the
    * status, so history/analytics can still show why. `"late"` = submitted within the 72h+24h grace
    * window but after the 72h deadline. `"dns"` (Did Not Submit) = never submitted at all, even
-   * through the grace window (the `escalateOverdueAbsenceMemos` escalation path).
+   * through the grace window (the `escalateOverdueAbsenceMemos` escalation path). `"returnedDns"` =
+   * cadre Returned it for fixes and the cadet never resubmitted within 48 hours (the
+   * `escalateStaleReturnedMemos` escalation path) -- kept distinct from plain `"dns"` so history can
+   * still tell "never submitted at all" apart from "submitted, returned, then never fixed."
    */
-  lateSubmission: "late" | "dns" | undefined;
+  lateSubmission: "late" | "dns" | "returnedDns" | undefined;
   /**
    * Set only when Cortes Garay corrects a cadet's own saved "Present" to "Absent" in Accountability
    * (a Flight/Group Commander's mistake, caught late) -- replaces the normal 72h-from-PMT-end
@@ -334,6 +351,23 @@ export interface DeviationMemo {
   reviewedAt: string | undefined;
   reviewedBy: string | undefined;
   reviewNotes: string;
+  /**
+   * The Absence Memo(s) this deviation memo was auto-created FOR (DNS escalation) -- lets the
+   * Absence Memo's own history show this deviation memo's PDF instead of leaving a DNS rejection
+   * with nothing attached. More than one id when several same-day missed-deadline absence memos
+   * were combined into this one deviation memo (see `relatedPmtEventIds`). Undefined for anything
+   * not auto-created from a DNS absence memo.
+   */
+  relatedAbsenceMemoIds: string[] | undefined;
+  /**
+   * OFC's own notes, written once this reaches the "Needs OFC notes" queue (Memo Review) --
+   * `autoCategory === "absence-memo"`, status Accepted, `ofcReviewedAt` still unset. Distinct from
+   * `reviewNotes` (the original accepter's notes) -- OFC is a second, later reviewer, not the one who
+   * decided Accepted/Returned.
+   */
+  ofcNotes: string | undefined;
+  ofcReviewedAt: string | undefined;
+  ofcReviewedBy: string | undefined;
 }
 
 /** Minimal mirror of the shared `absenceMemos` collection -- just enough for Accountability's auto-assignment hook to know whether a cadet+PMT absence already has an in-flight memo covering it. */

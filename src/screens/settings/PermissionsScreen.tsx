@@ -336,6 +336,12 @@ export function PermissionsScreen({ roster, updateCadetFields, config, updateCon
               </div>
             ))}
           </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label className="text-xs text-muted-foreground">
+              Operations Flight Commander (OFC) -- CC'd on every Deviation Memo auto-created from a missed Absence Memo deadline
+            </Label>
+            <PersonCombobox people={activeRoster} value={config.ofcEmail} onChange={(email) => updateConfig({ ofcEmail: email })} className="w-full" />
+          </div>
         </CardContent>
       </Card>
 

@@ -31,6 +31,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
   const [isCadre, setIsCadre] = useState(existingCadet?.isCadre ?? false);
   const [isCwl, setIsCwl] = useState(existingCadet?.isCwl ?? false);
   const [position, setPosition] = useState(existingCadet?.position ?? "");
+  const [sportsWaiver, setSportsWaiver] = useState(existingCadet?.sportsWaiver ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -56,6 +57,7 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
         isCadre,
         isCwl,
         position: position.trim() === "" ? undefined : position.trim(),
+        sportsWaiver,
         statusChangedDate: statusChanged ? new Date().toISOString().slice(0, 10) : existingCadet?.statusChangedDate,
         // A brand-new roster entry implies a brand-new account on the shared default password --
         // omitted entirely on edit so it's never overwritten back to true/false either way.
@@ -192,6 +194,11 @@ export function CadetFormDialog({ open, onClose, existingCadet, onSave, allowedD
               CWL (badge only -- doesn't change Group or AS Class; AS700 gets this automatically)
             </label>
           )}
+
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={sportsWaiver} onChange={(e) => setSportsWaiver(e.target.checked)} />
+            Sports Waiver (Attendance screen shows a weekly "Token" to auto-AE one PT per Training Week, no memo needed)
+          </label>
 
           <div className="grid gap-1.5">
             <Label>Notes</Label>

@@ -28,7 +28,7 @@ export interface AbsenceMemoInput {
   reviewNotes: string;
   returnReason: string | undefined;
   attendanceUpdatedAt: string | undefined;
-  lateSubmission: "late" | "dns" | undefined;
+  lateSubmission: "late" | "dns" | "returnedDns" | undefined;
   deadlineOverrideAt: string | undefined;
   lateCorrectionNote: string | undefined;
 }
@@ -56,7 +56,7 @@ function mapMemo(id: string, data: Record<string, unknown>): AbsenceMemo {
     reviewNotes: (data.reviewNotes as string) ?? "",
     returnReason: (data.returnReason as string | null | undefined) ?? undefined,
     attendanceUpdatedAt: (data.attendanceUpdatedAt as string | null | undefined) ?? undefined,
-    lateSubmission: (data.lateSubmission as "late" | "dns" | null | undefined) ?? undefined,
+    lateSubmission: (data.lateSubmission as "late" | "dns" | "returnedDns" | null | undefined) ?? undefined,
     deadlineOverrideAt: (data.deadlineOverrideAt as string | null | undefined) ?? undefined,
     lateCorrectionNote: (data.lateCorrectionNote as string | null | undefined) ?? undefined,
   };

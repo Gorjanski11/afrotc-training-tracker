@@ -32,7 +32,7 @@ export interface CombinedMemoRow {
   /** "Covers" for an Absence row, "Reason" for a Deviation row -- the combined table's "Subject" column. */
   subject: string;
   status: string;
-  lateSubmission: "late" | "dns" | undefined;
+  lateSubmission: "late" | "dns" | "returnedDns" | undefined;
   pdfUrl: string | undefined;
   pdfFileName: string | undefined;
   notes: string;

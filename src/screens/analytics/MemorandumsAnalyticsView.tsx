@@ -71,11 +71,11 @@ type ViewMode = "all" | "absence" | "deviation";
 const ABSENCE_STATUS_OPTIONS: AbsenceMemoStatus[] = ["Assigned", "Pending", "Accepted", "Rejected", "Returned"];
 const DEVIATION_STATUS_OPTIONS: DeviationMemoStatus[] = ["Assigned", "Submitted", "Late", "Accepted", "Returned", "Not Submitted"];
 
-function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | undefined }) {
+function LateBadge({ lateSubmission }: { lateSubmission: "late" | "dns" | "returnedDns" | undefined }) {
   if (!lateSubmission) return null;
   return (
     <Badge variant="destructive" className="text-[10px]">
-      {lateSubmission === "dns" ? "DNS" : "Late"}
+      {lateSubmission === "dns" ? "DNS" : lateSubmission === "returnedDns" ? "Returned DNS" : "Late"}
     </Badge>
   );
 }

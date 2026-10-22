@@ -24,6 +24,8 @@ export interface CadetInput {
   /** Optional -- only ever set via the Permissions tab's per-person dialogs (RosterScreen/CadetFormDialog never touch these). */
   accessOverride?: AccessOverride;
   deviationAssignOverride?: DeviationAssignOverrideInput;
+  /** Optional -- off by default, toggled via RosterScreen. See `Cadet.sportsWaiver`. */
+  sportsWaiver?: boolean;
 }
 
 const COLLECTION = "cadets";
@@ -47,6 +49,7 @@ function mapCadet(id: string, data: Record<string, unknown>): Cadet {
     mustChangePassword: (data.mustChangePassword as boolean | undefined) ?? undefined,
     accessOverride: (data.accessOverride as AccessOverride | null | undefined) ?? undefined,
     deviationAssignOverride: (data.deviationAssignOverride as DeviationAssignOverrideInput | null | undefined) ?? undefined,
+    sportsWaiver: (data.sportsWaiver as boolean | null | undefined) ?? undefined,
   };
 }
 
@@ -86,6 +89,7 @@ export function useCadets() {
         mustChangePassword: input.mustChangePassword,
         accessOverride: input.accessOverride,
         deviationAssignOverride: input.deviationAssignOverride,
+        sportsWaiver: input.sportsWaiver,
       } satisfies Cadet;
     },
     [refetch]
@@ -101,6 +105,7 @@ export function useCadets() {
         mustChangePassword: input.mustChangePassword,
         accessOverride: input.accessOverride,
         deviationAssignOverride: input.deviationAssignOverride,
+        sportsWaiver: input.sportsWaiver,
       } satisfies Cadet;
     },
     [refetch]

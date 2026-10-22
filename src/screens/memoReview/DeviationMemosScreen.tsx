@@ -224,6 +224,10 @@ export function DeviationMemosScreen({
         reviewedAt: undefined,
         reviewedBy: undefined,
         reviewNotes: "",
+        relatedAbsenceMemoIds: undefined,
+        ofcNotes: undefined,
+        ofcReviewedAt: undefined,
+        ofcReviewedBy: undefined,
       });
       resetAssignForm();
       setAssignDialogOpen(false);

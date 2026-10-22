@@ -28,6 +28,10 @@ export interface DeviationMemoInput {
   reviewedAt: string | undefined;
   reviewedBy: string | undefined;
   reviewNotes: string;
+  relatedAbsenceMemoIds: string[] | undefined;
+  ofcNotes: string | undefined;
+  ofcReviewedAt: string | undefined;
+  ofcReviewedBy: string | undefined;
 }
 
 function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
@@ -57,6 +61,10 @@ function mapMemo(id: string, data: Record<string, unknown>): DeviationMemo {
     reviewedAt: (data.reviewedAt as string | null | undefined) ?? undefined,
     reviewedBy: (data.reviewedBy as string | null | undefined) ?? undefined,
     reviewNotes: (data.reviewNotes as string) ?? "",
+    relatedAbsenceMemoIds: (data.relatedAbsenceMemoIds as string[] | null | undefined) ?? undefined,
+    ofcNotes: (data.ofcNotes as string | null | undefined) ?? undefined,
+    ofcReviewedAt: (data.ofcReviewedAt as string | null | undefined) ?? undefined,
+    ofcReviewedBy: (data.ofcReviewedBy as string | null | undefined) ?? undefined,
   };
 }
 

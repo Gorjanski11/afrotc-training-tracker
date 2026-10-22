@@ -18,6 +18,7 @@ const EMPTY_CONFIG: PermissionsConfig = {
   generalAbsenceReviewerEmail: "",
   eventEditOverrideEmails: [],
   rootEmail: "",
+  ofcEmail: "",
 };
 
 /**

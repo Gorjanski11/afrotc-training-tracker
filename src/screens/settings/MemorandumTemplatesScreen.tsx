@@ -115,6 +115,42 @@ const TEMPLATE_DEFS: TemplateDef[] = [
       "<strong>This is an automated message, DO NOT reply to this email.</strong>",
   },
   {
+    id: "absence-returned-stale",
+    label: "Absence Memo rejected (returned, never resubmitted)",
+    trigger: "Sent when a Returned Absence Memo's 48-hour resubmit window passes with nothing resubmitted -- auto-rejected (lateSubmission \"returnedDns\"), distinct from never submitting at all.",
+    placeholders: ["greeting", "cadetName", "returnedDate", "commanderTitle"],
+    defaultSubject: "Absence Memorandum rejected -- returned and never resubmitted",
+    defaultBody:
+      "{{greeting}}, {{cadetName}},<br><br>" +
+      "Your absence memorandum was returned for fixes on {{returnedDate}}, and the 48-hour window to resubmit it has passed -- it's now rejected.<br><br>" +
+      "For any questions and concerns contact your {{commanderTitle}}.<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
+    id: "deviation-returned-stale",
+    label: "Deviation Memo marked Not Submitted (returned, never resubmitted)",
+    trigger: "Sent when a Returned Deviation Memo's 48-hour resubmit window passes with nothing resubmitted -- auto-marked Not Submitted.",
+    placeholders: ["greeting", "cadetName", "returnedDate", "commanderTitle"],
+    defaultSubject: "Deviation Memorandum marked Not Submitted -- returned and never resubmitted",
+    defaultBody:
+      "{{greeting}}, {{cadetName}},<br><br>" +
+      "Your deviation memorandum was returned for fixes on {{returnedDate}}, and the 48-hour window to resubmit it has passed -- it's now marked Not Submitted.<br><br>" +
+      "For any questions and concerns contact your {{commanderTitle}}.<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
+    id: "ofc-notes-needed",
+    label: "OFC notes needed (DNS deviation memo accepted)",
+    trigger: "Sent to the configured OFC (Permissions tab) the moment an auto-created DNS Deviation Memo is accepted -- it's already visible to OFC via CC, but CC alone sends no email of its own.",
+    placeholders: ["greeting", "cadetName", "reviewLink"],
+    defaultSubject: "Deviation Memorandum accepted -- needs your OFC notes",
+    defaultBody:
+      "{{greeting}},<br><br>" +
+      '{{cadetName}}\'s Deviation Memorandum for a missed Absence Memo deadline was just accepted and is now in your "Needs OFC Notes" queue (Memo Review -> Deviation Memos).<br><br>' +
+      "Review it here: {{reviewLink}}<br><br>" +
+      "<strong>This is an automated message, DO NOT reply to this email.</strong>",
+  },
+  {
     id: "accountability-reminder",
     label: "Accountability reminder (SOP Section 3)",
     trigger:

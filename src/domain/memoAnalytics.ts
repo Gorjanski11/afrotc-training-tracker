@@ -114,7 +114,12 @@ export function filterByRosterScope<T extends { cadetId: string }>(
 const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export function shortDate(iso: string | undefined): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  // A bare "YYYY-MM-DD" (no time/offset) parses via `new Date()` as UTC midnight, which renders as
+  // the PREVIOUS day for anyone west of UTC (confirmed: shifted a Puerto Rico user's Oct 22 PMT back
+  // to "Oct 21" on the SAE dashboard). Parse the three parts directly as LOCAL midnight instead.
+  // A full ISO datetime (has a "T") is unaffected -- that path is already timezone-correct.
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.exec(iso);
+  const d = dateOnly ? new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) : new Date(iso);
   const month = MONTHS_SHORT[d.getMonth()];
   const year = String(d.getFullYear()).slice(-2);
   return `${d.getDate()} ${month} ${year}`;

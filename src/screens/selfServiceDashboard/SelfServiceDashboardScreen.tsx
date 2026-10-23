@@ -139,7 +139,9 @@ export function SelfServiceDashboardScreen({
 
     interface Raw {
       trainingWeek: number | undefined;
+      /** Grouping key only (date-only, no time/offset) -- never hand this to `shortDate` directly, it parses as UTC midnight and renders a day early west of UTC (confirmed: shifted PR-timezone users' "today" row back to yesterday's date). Display always uses `eventDateIso` instead. */
       dateKey: string;
+      eventDateIso: string;
       type: "PMT" | "TO";
       item: string;
       missing: number;
@@ -152,6 +154,7 @@ export function SelfServiceDashboardScreen({
       ...saeFlags.acct.map((f: AccountabilityFlag): Raw => ({
         trainingWeek: f.event.trainingWeek,
         dateKey: f.event.eventDate.slice(0, 10),
+        eventDateIso: f.event.eventDate,
         type: "PMT",
         item: f.event.eventType,
         missing: f.missing,
@@ -162,6 +165,7 @@ export function SelfServiceDashboardScreen({
       ...saeFlags.to.map((f: ToFlag): Raw => ({
         trainingWeek: f.trainingWeek,
         dateKey: f.event.eventDate.slice(0, 10),
+        eventDateIso: f.event.eventDate,
         type: "TO",
         item: `${PLO_SHORT_CODE[f.objective.plo as PloSection]}-${f.objective.number}`,
         missing: f.missing,
@@ -173,7 +177,16 @@ export function SelfServiceDashboardScreen({
 
     const groups = new Map<
       string,
-      { trainingWeek: number | undefined; dateKey: string; type: "PMT" | "TO"; unit: string; responsible: string; status: AccountabilityFlag["status"]; items: string[]; missing: number[] }
+      {
+        trainingWeek: number | undefined;
+        eventDateIso: string;
+        type: "PMT" | "TO";
+        unit: string;
+        responsible: string;
+        status: AccountabilityFlag["status"];
+        items: string[];
+        missing: number[];
+      }
     >();
     for (const r of raw) {
       const key = `${r.dateKey}|${r.type}|${r.unit}|${r.responsible}|${r.status}`;
@@ -184,14 +197,23 @@ export function SelfServiceDashboardScreen({
           existing.missing.push(r.missing);
         }
       } else {
-        groups.set(key, { trainingWeek: r.trainingWeek, dateKey: r.dateKey, type: r.type, unit: r.unit, responsible: r.responsible, status: r.status, items: [r.item], missing: [r.missing] });
+        groups.set(key, {
+          trainingWeek: r.trainingWeek,
+          eventDateIso: r.eventDateIso,
+          type: r.type,
+          unit: r.unit,
+          responsible: r.responsible,
+          status: r.status,
+          items: [r.item],
+          missing: [r.missing],
+        });
       }
     }
 
     return [...groups.values()]
       .map((g) => ({
         trainingWeek: g.trainingWeek,
-        twDate: `TW${g.trainingWeek ?? "—"} — ${shortDate(g.dateKey)}`,
+        twDate: `TW${g.trainingWeek ?? "—"} — ${shortDate(g.eventDateIso)}`,
         type: g.type,
         item: g.items.join(" + "),
         unit: g.unit,

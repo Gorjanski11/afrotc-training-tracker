@@ -12,7 +12,6 @@ import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { isCortesGaray } from "../../domain/access";
 import { formatCadetNameCompact } from "../../domain/nameUtils";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
-import { Stepper } from "../../components/analytics/Stepper";
 import { WeekView } from "../../components/WeekView";
 import { StatusDot, StandingBadge } from "../analytics/AccountabilityAnalyticsView";
 import type { AbsenceMemo, Attendance, Cadet, Completion, DeviationMemo, PermissionsConfig, PmtEvent, TrainingObjective } from "../../domain/types";
@@ -117,7 +116,6 @@ export function SelfServiceDashboardScreen({
   onOpenMissingMemos,
 }: Props) {
   const isSae = isCortesGaray(cadet.email, permissionsConfig);
-  const [bucketChoice, setBucketChoice] = useState<"PT" | "LLAB_FM">("PT");
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
   const saeFlags = useMemo(() => {
@@ -282,10 +280,23 @@ export function SelfServiceDashboardScreen({
   }, [myAbsenceMemos, myDeviationMemos]);
   const visibleMemoHistory = showAllMemos ? memoHistory : memoHistory.slice(0, 10);
 
-  const tableEvents = useMemo(
-    () => events.filter((e) => bucketForEventType(e.eventType) === bucketChoice).sort((a, b) => a.eventDate.localeCompare(b.eventDate)),
-    [events, bucketChoice]
-  );
+  // Both buckets at once, one column per calendar DAY (not per bucket) -- a day with both a PT and
+  // an LLAB/FM/D&C PMT shares one column, each shown in its own row below; a day with only one still
+  // shows that single status in the matching row, the other left blank. Same approach as the
+  // Accountability Analytics "Master attendance table" individual-cadet view.
+  const tableDays = useMemo(() => {
+    const byDay = new Map<string, PmtEvent[]>();
+    for (const e of events) {
+      if (bucketForEventType(e.eventType) === "OTHER") continue;
+      const key = new Date(e.eventDate).toDateString();
+      const list = byDay.get(key) ?? [];
+      list.push(e);
+      byDay.set(key, list);
+    }
+    return [...byDay.values()]
+      .map((dayEvents) => [...dayEvents].sort((a, b) => a.eventDate.localeCompare(b.eventDate)))
+      .sort((a, b) => a[0]!.eventDate.localeCompare(b[0]!.eventDate));
+  }, [events]);
   const cellByEvent = useMemo(() => {
     const map = new Map<string, Attendance>();
     for (const record of attendance) {
@@ -415,47 +426,50 @@ export function SelfServiceDashboardScreen({
       )}
 
       <Card className="mb-6">
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader>
           <CardTitle>My attendance</CardTitle>
-          <Stepper
-            options={[
-              { value: "PT", label: "PT" },
-              { value: "LLAB_FM", label: "LLAB/FM/D&C" },
-            ]}
-            value={bucketChoice}
-            onChange={(v) => setBucketChoice(v as "PT" | "LLAB_FM")}
-          />
         </CardHeader>
         <CardContent>
-          {tableEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No {bucketChoice === "PT" ? "PT" : "LLAB/FM/D&C"} sessions yet.</p>
+          {tableDays.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No PT or LLAB/FM/D&C sessions yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <Table aria-label="My attendance">
                 <TableHeader>
                   <TableRow>
-                    {tableEvents.map((e) => (
-                      <TableHead key={e.id} className="whitespace-nowrap px-1.5 py-1 text-center text-xs" title={e.title}>
-                        {new Date(e.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    <TableHead className="whitespace-nowrap px-1.5 py-1 text-xs">Type</TableHead>
+                    {tableDays.map((dayEvents) => (
+                      <TableHead
+                        key={dayEvents[0]!.id}
+                        className="whitespace-nowrap px-1.5 py-1 text-center text-xs"
+                        title={dayEvents.map((e) => `${e.eventType} — ${e.title}`).join(" + ")}
+                      >
+                        {new Date(dayEvents[0]!.eventDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                       </TableHead>
                     ))}
                     <TableHead className="whitespace-nowrap px-1.5 py-1 text-center text-xs">Standing</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    {tableEvents.map((e) => {
-                      const record = cellByEvent.get(e.id);
-                      return (
-                        <TableCell key={e.id} className="px-1.5 py-1 text-center">
-                          {record ? <StatusDot status={record.status} /> : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="px-1.5 py-1 text-center">
-                      <StandingBadge standing={(bucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing) ?? "Good"} />
-                    </TableCell>
-                  </TableRow>
+                  {(["PT", "LLAB_FM"] as const).map((bucket) => (
+                    <TableRow key={bucket}>
+                      <TableCell className="whitespace-nowrap px-1.5 py-1 text-xs text-muted-foreground">
+                        {bucket === "PT" ? "PT" : "LLAB/FM/D&C"}
+                      </TableCell>
+                      {tableDays.map((dayEvents) => {
+                        const e = dayEvents.find((ev) => bucketForEventType(ev.eventType) === bucket);
+                        const record = e ? cellByEvent.get(e.id) : undefined;
+                        return (
+                          <TableCell key={dayEvents[0]!.id} className="px-1.5 py-1 text-center">
+                            {e && (record ? <StatusDot status={record.status} /> : <span className="text-muted-foreground">—</span>)}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="px-1.5 py-1 text-center">
+                        <StandingBadge standing={(bucket === "PT" ? summary.pt.standing : summary.llabFm.standing) ?? "Good"} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>

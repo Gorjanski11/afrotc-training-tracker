@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Line, LineChart, Bar, BarChart, Pie, PieChart as RePieChart, Cell, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -933,6 +933,7 @@ export function AccountabilityAnalyticsView({
                     <TableHeader>
                       <TableRow>
                         <TableHead className="sticky left-0 z-10 h-5 bg-card px-1.5 py-0.5 text-xs">Cadet</TableHead>
+                        <TableHead className="h-5 whitespace-nowrap px-1.5 py-0.5 text-xs">Type</TableHead>
                         {combinedTableDays.map((dayEvents) => (
                           <TableHead
                             key={dayEvents[0]!.id}
@@ -948,40 +949,44 @@ export function AccountabilityAnalyticsView({
                     <TableBody>
                       {tableRoster.map((cadet) => {
                         const summary = computeCadetAttendanceSummary(cadet.id, attendance, pmtEventsById);
-                        return (
-                          <TableRow key={cadet.id}>
-                            <TableCell className="sticky left-0 z-10 h-5 whitespace-nowrap bg-card px-1.5 py-0.5 text-xs">
-                              {formatCadetNameCompact(cadet)}
-                            </TableCell>
-                            {combinedTableDays.map((dayEvents) => (
+                        const dayCell = (bucket: "PT" | "LLAB_FM") =>
+                          combinedTableDays.map((dayEvents) => {
+                            const e = dayEvents.find((ev) => bucketForEventType(ev.eventType) === bucket);
+                            const record = e ? cellByKey.get(`${cadet.id}__${e.id}`) : undefined;
+                            return (
                               <TableCell key={dayEvents[0]!.id} className="h-5 px-0.5 py-0.5 text-center">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  {dayEvents.map((e) => {
-                                    const record = cellByKey.get(`${cadet.id}__${e.id}`);
-                                    return record ? (
-                                      <StatusDot key={e.id} status={record.status} />
-                                    ) : (
-                                      <span key={e.id} className="text-muted-foreground">
-                                        —
-                                      </span>
-                                    );
-                                  })}
-                                </div>
+                                {e && (record ? <StatusDot status={record.status} /> : <span className="text-muted-foreground">—</span>)}
                               </TableCell>
-                            ))}
-                            <TableCell className="h-5 px-1.5 py-0.5 text-center">
-                              <div className="flex flex-col items-center gap-0.5">
-                                {summary.pt.standing && <StandingBadge standing={summary.pt.standing} />}
-                                {summary.llabFm.standing && <StandingBadge standing={summary.llabFm.standing} />}
-                                {!summary.pt.standing && !summary.llabFm.standing && <span className="text-muted-foreground">—</span>}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                            );
+                          });
+                        return (
+                          <Fragment key={cadet.id}>
+                            <TableRow className="border-b-0">
+                              <TableCell
+                                rowSpan={2}
+                                className="sticky left-0 z-10 h-5 whitespace-nowrap bg-card px-1.5 py-0.5 align-middle text-xs"
+                              >
+                                {formatCadetNameCompact(cadet)}
+                              </TableCell>
+                              <TableCell className="h-5 whitespace-nowrap px-1.5 py-0.5 text-xs text-muted-foreground">PT</TableCell>
+                              {dayCell("PT")}
+                              <TableCell className="h-5 px-1.5 py-0.5 text-center">
+                                {summary.pt.standing ? <StandingBadge standing={summary.pt.standing} /> : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                            </TableRow>
+                            <TableRow>
+                              <TableCell className="h-5 whitespace-nowrap px-1.5 py-0.5 text-xs text-muted-foreground">LLAB/FM/D&C</TableCell>
+                              {dayCell("LLAB_FM")}
+                              <TableCell className="h-5 px-1.5 py-0.5 text-center">
+                                {summary.llabFm.standing ? <StandingBadge standing={summary.llabFm.standing} /> : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                            </TableRow>
+                          </Fragment>
                         );
                       })}
                       {tableRoster.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={combinedTableDays.length + 2} className="text-center text-muted-foreground">
+                          <TableCell colSpan={combinedTableDays.length + 3} className="text-center text-muted-foreground">
                             No active cadets match this filter.
                           </TableCell>
                         </TableRow>

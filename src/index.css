@@ -1,5 +1,31 @@
 @import "tailwindcss";
 
+/* "phone"/"desktop" -- the mobile nav redesign's breakpoint. Plain `sm:` (a pure width check) isn't
+   enough on its own: every modern phone's LANDSCAPE width exceeds the 640px `sm` cutoff (e.g. an
+   iPhone 14 is 844px wide sideways), so a width-only check would silently hand a sideways phone the
+   full desktop tab strip instead of the mobile nav. "phone" instead means narrow-OR-short: under
+   640px wide (portrait phones) OR under 501px tall while sideways (landscape phones). "desktop" is
+   its exact logical negation (not a separate guess), so the two can never both match the same
+   viewport and show two navs at once, and never both miss and show neither.
+   phone   = (width<=639px) OR (height<=500px AND landscape)
+   desktop = (width>=640px AND height>=501px) OR (width>=640px AND portrait) */
+@custom-variant phone {
+  @media (max-width: 639px) {
+    @slot;
+  }
+  @media (max-height: 500px) and (orientation: landscape) {
+    @slot;
+  }
+}
+@custom-variant desktop {
+  @media (min-width: 640px) and (min-height: 501px) {
+    @slot;
+  }
+  @media (min-width: 640px) and (orientation: portrait) {
+    @slot;
+  }
+}
+
 /* Theme is a `data-theme="ussf"|"usaf"` attribute on <html> (see useTheme.ts), not OS preference --
    no attribute at all means light, which is just :root with no override. There is no `dark:`
    Tailwind variant anywhere in this codebase (confirmed), so there's no need for a @custom-variant

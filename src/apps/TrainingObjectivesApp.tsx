@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { LayoutDashboard, UserRound, BookOpen, ListChecks } from "lucide-react";
+import { LayoutDashboard, UserRound, BookOpen } from "lucide-react";
+import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { C3CRankIcon, CCaptRankIcon } from "@/components/mobile/rankIcons";
 import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
 import { useCompletions } from "../hooks/useCompletions";
@@ -117,30 +119,30 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
         </div>
       ) : (
         <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-          <nav className="flex flex-wrap items-center gap-3 px-3 sm:px-8">
-            <TabsList>
+          <nav className="flex flex-wrap items-center gap-3 px-3 pt-2 desktop:px-8 desktop:pt-0">
+            <TabsList className="hidden desktop:flex">
               <TabsTrigger value="dashboard">
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Dashboard</span>
+                <span>Dashboard</span>
               </TabsTrigger>
               <TabsTrigger value="cadet" disabled={!selectedCadetId}>
                 <UserRound className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Cadet Review</span>
+                <span>Cadet Review</span>
               </TabsTrigger>
               <TabsTrigger value="reference">
                 <BookOpen className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Reference Library</span>
+                <span>Reference Library</span>
               </TabsTrigger>
               {showPoc && (
                 <TabsTrigger value="pocLog">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">POC Log</span>
+                  <CCaptRankIcon className="h-3.5 w-3.5" />
+                  <span>POC Log</span>
                 </TabsTrigger>
               )}
               {showGmc && (
                 <TabsTrigger value="gmcLog">
-                  <ListChecks className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">GMC Log</span>
+                  <C3CRankIcon className="h-3.5 w-3.5" />
+                  <span>GMC Log</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -155,6 +157,20 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
               />
             )}
           </nav>
+
+          {/* Phone-only: off-canvas subtab nav, swipe from the left edge (bottom edge in landscape) instead of the desktop TabsList above. */}
+          <EdgeSidebar
+            title="Training Objectives"
+            active={screen}
+            onChange={(v) => setScreen(v)}
+            items={[
+              { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+              ...(selectedCadetId ? [{ value: "cadet" as const, label: "Cadet Review", icon: UserRound }] : []),
+              { value: "reference", label: "Reference Library", icon: BookOpen },
+              ...(showPoc ? [{ value: "pocLog" as const, label: "POC Log", icon: CCaptRankIcon }] : []),
+              ...(showGmc ? [{ value: "gmcLog" as const, label: "GMC Log", icon: C3CRankIcon }] : []),
+            ]}
+          />
 
           <main className="flex-1 overflow-auto p-3 sm:p-6">
             <TabsContent value="dashboard">

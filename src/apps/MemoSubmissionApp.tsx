@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, ClipboardList, LibraryBig } from "lucide-react";
+import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
@@ -57,22 +58,33 @@ export function MemoSubmissionApp({ userEmail, initialScreen, onConsumeInitialSc
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-3 pt-2 sm:px-8">
+        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
           <TabsList>
             <TabsTrigger value="absence">
               <FileText className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Absence Memo</span>
+              <span>Absence Memo</span>
             </TabsTrigger>
             <TabsTrigger value="deviation">
               <ClipboardList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Deviation Memo</span>
+              <span>Deviation Memo</span>
             </TabsTrigger>
             <TabsTrigger value="templates">
               <LibraryBig className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Memorandum Templates</span>
+              <span>Memorandum Templates</span>
             </TabsTrigger>
           </TabsList>
         </nav>
+
+        <EdgeSidebar
+          title="Memo Submission"
+          active={screen}
+          onChange={(v) => setScreen(v)}
+          items={[
+            { value: "absence", label: "Absence Memo", icon: FileText },
+            { value: "deviation", label: "Deviation Memo", icon: ClipboardList },
+            { value: "templates", label: "Memorandum Templates", icon: LibraryBig },
+          ]}
+        />
 
         <main className="flex-1 overflow-auto p-3 sm:p-6">
           {dataLoading ? (

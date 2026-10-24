@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { LiquidTabBar } from "@/components/mobile/LiquidTabBar";
 import {
   LogOut,
   KeyRound,
@@ -17,7 +18,6 @@ import {
   LayoutDashboard,
   Monitor,
   Smartphone,
-  ChevronDown,
   Wrench,
   Sun,
   Moon,
@@ -176,8 +176,6 @@ function App() {
       // Non-fatal -- the tab just won't survive a refresh.
     }
   }, [activeTab]);
-  const [phoneNavOpen, setPhoneNavOpen] = useState(false);
-
   // Cross-tab "take me there" intent from a dashboard tile/row click (Cadre Dashboard, SAE's My
   // Dashboard) -- set alongside the tab switch, consumed once by the destination then cleared.
   const [navIntent, setNavIntent] = useState<DashboardNavIntent | undefined>();
@@ -285,9 +283,8 @@ function App() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-3 pt-2 sm:px-8">
-          {/* sm+: the usual horizontal tab strip. Below sm: a single dropdown button instead (Section H) -- easier to tap than a scrolling row of icon-only tabs. */}
-          <TabsList className="hidden sm:flex">
+        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
+          <TabsList>
             {visibleTabs.map((t) => {
               const { label, icon: Icon } = TAB_META[t];
               return (
@@ -298,48 +295,16 @@ function App() {
               );
             })}
           </TabsList>
-
-          <Popover open={phoneNavOpen} onOpenChange={setPhoneNavOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="flex w-full items-center justify-between gap-2 sm:hidden">
-                <span className="flex items-center gap-2">
-                  {(() => {
-                    const Icon = TAB_META[activeTab].icon;
-                    return <Icon className="h-4 w-4" />;
-                  })()}
-                  {TAB_META[activeTab].label}
-                </span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-[calc(100vw-1.5rem)] p-1">
-              <div className="flex flex-col">
-                {visibleTabs.map((t) => {
-                  const { label, icon: Icon } = TAB_META[t];
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 rounded-sm px-3 py-2.5 text-left text-sm hover:bg-accent",
-                        t === activeTab && "bg-accent font-medium"
-                      )}
-                      onClick={() => {
-                        setTab(t);
-                        setPhoneNavOpen(false);
-                      }}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
         </nav>
 
-        <main className="flex-1 overflow-hidden">
+        {/* Phone-only: a fixed liquid-glass bottom bar (right edge in landscape) replaces the desktop tab strip -- icons only, no dropdown. */}
+        <LiquidTabBar
+          items={visibleTabs.map((t) => ({ value: t, label: TAB_META[t].label, icon: TAB_META[t].icon }))}
+          active={activeTab}
+          onChange={(t) => setTab(t)}
+        />
+
+        <main className="flex-1 overflow-hidden phone:pb-[calc(3.25rem+env(safe-area-inset-bottom))] phone:landscape:pb-0 phone:landscape:pe-16">
           <AnimatePresence mode="wait" initial={false}>
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>

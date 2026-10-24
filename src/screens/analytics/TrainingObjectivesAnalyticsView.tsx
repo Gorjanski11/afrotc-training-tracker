@@ -270,7 +270,7 @@ export function TrainingObjectivesAnalyticsView({
           </SelectContent>
         </Select>
         <Select value={ploFilter} onValueChange={setPloFilter}>
-          <SelectTrigger className="w-64">
+          <SelectTrigger className="w-full phone:landscape:w-64 desktop:w-64">
             <SelectValue placeholder="Filter by PLO section" />
           </SelectTrigger>
           <SelectContent>

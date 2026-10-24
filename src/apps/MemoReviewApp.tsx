@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, LayoutDashboard, ClipboardList } from "lucide-react";
+import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
@@ -77,24 +78,35 @@ export function MemoReviewApp({ showAbsence, userEmail, permissionsConfig, initi
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-3 pt-2 sm:px-8">
+        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
           <TabsList>
             <TabsTrigger value="dashboard">
               <LayoutDashboard className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Dashboard</span>
+              <span>Dashboard</span>
             </TabsTrigger>
             {showAbsence && (
               <TabsTrigger value="absence">
                 <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Absence Memos</span>
+                <span>Absence Memos</span>
               </TabsTrigger>
             )}
             <TabsTrigger value="deviation">
               <ClipboardList className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Deviation Memos</span>
+              <span>Deviation Memos</span>
             </TabsTrigger>
           </TabsList>
         </nav>
+
+        <EdgeSidebar
+          title="Memo Review"
+          active={screen}
+          onChange={(v) => setScreen(v)}
+          items={[
+            { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+            ...(showAbsence ? [{ value: "absence" as const, label: "Absence Memos", icon: FileText }] : []),
+            { value: "deviation", label: "Deviation Memos", icon: ClipboardList },
+          ]}
+        />
 
         <main className="flex-1 overflow-auto p-3 sm:p-6">
           {dataLoading ? (

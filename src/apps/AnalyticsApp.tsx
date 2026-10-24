@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClipboardCheck, GraduationCap, FileText, ShieldAlert } from "lucide-react";
+import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
@@ -122,34 +123,46 @@ export function AnalyticsApp({
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="px-3 pt-2 sm:px-8">
+        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
           <TabsList>
             {accountabilityAccess && (
               <TabsTrigger value="accountability">
                 <ClipboardCheck className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Accountability</span>
+                <span>Accountability</span>
               </TabsTrigger>
             )}
             {trainingObjectivesAccess !== "none" && (
               <TabsTrigger value="trainingObjectives">
                 <GraduationCap className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Training Objectives</span>
+                <span>Training Objectives</span>
               </TabsTrigger>
             )}
             {memoReviewAccess && (
               <TabsTrigger value="memorandums">
                 <FileText className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Memorandums</span>
+                <span>Memorandums</span>
               </TabsTrigger>
             )}
             {memoReviewAccess && (
               <TabsTrigger value="deviations">
                 <ShieldAlert className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Deviation's Log</span>
+                <span>Deviation's Log</span>
               </TabsTrigger>
             )}
           </TabsList>
         </nav>
+
+        <EdgeSidebar
+          title="Analytics"
+          active={screen}
+          onChange={(v) => setScreen(v)}
+          items={[
+            ...(accountabilityAccess ? [{ value: "accountability" as const, label: "Accountability", icon: ClipboardCheck }] : []),
+            ...(trainingObjectivesAccess !== "none" ? [{ value: "trainingObjectives" as const, label: "Training Objectives", icon: GraduationCap }] : []),
+            ...(memoReviewAccess ? [{ value: "memorandums" as const, label: "Memorandums", icon: FileText }] : []),
+            ...(memoReviewAccess ? [{ value: "deviations" as const, label: "Deviation's Log", icon: ShieldAlert }] : []),
+          ]}
+        />
 
         <main className="flex-1 overflow-auto p-3 sm:p-6">
           {dataLoading ? (

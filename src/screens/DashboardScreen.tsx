@@ -37,7 +37,12 @@ function HeroStat({ icon, label, value, tone, index, onClick }: HeroStatProps) {
         onClick={onClick}
         onKeyDown={onClick ? (e) => (e.key === "Enter" || e.key === " ") && onClick() : undefined}
       >
-        <CardContent className="flex items-center gap-3">
+        {/* Phone: just the number over its label, no icon circle, 4 fit side by side (see the grid below). Desktop is unchanged. */}
+        <CardContent className="hidden flex-col items-center gap-0 py-3 text-center phone:flex">
+          <div className={cn("text-xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+          <div className="truncate text-[11px] font-medium text-muted-foreground">{label}</div>
+        </CardContent>
+        <CardContent className="flex items-center gap-3 phone:hidden">
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
@@ -138,19 +143,19 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
         Roster Dashboard
       </h2>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Total cadets" value={String(filteredCadets.length)} index={0} />
-        <HeroStat icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall completion" value={`${summary.overallPercent}%`} index={1} />
+      <div className="mb-6 grid grid-cols-4 gap-2 phone:gap-1.5 desktop:gap-4">
+        <HeroStat icon={<Users className="h-4.5 w-4.5" />} label="Cadets" value={String(filteredCadets.length)} index={0} />
+        <HeroStat icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall" value={`${summary.overallPercent}%`} index={1} />
         <HeroStat
           icon={<AlertTriangle className="h-4.5 w-4.5" />}
-          label="Cadets flagged"
+          label="Flagged"
           value={String(summary.flaggedCount)}
           tone={summary.flaggedCount > 0 ? "critical" : undefined}
           index={2}
         />
         <HeroStat
           icon={<Clock className="h-4.5 w-4.5" />}
-          label="Overdue objective-instances"
+          label="Overdue"
           value={String(summary.overdueInstances)}
           tone={summary.overdueInstances > 0 ? "critical" : undefined}
           index={3}

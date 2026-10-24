@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 export type ViewMode = "auto" | "desktop";
 const STORAGE_KEY = "afrotc-view-mode";
 const DESKTOP_VIEWPORT = "width=1280";
-const AUTO_VIEWPORT = "width=device-width, initial-scale=1.0";
+const AUTO_VIEWPORT = "width=device-width, initial-scale=1.0, viewport-fit=cover";
 
 /**
  * "Desktop view" is a manual override for someone on a phone who wants the real desktop layout

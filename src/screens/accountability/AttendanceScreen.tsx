@@ -513,7 +513,7 @@ export function AttendanceScreen({
         </DialogContent>
       </Dialog>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+      <div className="mb-4 flex flex-wrap items-center gap-4 phone:gap-2">
         <div className="flex gap-1">
           {(["current", "past"] as const).map((v) => (
             <Button
@@ -528,8 +528,9 @@ export function AttendanceScreen({
             </Button>
           ))}
         </div>
+        {/* Aligns to the far right of whatever flex-wrap line it lands on -- on phone that's the Current/Past row, since the PMT select below always starts its own full-width line. */}
         <Select value={twFilter === undefined ? "All" : String(twFilter)} onValueChange={handleTwChange}>
-          <SelectTrigger className="w-32">
+          <SelectTrigger className="w-32 phone:ms-auto">
             <SelectValue placeholder="Training Week" />
           </SelectTrigger>
           <SelectContent>
@@ -542,7 +543,7 @@ export function AttendanceScreen({
           </SelectContent>
         </Select>
         <Select value={selectedEventId ?? ""} onValueChange={setSelectedEventId}>
-          <SelectTrigger className="w-96">
+          <SelectTrigger className="w-full desktop:w-96">
             <SelectValue placeholder="Select a PMT" />
           </SelectTrigger>
           <SelectContent>
@@ -556,6 +557,8 @@ export function AttendanceScreen({
             )}
           </SelectContent>
         </Select>
+        {/* Phone: forced onto one shared line with shrunk buttons, a thin divider between the cohort toggle and the unit buttons -- desktop is untouched (no classes here apply above the phone breakpoint). */}
+        <div className="flex flex-1 flex-wrap items-center gap-1.5 phone:flex-nowrap phone:[&_button]:h-7 phone:[&_button]:min-w-0 phone:[&_button]:gap-1 phone:[&_button]:px-2 phone:[&_button]:text-[11px]">
         {showCohortToggle ? (
           <>
             <div className="flex gap-1">
@@ -572,6 +575,9 @@ export function AttendanceScreen({
                 </Button>
               ))}
             </div>
+            {((cohortView === "group" && scopedGroupOptions.length > 1) || cohortView === "gmc") && (
+              <div className="hidden phone:block phone:h-5 phone:w-px phone:shrink-0 phone:bg-border" />
+            )}
             {cohortView === "group" && scopedGroupOptions.length > 1 && (
               <div className="flex gap-1">
                 {scopedGroupOptions.map((g) => (
@@ -609,7 +615,7 @@ export function AttendanceScreen({
           <>
             {!hideGroupFilter && (
               <Select value={groupFilter} onValueChange={handleGroupChange}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-36 phone:w-auto phone:flex-1">
                   <SelectValue placeholder="Group" />
                 </SelectTrigger>
                 <SelectContent>
@@ -622,9 +628,12 @@ export function AttendanceScreen({
                 </SelectContent>
               </Select>
             )}
+            {!hideGroupFilter && !hideFlightFilter && (
+              <div className="hidden phone:block phone:h-5 phone:w-px phone:shrink-0 phone:bg-border" />
+            )}
             {!hideFlightFilter && (
               <Select value={flightFilter} onValueChange={handleFlightChange}>
-                <SelectTrigger className="w-32">
+                <SelectTrigger className="w-32 phone:w-auto phone:flex-1">
                   <SelectValue placeholder="Flight" />
                 </SelectTrigger>
                 <SelectContent>
@@ -639,6 +648,7 @@ export function AttendanceScreen({
             )}
           </>
         )}
+        </div>
         {selectedEvent && windowClosed && (
           <span className="flex items-center gap-1.5 text-sm text-warning-foreground">
             <TriangleAlert className="h-4 w-4 text-warning" />

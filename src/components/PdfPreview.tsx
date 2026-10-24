@@ -69,10 +69,17 @@ export function PdfPreview({ url }: Props) {
       const viewport = page.getViewport({ scale });
       const canvas = canvasRef.current;
       if (!canvas || cancelled) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      // Phones run at devicePixelRatio 2-3 -- without this the canvas's pixel buffer matched CSS
+      // pixels 1:1 and got upscaled to fill the extra physical pixels, reading as blurry on a retina
+      // phone screen (not noticeable on a devicePixelRatio-1 desktop monitor).
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = viewport.width * dpr;
+      canvas.height = viewport.height * dpr;
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      ctx.scale(dpr, dpr);
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     })();
     return () => {

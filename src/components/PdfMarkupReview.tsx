@@ -192,12 +192,26 @@ export const PdfMarkupReview = forwardRef<PdfMarkupReviewHandle, Props>(function
       const canvas = pageCanvasRef.current;
       const overlay = overlayCanvasRef.current;
       if (!canvas || !overlay || cancelled) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      overlay.width = viewport.width;
-      overlay.height = viewport.height;
+      // Phones run at devicePixelRatio 2-3 -- sizing the canvas's pixel buffer to CSS pixels 1:1
+      // (what this used to do) left the browser upscaling a lower-resolution bitmap to fill those
+      // extra physical pixels, which read as blurry on a retina phone screen even though it looked
+      // fine on a devicePixelRatio-1 desktop monitor. The buffer is oversized by `dpr` and the
+      // element's CSS size is pinned back down to the original viewport size, so every drawing call
+      // below (and pointerPos/toPdf elsewhere, both already working in CSS-pixel terms via
+      // getBoundingClientRect) keeps using the same coordinate space as before.
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = viewport.width * dpr;
+      canvas.height = viewport.height * dpr;
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+      overlay.width = viewport.width * dpr;
+      overlay.height = viewport.height * dpr;
+      overlay.style.width = `${viewport.width}px`;
+      overlay.style.height = `${viewport.height}px`;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      ctx.scale(dpr, dpr);
+      overlay.getContext("2d")?.scale(dpr, dpr);
       await page.render({ canvasContext: ctx, viewport, canvas }).promise;
       if (!cancelled) redrawOverlay();
     })();

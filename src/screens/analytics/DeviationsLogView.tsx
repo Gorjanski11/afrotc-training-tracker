@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { ShieldAlert, CalendarClock, Shirt, Handshake, MoreHorizontal, BarChart2, PieChart as PieChartIcon, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { DEVIATION_REASONS, FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
 import { filterByRosterScope } from "../../domain/memoAnalytics";
 import {
@@ -128,12 +129,49 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <ShieldAlert className="h-5 w-5 text-primary" />
-        Deviation's Log
-      </h2>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">
+          <ShieldAlert className="h-5 w-5 text-primary" />
+          Deviation's Log
+        </h2>
+        {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
+        <div className="desktop:hidden">
+          <MobileFiltersButton>
+            {!hideFlightFilter && (
+              <Select value={flightFilter} onValueChange={handleFlightChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All flights</SelectItem>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} Flight
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!hideGroupFilter && (
+              <Select value={groupFilter} onValueChange={handleGroupChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {scopedGroupOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </MobileFiltersButton>
+        </div>
+      </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
+      <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
         {!hideFlightFilter && (
           <Select value={flightFilter} onValueChange={handleFlightChange}>
             <SelectTrigger className="w-40">

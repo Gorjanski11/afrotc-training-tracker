@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { cn } from "@/lib/utils";
 import { PMT_EVENT_TYPES, type PmtEventType } from "../../domain/constants";
 import { findTrainingWeekConflicts } from "../../domain/attendance";
@@ -139,7 +140,7 @@ export function EventsScreen({
         <>
           <div className="mb-4 flex items-center justify-between gap-2">
             <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="hidden w-40 desktop:flex">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -151,6 +152,24 @@ export function EventsScreen({
                 ))}
               </SelectContent>
             </Select>
+            {/* Phone: the same type filter, behind this small button instead of shown inline. */}
+            <div className="desktop:hidden">
+              <MobileFiltersButton>
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All types</SelectItem>
+                    {PMT_EVENT_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </MobileFiltersButton>
+            </div>
             {canEdit && (
               <Button
                 onClick={() => {

@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { FileText, ArrowUpDown, Pencil } from "lucide-react";
+import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
@@ -255,21 +256,93 @@ export function MemorandumsAnalyticsView({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-2xl font-semibold">
           <FileText className="h-5 w-5 text-primary" />
           Memorandums Analytics
         </h2>
-        <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)}>
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
-            <TabsTrigger value="deviation">Deviation</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-2">
+          <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)}>
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
+              <TabsTrigger value="deviation">Deviation</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
+          <div className="desktop:hidden">
+            <MobileFiltersButton>
+              <CadetFilterCombobox roster={roster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="h-8 w-full text-xs" />
+              {isTrueCadreViewer && (
+                <Button
+                  variant={showAllMemos ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 justify-start text-xs"
+                  title={showAllMemos ? "Showing every memorandum, including ones not connected to you" : "Only showing memorandums concerning you (assigned by you, CC'd, or your AS-Class)"}
+                  onClick={() => setShowAllMemos((v) => !v)}
+                >
+                  {showAllMemos ? "Showing all" : "Concerning me only"}
+                </Button>
+              )}
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as "date" | "cadet")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Sort by date</SelectItem>
+                  <SelectItem value="cadet">Sort by cadet</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All statuses</SelectItem>
+                  {statusOptionsForMode.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!hideFlightFilter && (
+                <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Flight" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All flights</SelectItem>
+                    {FLIGHTS.map((f) => (
+                      <SelectItem key={f} value={f}>
+                        {f} Flight
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              {!hideGroupFilter && (
+                <Select value={groupFilter} onValueChange={(v) => setExclusiveFilter("group", v)}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All">All groups</SelectItem>
+                    {scopedGroupOptions.map((g) => (
+                      <SelectItem key={g} value={g}>
+                        {g}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </MobileFiltersButton>
+          </div>
+        </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
+      <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
         <CadetFilterCombobox roster={roster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {isTrueCadreViewer && (
           <Button

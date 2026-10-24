@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary, computeCombinedPercent, absencesRemainingForGoodStanding, type BucketTally } from "../../domain/attendance";
 import { shortDate } from "../../domain/memoAnalytics";
@@ -610,9 +611,77 @@ export function AccountabilityAnalyticsView({
           <BarChart2 className="h-5 w-5 text-primary" />
           Accountability Analytics
         </h2>
+        {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
+        <div className="desktop:hidden">
+          <MobileFiltersButton>
+            <CadetFilterCombobox
+              roster={sortedActiveRoster}
+              value={cadetFilter}
+              onChange={(v) => setExclusiveFilter("cadet", v)}
+              allLabel="All cadets"
+              className="h-8 w-full text-xs"
+            />
+            {!hideFlightFilter && (
+              <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All flights</SelectItem>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} Flight
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!hideGroupFilter && (
+              <Select value={groupFilter} onValueChange={(v) => setExclusiveFilter("group", v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {scopedGroupOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!hideClassFilter && (
+              <Select value={filterClass} onValueChange={(v) => setExclusiveFilter("class", v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">POC + GMC</SelectItem>
+                  {CLASS_OPTIONS.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All")}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Standing" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All standings</SelectItem>
+                <SelectItem value="Good">Good</SelectItem>
+                <SelectItem value="Warning">Warning</SelectItem>
+                <SelectItem value="Hard Limit">Hard Limit</SelectItem>
+              </SelectContent>
+            </Select>
+          </MobileFiltersButton>
+        </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
+      <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
         <CadetFilterCombobox roster={sortedActiveRoster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
           <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>

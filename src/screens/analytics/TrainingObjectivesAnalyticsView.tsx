@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, BarChart3, TrendingUp, CheckCircle2, Clock, ListOrdered, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { PLO_SECTIONS, PLO_SHORT_CODE, FLIGHTS, GROUPS, DEV_LEVELS, GMC_DEV_LEVELS, POC_DEV_LEVELS, deriveClass, type DevLevel, type Flight, type Group, type PloSection } from "../../domain/constants";
 import { computeCohortSummary, computeCompletionByPlo, computeOverdueObjectives, computeMissingObjectivesByCadet, crosstabCellFor, type PloCompletionRow } from "../../domain/analytics";
 import { groupByPlo } from "../../domain/objectiveGrouping";
@@ -207,9 +208,86 @@ export function TrainingObjectivesAnalyticsView({
           <GraduationCap className="h-5 w-5 text-primary" />
           Training Objectives Analytics
         </h2>
+        {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
+        <div className="desktop:hidden">
+          <MobileFiltersButton>
+            <CadetFilterCombobox roster={cadets} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="h-8 w-full text-xs" />
+            {!hideFlightFilter && (
+              <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All flights</SelectItem>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} Flight
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!hideGroupFilter && (
+              <Select value={groupFilter} onValueChange={(v) => setExclusiveFilter("group", v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {scopedGroupOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {availableCohorts.length > 1 && (
+              <Select value={cohortFilter} onValueChange={handleCohortChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Cohort" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">POC + GMC</SelectItem>
+                  {availableCohorts.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Dev Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All dev levels</SelectItem>
+                {devLevelOptions.map((lvl) => (
+                  <SelectItem key={lvl} value={lvl}>
+                    {lvl}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={ploFilter} onValueChange={setPloFilter}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="PLO section" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All PLO sections</SelectItem>
+                {PLO_SECTIONS.map((plo) => (
+                  <SelectItem key={plo} value={plo}>
+                    {plo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </MobileFiltersButton>
+        </div>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3">
+      <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
         <CadetFilterCombobox roster={cadets} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />
         {!hideFlightFilter && (
           <Select value={flightFilter} onValueChange={(v) => setExclusiveFilter("flight", v)}>
@@ -270,7 +348,7 @@ export function TrainingObjectivesAnalyticsView({
           </SelectContent>
         </Select>
         <Select value={ploFilter} onValueChange={setPloFilter}>
-          <SelectTrigger className="w-full phone:landscape:w-64 desktop:w-64">
+          <SelectTrigger className="w-64">
             <SelectValue placeholder="Filter by PLO section" />
           </SelectTrigger>
           <SelectContent>

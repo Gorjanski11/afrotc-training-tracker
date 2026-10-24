@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,9 +73,12 @@ interface Props {
   completions: Completion[];
   pmtEvents: PmtEvent[];
   onSelectCadet: (cadetId: string) => void;
+  /** Only true for a viewer with access to both cohorts -- desktop gets the Stepper up in the nav (TrainingObjectivesApp); phone gets a single press-to-switch button here instead, right next to this screen's own Filters button. */
+  showCohortToggle?: boolean;
+  onToggleCohort?: () => void;
 }
 
-export function DashboardScreen({ cohort, levels, cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
+export function DashboardScreen({ cohort, levels, cadets, catalog, completions, pmtEvents, onSelectCadet, showCohortToggle, onToggleCohort }: Props) {
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
@@ -144,8 +148,14 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
           <LayoutDashboard className="h-5 w-5 text-primary" />
           Roster Dashboard
         </h2>
-        {/* Phone: same filters as the desktop row below, compact and stacked behind this small button instead of shown inline. */}
-        <div className="phone:block desktop:hidden">
+        <div className="flex items-center gap-2 desktop:hidden">
+          {/* Phone: the POC/GMC toggle from the nav above (desktop) becomes a single press-to-switch button here, right next to Filters. */}
+          {showCohortToggle && (
+            <Button type="button" variant="outline" size="sm" onClick={onToggleCohort}>
+              {cohort === "poc" ? "POC" : "GMC"}
+            </Button>
+          )}
+          {/* Phone: same filters as the desktop row below, compact and stacked behind this small button instead of shown inline. */}
           <MobileFiltersButton>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

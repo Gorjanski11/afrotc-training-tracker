@@ -206,11 +206,11 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                     <TableCell>{m.cc.length > 0 ? m.cc.map((c) => c.name).join(", ") : "N/A"}</TableCell>
                     <TableCell>
                       {submittingId === m.id ? (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {file ? (
-                            <span className="flex items-center gap-1.5 text-xs">
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs">
                               <span className="max-w-32 truncate">{file.name}</span>
-                              <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setFile(undefined)}>
+                              <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-xs" onClick={() => setFile(undefined)}>
                                 Change
                               </Button>
                             </span>
@@ -219,7 +219,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                               type="file"
                               accept="application/pdf"
                               onChange={(e) => setFile(e.target.files?.[0])}
-                              className="text-xs text-muted-foreground"
+                              className="min-w-0 max-w-full flex-1 text-xs text-muted-foreground"
                             />
                           )}
                           <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(m)}>
@@ -254,9 +254,9 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   {combineFile ? (
-                    <span className="flex items-center gap-1.5 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5 text-xs">
                       <span className="max-w-32 truncate">{combineFile.name}</span>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setCombineFile(undefined)}>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-xs" onClick={() => setCombineFile(undefined)}>
                         Change
                       </Button>
                     </span>
@@ -265,7 +265,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                       type="file"
                       accept="application/pdf"
                       onChange={(e) => setCombineFile(e.target.files?.[0])}
-                      className="text-xs text-muted-foreground"
+                      className="min-w-0 max-w-full flex-1 text-xs text-muted-foreground"
                     />
                   )}
                   <Button
@@ -364,11 +364,11 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                   </p>
                 )}
                 <PdfPreview url={verifyingMemo.markupPdfUrl ?? verifyingMemo.pdfUrl ?? ""} />
-                <div className="flex items-center gap-2 border-t border-input pt-4">
+                <div className="flex flex-wrap items-center gap-2 border-t border-input pt-4">
                   {file ? (
-                    <span className="flex items-center gap-1.5 text-xs">
+                    <span className="flex min-w-0 items-center gap-1.5 text-xs">
                       <span className="max-w-48 truncate">{file.name}</span>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setFile(undefined)}>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-xs" onClick={() => setFile(undefined)}>
                         Change
                       </Button>
                     </span>
@@ -377,7 +377,7 @@ export function SubmitDeviationMemoScreen({ cadet, memos, updateMemo }: Props) {
                       type="file"
                       accept="application/pdf"
                       onChange={(e) => setFile(e.target.files?.[0])}
-                      className="text-xs text-muted-foreground"
+                      className="min-w-0 max-w-full flex-1 text-xs text-muted-foreground"
                     />
                   )}
                   <Button size="sm" disabled={!file || busy} onClick={() => setConfirmingMemo(verifyingMemo)}>

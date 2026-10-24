@@ -146,15 +146,18 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                 </TabsTrigger>
               )}
             </TabsList>
+            {/* Desktop only -- phone gets a single press-to-switch button next to the Dashboard's own Filters button instead (DashboardScreen). */}
             {screen === "dashboard" && cohortAccess === "full" && (
-              <Stepper
-                options={[
-                  { value: "poc", label: "POC" },
-                  { value: "gmc", label: "GMC" },
-                ]}
-                value={dashboardCohort}
-                onChange={(v) => setDashboardCohort(v as "poc" | "gmc")}
-              />
+              <div className="hidden desktop:block">
+                <Stepper
+                  options={[
+                    { value: "poc", label: "POC" },
+                    { value: "gmc", label: "GMC" },
+                  ]}
+                  value={dashboardCohort}
+                  onChange={(v) => setDashboardCohort(v as "poc" | "gmc")}
+                />
+              </div>
             )}
           </nav>
 
@@ -183,6 +186,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                   completions={completionsState.completions}
                   pmtEvents={pmtEventsState.events}
                   onSelectCadet={goToCadet}
+                  showCohortToggle={cohortAccess === "full"}
+                  onToggleCohort={() => setDashboardCohort((c) => (c === "poc" ? "gmc" : "poc"))}
                 />
               </AnimatedPanel>
             </TabsContent>

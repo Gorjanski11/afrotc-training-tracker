@@ -385,11 +385,11 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                     </div>
                     {m.returnReason && <p className="mb-2 text-sm text-muted-foreground">Reason: {m.returnReason}</p>}
                     {resubmittingId === m.id ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {resubmitFile ? (
-                          <span className="flex items-center gap-1.5 text-xs">
+                          <span className="flex min-w-0 items-center gap-1.5 text-xs">
                             <span className="max-w-40 truncate">{resubmitFile.name}</span>
-                            <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-xs" onClick={() => setResubmitFile(undefined)}>
+                            <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-xs" onClick={() => setResubmitFile(undefined)}>
                               Change
                             </Button>
                           </span>
@@ -398,7 +398,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                             type="file"
                             accept="application/pdf"
                             onChange={(e) => setResubmitFile(e.target.files?.[0])}
-                            className="text-xs text-muted-foreground"
+                            className="min-w-0 max-w-full flex-1 text-xs text-muted-foreground"
                           />
                         )}
                         <Button size="sm" disabled={!resubmitFile || resubmitBusy} onClick={() => handleResubmit(m)}>

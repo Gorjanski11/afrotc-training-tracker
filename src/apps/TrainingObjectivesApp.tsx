@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LayoutDashboard, UserRound, BookOpen } from "lucide-react";
-import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { FilterSubtabDock } from "@/components/mobile/FilterSubtabDock";
 import { C3CRankIcon, CCaptRankIcon } from "@/components/mobile/rankIcons";
 import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
@@ -54,6 +54,10 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   const showGmc = cohortAccess === "gmc" || cohortAccess === "full";
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [selectedCadetId, setSelectedCadetId] = useState<string | undefined>();
+  // Phone-only: the FilterSubtabDock's filter face -- whichever sub-screen is active portals its own
+  // filter controls into this (Section: TO's tab dual-capsule mobile nav). Stays null for a screen
+  // with nothing to filter (Cadet Review).
+  const [mobileFilterTarget, setMobileFilterTarget] = useState<HTMLDivElement | null>(null);
   // Dashboard-only GMC/POC toggle, for a viewer with access to both cohorts -- a poc-only or
   // gmc-only viewer's Dashboard is just always their one cohort, no toggle shown.
   const [dashboardCohort, setDashboardCohort] = useState<"poc" | "gmc">("poc");
@@ -158,12 +162,14 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
             )}
           </nav>
 
-          {/* Phone-only: off-canvas subtab nav, swipe from the left edge (bottom edge in landscape) instead of the desktop TabsList above. */}
-          <EdgeSidebar
+          {/* Phone-only: the two-face filter/subtabs dock, replacing the desktop TabsList + inline filters above. Always visible (no open/close) -- see FilterSubtabDock. */}
+          <FilterSubtabDock
             title="Training Objectives"
-            active={screen}
-            onChange={(v) => setScreen(v)}
-            items={[
+            activeSubtab={screen}
+            onChangeSubtab={(v) => setScreen(v)}
+            hasFilters={screen !== "cadet"}
+            onFilterTargetChange={setMobileFilterTarget}
+            subtabItems={[
               { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
               ...(selectedCadetId ? [{ value: "cadet" as const, label: "Cadet Review", icon: UserRound }] : []),
               { value: "reference", label: "Reference Library", icon: BookOpen },
@@ -183,6 +189,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                   completions={completionsState.completions}
                   pmtEvents={pmtEventsState.events}
                   onSelectCadet={goToCadet}
+                  mobileFilterTarget={screen === "dashboard" ? mobileFilterTarget : null}
                 />
               </AnimatedPanel>
             </TabsContent>
@@ -206,7 +213,11 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
             </TabsContent>
             <TabsContent value="reference">
               <AnimatedPanel>
-                <ReferenceLibraryScreen sections={catalogState.sections} devLevels={accessLevels} />
+                <ReferenceLibraryScreen
+                  sections={catalogState.sections}
+                  devLevels={accessLevels}
+                  mobileFilterTarget={screen === "reference" ? mobileFilterTarget : null}
+                />
               </AnimatedPanel>
             </TabsContent>
             {showPoc && (
@@ -226,6 +237,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                     hideFlightFilter
                     userEmail={userEmail}
                     roster={fullRosterNoCadre}
+                    mobileFilterTarget={screen === "pocLog" ? mobileFilterTarget : null}
                   />
                 </AnimatedPanel>
               </TabsContent>
@@ -247,6 +259,7 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                     hideFlightFilter={unitScope.kind === "flight"}
                     userEmail={userEmail}
                     roster={fullRosterNoCadre}
+                    mobileFilterTarget={screen === "gmcLog" ? mobileFilterTarget : null}
                   />
                 </AnimatedPanel>
               </TabsContent>

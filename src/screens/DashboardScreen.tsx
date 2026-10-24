@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertTriangle, LayoutDashboard, Search, Users, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFilterPortal } from "@/components/mobile/MobileFilterPortal";
 import { PLO_SHORT_CODE, FLIGHTS, GROUPS, type DevLevel, type Flight, type Group, type PloSection } from "../domain/constants";
 import { computeCadetProgress, shouldFlagCadet } from "../domain/progress";
 import { computeCohortSummary, computeMissingObjectivesByCadet } from "../domain/analytics";
@@ -71,9 +72,11 @@ interface Props {
   completions: Completion[];
   pmtEvents: PmtEvent[];
   onSelectCadet: (cadetId: string) => void;
+  /** Phone-only: when set (this screen is the TO's tab's currently active one), the search/dev-level/group-flight filters below also portal a compact copy into the FilterSubtabDock instead of only showing inline. */
+  mobileFilterTarget?: HTMLDivElement | null;
 }
 
-export function DashboardScreen({ cohort, levels, cadets, catalog, completions, pmtEvents, onSelectCadet }: Props) {
+export function DashboardScreen({ cohort, levels, cadets, catalog, completions, pmtEvents, onSelectCadet, mobileFilterTarget = null }: Props) {
   const [devLevelFilter, setDevLevelFilter] = useState<DevLevel | "All">("All");
   const [groupFilter, setGroupFilter] = useState<Group | "All">("All");
   const [flightFilter, setFlightFilter] = useState<Flight | "All">("All");
@@ -202,7 +205,7 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
         </DialogContent>
       </Dialog>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+      <div className="mb-4 hidden flex-wrap items-center gap-4 desktop:flex">
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Look up a cadet by name..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -254,6 +257,62 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
           Flagging cadets with at least one Training Objective that's run out of PMTs (all its sessions have passed with nothing logged).
         </span>
       </div>
+
+      {/* Phone: same filters, compact and stacked, portaled into the TO's tab's floating filter capsule instead of shown inline. */}
+      <MobileFilterPortal target={mobileFilterTarget}>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-background/50" />
+          <Input
+            placeholder="Search..."
+            className="h-8 border-background/20 bg-background/10 pl-7 text-xs text-background placeholder:text-background/50"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>
+          <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+            <SelectValue placeholder="Level" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All levels</SelectItem>
+            {levels.map((lvl) => (
+              <SelectItem key={lvl} value={lvl}>
+                {lvl}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {cohort === "poc" && (
+          <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as Group | "All")}>
+            <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+              <SelectValue placeholder="Group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All groups</SelectItem>
+              {GROUPS.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {cohort === "gmc" && (
+          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
+            <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {FLIGHTS.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </MobileFilterPortal>
 
       <div className="overflow-x-auto">
       <Table aria-label="Cadet roster">

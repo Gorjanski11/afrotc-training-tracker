@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFilterPortal } from "@/components/mobile/MobileFilterPortal";
 import { meetsRequirement } from "../domain/progress";
 import { compareByLastName, formatCadetName } from "../domain/nameUtils";
 import { compareObjectiveNumbers } from "../domain/objectiveGrouping";
@@ -67,6 +68,8 @@ interface Props {
   /** Full (non-cohort-scoped, no-Cadre) roster, used only to look up the signed-in evaluator's own name. */
   roster: Cadet[];
   userEmail: string | null | undefined;
+  /** Phone-only: when set (this screen is the TO's tab's currently active one), the filter row below also portals a compact copy into the FilterSubtabDock instead of only showing inline. */
+  mobileFilterTarget?: HTMLDivElement | null;
 }
 
 const NONE = "__none__";
@@ -130,6 +133,7 @@ export function QuickLogScreen({
   hideFlightFilter,
   roster,
   userEmail,
+  mobileFilterTarget = null,
 }: Props) {
   // Section 5: every quick-marked entry is attributed to the signed-in person, by name lookup
   // against the roster -- to backdate or credit a different evaluator, edit the entry from Cadet
@@ -483,7 +487,7 @@ export function QuickLogScreen({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+      <div className="mb-4 hidden flex-wrap items-center gap-4 desktop:flex">
         <div className="relative w-56">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Filter cadets..." className="pl-8" value={cadetSearch} onChange={(e) => setCadetSearch(e.target.value)} />
@@ -563,6 +567,96 @@ export function QuickLogScreen({
           </SelectContent>
         </Select>
       </div>
+
+      {/* Phone: same filters, compact and stacked, portaled into the TO's tab's floating filter capsule instead of shown inline. */}
+      <MobileFilterPortal target={mobileFilterTarget}>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-background/50" />
+          <Input
+            placeholder="Cadets..."
+            className="h-8 border-background/20 bg-background/10 pl-7 text-xs text-background placeholder:text-background/50"
+            value={cadetSearch}
+            onChange={(e) => setCadetSearch(e.target.value)}
+          />
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-background/50" />
+          <Input
+            placeholder="TO columns..."
+            className="h-8 border-background/20 bg-background/10 pl-7 text-xs text-background placeholder:text-background/50"
+            value={objectiveSearch}
+            onChange={(e) => setObjectiveSearch(e.target.value)}
+          />
+        </div>
+        {availableTWs.length > 0 && (
+          <Select value={twFilter === undefined ? "All" : String(twFilter)} onValueChange={(v) => setTwFilter(v === "All" ? undefined : Number(v))}>
+            <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+              <SelectValue placeholder="TW" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All weeks</SelectItem>
+              {availableTWs.map((tw) => (
+                <SelectItem key={tw} value={String(tw)}>
+                  TW {tw}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {!hideFlightFilter && availableFlights.length > 0 && (
+          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
+            <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+              <SelectValue placeholder="Flight" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All flights</SelectItem>
+              {availableFlights.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f} Flight
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {availableLevels.length > 0 && (
+          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as DevLevel | "All")}>
+            <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+              <SelectValue placeholder="Level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All levels</SelectItem>
+              {availableLevels.map((l) => (
+                <SelectItem key={l} value={l}>
+                  {l}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className={cn(
+            "h-8 border-background/20 bg-background/10 text-xs text-background hover:bg-background/20",
+            showAllCadets && "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+          )}
+          title="Default: only cadets with an overdue Training Objective"
+          onClick={() => setShowAllCadets((v) => !v)}
+        >
+          Show All
+        </Button>
+        <Select value={columnScope} onValueChange={(v) => setColumnScope(v as ColumnScope)}>
+          <SelectTrigger className="h-8 border-background/20 bg-background/10 text-xs text-background">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="overdueAndScheduledOptional">PMT Schedule</SelectItem>
+            <SelectItem value="all">Show All</SelectItem>
+          </SelectContent>
+        </Select>
+      </MobileFilterPortal>
 
       <div className="overflow-x-auto rounded-md border border-input">
         <Table aria-label="Quick log grid">

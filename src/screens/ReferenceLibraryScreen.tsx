@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { BookOpen, Search } from "lucide-react";
+import { MobileFilterPortal } from "@/components/mobile/MobileFilterPortal";
 import { DEV_LEVELS, type DevLevel } from "../domain/constants";
 import type { ProgramLearningOutcomeSection, TrainingObjective } from "../domain/types";
 
@@ -12,6 +13,8 @@ interface Props {
   sections: ProgramLearningOutcomeSection[];
   /** Restricts the proficiency table to one cohort's levels (POC or GMC) -- all four if omitted. */
   devLevels?: readonly DevLevel[];
+  /** Phone-only: when set (this screen is the TO's tab's currently active one), the search box also portals a compact copy into the FilterSubtabDock instead of only showing inline. */
+  mobileFilterTarget?: HTMLDivElement | null;
 }
 
 function matchesSearch(objective: TrainingObjective, query: string): boolean {
@@ -35,7 +38,7 @@ function matchesSearch(objective: TrainingObjective, query: string): boolean {
  * Additional Information), organized Program Learning Outcome -> sub-area ->
  * objective. No login required, no completion affordance -- open to everyone.
  */
-export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Props) {
+export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS, mobileFilterTarget = null }: Props) {
   const [search, setSearch] = useState("");
   const [manualOpen, setManualOpen] = useState<string[]>([]);
 
@@ -63,7 +66,7 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
         Reference Library
       </h2>
 
-      <div className="relative mb-4 w-80">
+      <div className="relative mb-4 hidden w-full desktop:block desktop:w-80">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search by number, title, requirements, performance measures..."
@@ -72,6 +75,18 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+      {/* Phone: shown via the TO's tab's floating filter capsule instead of inline. */}
+      <MobileFilterPortal target={mobileFilterTarget}>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-background/50" />
+          <Input
+            placeholder="Search..."
+            className="h-8 border-background/20 bg-background/10 pl-7 text-xs text-background placeholder:text-background/50"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </MobileFilterPortal>
 
       <Accordion type="multiple" value={openValue} onValueChange={(v) => !searching && setManualOpen(v)}>
         {filteredSections.map((section) => (

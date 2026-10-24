@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
 
@@ -38,7 +39,15 @@ export function EdgeSidebar<T extends string>({ title, items, active, onChange }
     landscapeSwipe.onTouchEnd(e);
   };
 
-  return (
+  // Portaled straight to <body> -- every call site renders this inside App.tsx's AnimatedPanel
+  // (a motion.div that keeps an inline `transform` even at rest), and any ancestor `transform`
+  // turns `position: fixed` descendants into "fixed relative to that ancestor" instead of the real
+  // viewport (CSS containing-block rules). Left in place, the closed-state off-screen translate
+  // would get measured against that smaller transformed box instead of the viewport, widening
+  // whatever scrollable area contains it and clipping real content on screens that don't scroll
+  // that whole page horizontally. Portaling to body sidesteps the whole problem regardless of which
+  // ancestor is transformed.
+  return createPortal(
     <>
       {/* Edge swipe-catcher strip, always present so a swipe works even while closed; widened slightly past the visible handle for an easier grab target. */}
       <div
@@ -113,6 +122,7 @@ export function EdgeSidebar<T extends string>({ title, items, active, onChange }
           );
         })}
       </div>
-    </>
+    </>,
+    document.body
   );
 }

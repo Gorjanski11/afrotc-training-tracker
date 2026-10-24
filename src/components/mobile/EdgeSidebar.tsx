@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEdgeSwipe } from "@/hooks/useEdgeSwipe";
 
@@ -19,11 +18,10 @@ interface Props<T extends string> {
 /**
  * Phone-only off-canvas subtab nav (Section: mobile nav redesign) -- any main hub tab with its own
  * sub-screens (Training Objectives, Memo Submission, Memo Review, Analytics, Settings) gets one of
- * these instead of showing its desktop TabsList/sidebar. Pulls out from the left edge by swiping from
- * the screen's outermost edge, or by tapping the small handle tab left peeking in -- rotates to the
+ * these instead of showing its desktop TabsList/sidebar. A small floating rounded capsule (icons
+ * only, no panel/header) pulls out from the left edge by swiping from the screen's outermost edge, or
+ * by tapping the small handle nub left peeking in -- rotates to a horizontal capsule hugging the
  * bottom edge in landscape, where it swaps places with LiquidTabBar (which moves to the right edge).
- * Deliberately plain/solid (not ".glass", no spring physics) so it reads as a distinct, simpler
- * control from the Liquid Glass bottom bar -- matches the reference "Objects" sidebar's flat style.
  */
 export function EdgeSidebar<T extends string>({ title, items, active, onChange }: Props<T>) {
   const [open, setOpen] = useState(false);
@@ -58,62 +56,62 @@ export function EdgeSidebar<T extends string>({ title, items, active, onChange }
             onClick={openIt}
             aria-label={`Open ${title} navigation`}
             className={cn(
-              "absolute rounded-e-md bg-foreground/70 shadow-md",
-              "left-0 top-1/2 h-12 w-2.5 -translate-y-1/2",
-              "phone:landscape:left-1/2 phone:landscape:top-auto phone:landscape:bottom-0 phone:landscape:h-2.5 phone:landscape:w-12 phone:landscape:-translate-x-1/2 phone:landscape:translate-y-0 phone:landscape:rounded-e-none phone:landscape:rounded-t-md"
+              "absolute rounded-full bg-foreground/80 shadow-md",
+              "left-1.5 top-1/2 h-9 w-2 -translate-y-1/2",
+              "phone:landscape:left-1/2 phone:landscape:top-auto phone:landscape:bottom-1.5 phone:landscape:h-2 phone:landscape:w-9 phone:landscape:-translate-x-1/2 phone:landscape:translate-y-0"
             )}
           />
         )}
       </div>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-40 hidden bg-foreground/30 phone:block"
-          onClick={closeIt}
-          aria-hidden="true"
-        />
-      )}
+      {open && <div className="fixed inset-0 z-40 hidden bg-foreground/10 phone:block" onClick={closeIt} aria-hidden="true" />}
 
+      {/* Floating capsule -- vertically centered off the left edge in portrait, horizontally centered off the bottom edge in landscape. */}
       <div
         className={cn(
-          "fixed z-50 hidden -translate-x-full flex-col bg-card text-card-foreground shadow-xl transition-transform duration-200 ease-out phone:flex",
-          "inset-y-0 left-0 w-64",
-          "phone:landscape:inset-x-0 phone:landscape:inset-y-auto phone:landscape:bottom-0 phone:landscape:left-0 phone:landscape:h-20 phone:landscape:w-auto phone:landscape:translate-x-0 phone:landscape:translate-y-full phone:landscape:flex-row phone:landscape:items-stretch",
+          "fixed left-3 top-1/2 z-50 hidden w-14 -translate-x-24 -translate-y-1/2 flex-col items-center gap-1 rounded-full bg-foreground py-3 shadow-xl transition-transform duration-200 ease-out phone:flex",
+          "phone:landscape:left-1/2 phone:landscape:top-auto phone:landscape:bottom-3 phone:landscape:w-auto phone:landscape:-translate-x-1/2 phone:landscape:translate-y-24 phone:landscape:flex-row phone:landscape:gap-1.5 phone:landscape:px-3 phone:landscape:py-2",
           open && "translate-x-0 phone:landscape:translate-y-0"
         )}
+        role="navigation"
+        aria-label={`${title} navigation`}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-input px-3 py-2 phone:landscape:hidden">
-          <span className="text-sm font-semibold">{title}</span>
-          <button type="button" onClick={closeIt} aria-label="Close navigation" className="rounded-full p-1.5 hover:bg-accent">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-2 phone:landscape:flex-row phone:landscape:items-center phone:landscape:justify-around phone:landscape:gap-1 phone:landscape:overflow-x-auto phone:landscape:p-1.5">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isActive = item.value === active;
-            return (
+        {items.map((item) => {
+          const Icon = item.icon;
+          const isActive = item.value === active;
+          return (
+            <div key={item.value} className="relative flex shrink-0">
+              {isActive && (
+                <span
+                  className={cn(
+                    "pointer-events-none absolute whitespace-nowrap rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-md",
+                    "left-full top-1/2 ms-2 -translate-y-1/2",
+                    "phone:landscape:left-1/2 phone:landscape:top-auto phone:landscape:bottom-full phone:landscape:ms-0 phone:landscape:mb-2 phone:landscape:-translate-x-1/2 phone:landscape:translate-y-0"
+                  )}
+                >
+                  {item.label}
+                </span>
+              )}
               <button
-                key={item.value}
                 type="button"
                 onClick={() => {
                   onChange(item.value);
                   closeIt();
                 }}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm",
-                  "phone:landscape:flex-col phone:landscape:gap-0.5 phone:landscape:px-2.5 phone:landscape:py-1 phone:landscape:text-[10px]",
-                  isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                  isActive ? "bg-background text-foreground" : "text-background/70"
                 )}
               >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <Icon className="h-5 w-5" />
               </button>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </>
   );

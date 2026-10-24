@@ -357,6 +357,12 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
 
   return (
     <div>
+      {/* Phone: this screen's own tab label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. */}
+      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">
+        <FileText className="h-5 w-5 text-primary" />
+        Absence Memo
+      </h2>
+
       {justSubmitted && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-success/50 bg-success/10 p-3 text-sm text-success">
           <CheckCircle2 className="h-4 w-4 shrink-0" />

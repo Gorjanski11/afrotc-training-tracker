@@ -70,6 +70,9 @@ interface Props {
   userEmail: string | null | undefined;
   /** Phone-only: when set (this screen is the TO's tab's currently active one), the filter row below also portals a compact copy into the FilterSubtabDock instead of only showing inline. */
   mobileFilterTarget?: HTMLDivElement | null;
+  /** This screen is shared by POC Log and GMC Log -- its own tab label is icon-only on phone, so the caller passes which title/icon to show inline there. */
+  mobileTitle: string;
+  mobileTitleIcon: React.ComponentType<{ className?: string }>;
 }
 
 const NONE = "__none__";
@@ -134,6 +137,8 @@ export function QuickLogScreen({
   roster,
   userEmail,
   mobileFilterTarget = null,
+  mobileTitle,
+  mobileTitleIcon: MobileTitleIcon,
 }: Props) {
   // Section 5: every quick-marked entry is attributed to the signed-in person, by name lookup
   // against the roster -- to backdate or credit a different evaluator, edit the entry from Cadet
@@ -477,6 +482,12 @@ export function QuickLogScreen({
 
   return (
     <div>
+      {/* Phone: this screen's own tab label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. */}
+      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">
+        <MobileTitleIcon className="h-5 w-5 text-primary" />
+        {mobileTitle}
+      </h2>
+
       <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">
           {saveError && <span className="text-sm text-destructive">{saveError}</span>}

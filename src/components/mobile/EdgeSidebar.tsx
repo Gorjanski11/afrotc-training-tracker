@@ -83,7 +83,7 @@ export function EdgeSidebar<T extends string>({ title, items, active, onChange }
           const isActive = item.value === active;
           return (
             <div key={item.value} className="relative flex shrink-0">
-              {isActive && (
+              {isActive && open && (
                 <span
                   className={cn(
                     "pointer-events-none absolute whitespace-nowrap rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-md",

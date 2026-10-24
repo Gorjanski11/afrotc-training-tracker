@@ -238,6 +238,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                     userEmail={userEmail}
                     roster={fullRosterNoCadre}
                     mobileFilterTarget={screen === "pocLog" ? mobileFilterTarget : null}
+                    mobileTitle="POC Log"
+                    mobileTitleIcon={CCaptRankIcon}
                   />
                 </AnimatedPanel>
               </TabsContent>
@@ -260,6 +262,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
                     userEmail={userEmail}
                     roster={fullRosterNoCadre}
                     mobileFilterTarget={screen === "gmcLog" ? mobileFilterTarget : null}
+                    mobileTitle="GMC Log"
+                    mobileTitleIcon={C3CRankIcon}
                   />
                 </AnimatedPanel>
               </TabsContent>

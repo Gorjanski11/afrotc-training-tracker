@@ -94,7 +94,7 @@ export function FilterSubtabDock<T extends string>({
           const isActive = item.value === activeSubtab;
           return (
             <div key={item.value} className="relative flex shrink-0">
-              {isActive && (
+              {isActive && mode === "subtabs" && (
                 <span className="pointer-events-none absolute left-full top-1/2 ms-2 -translate-y-1/2 whitespace-nowrap rounded-full bg-foreground px-3 py-1.5 text-xs font-medium text-background shadow-md phone:landscape:left-1/2 phone:landscape:top-auto phone:landscape:bottom-full phone:landscape:ms-0 phone:landscape:mb-2 phone:landscape:-translate-x-1/2 phone:landscape:translate-y-0">
                   {item.label}
                 </span>

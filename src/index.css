@@ -185,12 +185,12 @@
   --chart-ink-muted: #a9a7a1;
 }
 
-/* USAF mode's wallpaper -- the Air Force roundel (wings + star), background flood-filled to
-   transparent and its alpha scaled down to a quiet watermark level (public/usaf-star.png),
+/* USAF mode's wallpaper -- the Air Force Wings (Hap Arnold Wings), already a transparent white PNG
+   on arrival -- just its alpha scaled down to a quiet watermark level (public/usaf-wings.png),
    centered and fixed behind the content. Same treatment as USSF's Delta watermark, no starfield
    here -- that pattern was asked for specifically on the USSF side. */
 [data-theme="usaf"] body {
-  background-image: url("/afrotc-training-tracker/usaf-star.png");
+  background-image: url("/afrotc-training-tracker/usaf-wings.png");
   background-repeat: no-repeat;
   background-size: min(42vw, 420px) auto;
   background-position: center;

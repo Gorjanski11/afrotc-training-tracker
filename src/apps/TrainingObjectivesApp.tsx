@@ -12,7 +12,7 @@ import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAttendance } from "../hooks/useAttendance";
 import { GMC_DEV_LEVELS, POC_DEV_LEVELS, DEV_LEVELS, type DevLevel } from "../domain/constants";
 import { applyUnitScope, excludeCadre, excludeInactive, type TrainingObjectivesAccess, type UnitScope } from "../domain/access";
-import { Stepper } from "../components/analytics/Stepper";
+import { LiquidToggle } from "../components/analytics/LiquidToggle";
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { CadetDetailScreen } from "../screens/CadetDetailScreen";
 import { ReferenceLibraryScreen } from "../screens/ReferenceLibraryScreen";
@@ -149,7 +149,8 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
             {/* Desktop only -- phone gets a single press-to-switch button next to the Dashboard's own Filters button instead (DashboardScreen). */}
             {screen === "dashboard" && cohortAccess === "full" && (
               <div className="hidden desktop:block">
-                <Stepper
+                <LiquidToggle
+                  layoutId="to-dashboard-cohort-toggle"
                   options={[
                     { value: "poc", label: "POC" },
                     { value: "gmc", label: "GMC" },

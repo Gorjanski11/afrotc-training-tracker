@@ -18,8 +18,7 @@ interface Props<T extends string> {
 /**
  * Small two-ish-option segmented switch with a frosted "liquid glass" pill that glides to whichever
  * option is selected -- same sliding-highlight mechanic as LiquidTabBar's bottom nav, scaled down for
- * an inline control. Distinct from Stepper (components/analytics/Stepper.tsx), which is a prev/next
- * arrow slider for larger option sets, not a compact switch.
+ * an inline control. Replaced the old prev/next-arrow Stepper everywhere it was used as a toggle.
  */
 export function LiquidToggle<T extends string>({ options, value, onChange, layoutId, className }: Props<T>) {
   return (

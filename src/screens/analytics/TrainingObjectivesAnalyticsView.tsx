@@ -16,7 +16,7 @@ import { SIX_ONE_PARENT_ID, computeSixOneRollup } from "../../domain/sixOneRollu
 import { compareByLastName, formatCadetNameCompact } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
 import { CadetObjectiveTimelineTable } from "../../components/CadetObjectiveTimelineTable";
-import { Stepper } from "../../components/analytics/Stepper";
+import { LiquidToggle } from "../../components/analytics/LiquidToggle";
 import type { UnitScope } from "../../domain/access";
 import type { Cadet, Completion, PmtEvent, TrainingObjective } from "../../domain/types";
 
@@ -456,7 +456,8 @@ export function TrainingObjectivesAnalyticsView({
             <BarChart3 className="h-4 w-4 text-primary" />
             {cadetView === "crosstab" ? "Completed TO's by Cadet" : "PMT Timeline"}
           </CardTitle>
-          <Stepper
+          <LiquidToggle
+            layoutId="cadet-view-toggle"
             options={[
               { value: "crosstab", label: "Completed TO's" },
               { value: "timeline", label: "PMT Timeline" },

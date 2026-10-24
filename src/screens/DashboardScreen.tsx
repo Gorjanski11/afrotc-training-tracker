@@ -73,7 +73,7 @@ interface Props {
   completions: Completion[];
   pmtEvents: PmtEvent[];
   onSelectCadet: (cadetId: string) => void;
-  /** Only true for a viewer with access to both cohorts -- desktop gets the Stepper up in the nav (TrainingObjectivesApp); phone gets a single press-to-switch button here instead, right next to this screen's own Filters button. */
+  /** Only true for a viewer with access to both cohorts -- desktop gets the LiquidToggle up in the nav (TrainingObjectivesApp); phone gets a single press-to-switch button here instead, right next to this screen's own Filters button. */
   showCohortToggle?: boolean;
   onToggleCohort?: () => void;
 }

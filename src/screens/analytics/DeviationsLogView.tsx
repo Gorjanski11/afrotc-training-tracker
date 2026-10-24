@@ -19,7 +19,7 @@ import {
   type DeviationRowLabel,
 } from "../../domain/deviationAnalytics";
 import { compareByLastName, formatCadetNameCompact } from "../../domain/nameUtils";
-import { Stepper } from "../../components/analytics/Stepper";
+import { LiquidToggle } from "../../components/analytics/LiquidToggle";
 import type { UnitScope } from "../../domain/access";
 import type { Cadet, DeviationMemo } from "../../domain/types";
 
@@ -255,7 +255,12 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
                 <PieChartIcon className="h-4 w-4 text-primary" />
                 Deviations by {unitAxis === "flight" ? "Flight" : "Group"}
               </CardTitle>
-              <Stepper options={UNIT_AXIS_OPTIONS} value={unitAxis} onChange={(v) => setUnitAxis(v as "flight" | "group")} />
+              <LiquidToggle
+                layoutId="deviations-by-unit-axis-toggle"
+                options={UNIT_AXIS_OPTIONS}
+                value={unitAxis}
+                onChange={(v) => setUnitAxis(v as "flight" | "group")}
+              />
             </CardHeader>
             <CardContent>
               {pieData.length === 0 ? (

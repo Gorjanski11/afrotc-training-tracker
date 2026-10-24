@@ -27,7 +27,7 @@ import {
 } from "../../domain/accountabilityAnalytics";
 import { compareByLastName, formatCadetName, formatCadetNameCompact } from "../../domain/nameUtils";
 import { CadetFilterCombobox, ALL_CADETS } from "../../components/accountability/CadetFilterCombobox";
-import { Stepper } from "../../components/analytics/Stepper";
+import { LiquidToggle } from "../../components/analytics/LiquidToggle";
 import type { UnitScope } from "../../domain/access";
 import type { DashboardNavIntent } from "../../domain/dashboardNav";
 import type { Attendance, PmtEvent, Cadet, AbsenceMemo } from "../../domain/types";
@@ -899,7 +899,9 @@ export function AccountabilityAnalyticsView({
                 <Scale className="h-4 w-4 text-primary" />
                 {hasCadetFilter && selectedCadet ? `PT vs LLAB/FM/D&C for ${formatCadetName(selectedCadet)}` : "PT vs LLAB/FM/D&C by unit"}
               </CardTitle>
-              {showComparison && <Stepper options={AXIS_OPTIONS} value={axis} onChange={(v) => setAxis(v as UnitAxis)} />}
+              {showComparison && (
+                <LiquidToggle layoutId="pt-vs-llabfm-axis-toggle" options={AXIS_OPTIONS} value={axis} onChange={(v) => setAxis(v as UnitAxis)} />
+              )}
             </CardHeader>
             <CardContent>
               {!showComparison ? (
@@ -982,7 +984,8 @@ export function AccountabilityAnalyticsView({
               Master attendance table
             </CardTitle>
             {!isCombinedTableView && (
-              <Stepper
+              <LiquidToggle
+                layoutId="master-table-bucket-toggle"
                 options={[
                   { value: "PT", label: "PT" },
                   { value: "LLAB_FM", label: "LLAB/FM/D&C" },

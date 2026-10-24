@@ -129,6 +129,17 @@ export function MemorandumsAnalyticsView({
   const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [mode, setMode] = useState<ViewMode>("all");
   const [sortBy, setSortBy] = useState<"date" | "cadet">("date");
+  // Local to this view (unlike Flight/Group/Cadet, which are lifted up so they survive switching
+  // sub-tabs) -- each ViewMode has its own status universe (Absence/Deviation barely overlap), so a
+  // value from one wouldn't mean anything in another. Resets to "All" on every mode switch rather
+  // than risk silently carrying over a status that doesn't exist on the new mode.
+  const [statusFilter, setStatusFilter] = useState<string>("All");
+  const handleModeChange = (v: ViewMode) => {
+    setMode(v);
+    setStatusFilter("All");
+  };
+  const statusOptionsForMode: string[] =
+    mode === "absence" ? ABSENCE_STATUS_OPTIONS : mode === "deviation" ? DEVIATION_STATUS_OPTIONS : [...new Set([...ABSENCE_STATUS_OPTIONS, ...DEVIATION_STATUS_OPTIONS])];
 
   const setExclusiveFilter = (which: "cadet" | "flight" | "group", value: string) => {
     onCadetFilterChange(which === "cadet" ? value : ALL_CADETS);
@@ -160,25 +171,28 @@ export function MemorandumsAnalyticsView({
   const pmtEventsById = useMemo(() => new Map(events.map((e) => [e.id, e])), [events]);
 
   const combined = useMemo(() => {
-    const rows = filterByRosterScope(
+    let rows = filterByRosterScope(
       combineMemos(ownerScopedAbsence, ownerScopedDeviation, pmtEventsById),
       roster,
       cadetFilter === ALL_CADETS ? "All" : cadetFilter,
       flightFilter,
       groupFilter
     );
+    if (statusFilter !== "All") rows = rows.filter((r) => r.status === statusFilter);
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.primaryDate.localeCompare(a.primaryDate));
-  }, [ownerScopedAbsence, ownerScopedDeviation, pmtEventsById, roster, cadetFilter, flightFilter, groupFilter, sortBy]);
+  }, [ownerScopedAbsence, ownerScopedDeviation, pmtEventsById, roster, cadetFilter, flightFilter, groupFilter, statusFilter, sortBy]);
   const filteredAbsence = useMemo(() => {
-    const rows = filterByRosterScope(ownerScopedAbsence, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
+    let rows = filterByRosterScope(ownerScopedAbsence, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
+    if (statusFilter !== "All") rows = rows.filter((m) => m.status === statusFilter);
     return sortBy === "cadet"
       ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName))
       : rows.sort((a, b) => dateMissedFor(b, pmtEventsById).localeCompare(dateMissedFor(a, pmtEventsById)));
-  }, [ownerScopedAbsence, roster, cadetFilter, flightFilter, groupFilter, sortBy, pmtEventsById]);
+  }, [ownerScopedAbsence, roster, cadetFilter, flightFilter, groupFilter, statusFilter, sortBy, pmtEventsById]);
   const filteredDeviation = useMemo(() => {
-    const rows = filterByRosterScope(ownerScopedDeviation, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
+    let rows = filterByRosterScope(ownerScopedDeviation, roster, cadetFilter === ALL_CADETS ? "All" : cadetFilter, flightFilter, groupFilter);
+    if (statusFilter !== "All") rows = rows.filter((m) => m.status === statusFilter);
     return sortBy === "cadet" ? rows.sort((a, b) => compareByLastName(a.cadetName, b.cadetName)) : rows.sort((a, b) => b.dateAssigned.localeCompare(a.dateAssigned));
-  }, [ownerScopedDeviation, roster, cadetFilter, flightFilter, groupFilter, sortBy]);
+  }, [ownerScopedDeviation, roster, cadetFilter, flightFilter, groupFilter, statusFilter, sortBy]);
   const selectedCadetSummary = useMemo(
     () => (cadetFilter === ALL_CADETS ? undefined : computeCadetAttendanceSummary(cadetFilter, attendance, pmtEventsById)),
     [cadetFilter, attendance, pmtEventsById]
@@ -246,7 +260,7 @@ export function MemorandumsAnalyticsView({
           <FileText className="h-5 w-5 text-primary" />
           Memorandums Analytics
         </h2>
-        <Tabs value={mode} onValueChange={(v) => setMode(v as ViewMode)}>
+        <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
@@ -275,6 +289,19 @@ export function MemorandumsAnalyticsView({
           <SelectContent>
             <SelectItem value="date">Sort by date</SelectItem>
             <SelectItem value="cadet">Sort by cadet</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All statuses</SelectItem>
+            {statusOptionsForMode.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {!hideFlightFilter && (

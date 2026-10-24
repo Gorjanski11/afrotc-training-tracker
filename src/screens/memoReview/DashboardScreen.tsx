@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { effectiveAbsenceMemoDeadline } from "../../domain/constants";
 import { shortDate, isReturnedOverdue } from "../../domain/memoAnalytics";
 import { visibleAbsenceMemos, visibleDeviationMemos } from "../../domain/access";
-import { Stepper } from "../../components/analytics/Stepper";
+import { LiquidToggle } from "../../components/analytics/LiquidToggle";
 import type { AbsenceMemo, Cadet, DeviationMemo, PermissionsConfig, PmtEvent } from "../../domain/types";
 
 interface Props {
@@ -182,10 +182,11 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
         <div className="flex flex-col gap-4">
           <h3 className="flex items-center justify-between text-sm font-semibold text-muted-foreground">
             <span>Returned</span>
-            <Stepper
+            <LiquidToggle
+              layoutId="returned-kind-toggle"
               options={[
-                { value: "Absence", label: "Absence" },
-                { value: "Deviation", label: "Deviation" },
+                { value: "Absence", label: "ABS" },
+                { value: "Deviation", label: "DEV" },
               ]}
               value={returnedKind}
               onChange={(v) => setReturnedKind(v as ReturnedKind)}

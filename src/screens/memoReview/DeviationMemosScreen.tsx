@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2, Highlighter } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { PdfMarkupReview, type PdfMarkupReviewHandle } from "../../components/PdfMarkupReview";
@@ -379,12 +380,12 @@ export function DeviationMemosScreen({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <ClipboardList className="h-5 w-5 text-primary" />
-          Deviation Memos
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="flex min-w-0 items-center gap-2 truncate text-xl font-semibold desktop:text-2xl">
+          <ClipboardList className="h-5 w-5 shrink-0 text-primary" />
+          <span className="truncate">Deviation Memos</span>
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {!rule.reviewOwnOnly && (
             <Button
               variant={mineOnly ? "default" : "outline"}
@@ -392,18 +393,24 @@ export function DeviationMemosScreen({
               title={mineOnly ? "Only showing memorandums you personally assigned" : "Showing every memorandum, including ones assigned by others"}
               onClick={() => setMineOnly((v) => !v)}
             >
-              {mineOnly ? "Mine only" : "Showing all"}
+              {mineOnly ? "Mine only" : "All"}
             </Button>
           )}
-          {rule.canAssign &&
-            (withinAssignWindow ? (
-              <Button onClick={() => setAssignDialogOpen(true)}>
+          {rule.canAssign && (
+            <Button
+              size="sm"
+              disabled={!withinAssignWindow}
+              onClick={() => setAssignDialogOpen(true)}
+              title={withinAssignWindow ? undefined : "Assigning is only available Monday-Friday, 0400-2000."}
+              className={cn(!withinAssignWindow && "h-auto flex-col gap-0 py-1 leading-tight")}
+            >
+              <span className="flex items-center gap-1.5">
                 <UserPlus className="h-3.5 w-3.5" />
                 Assign
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">Assigning is only available Monday-Friday, 0400-2000.</p>
-            ))}
+              </span>
+              {!withinAssignWindow && <span className="text-[10px] font-normal opacity-80">Not available</span>}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -66,7 +66,7 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
         </h2>
         {/* Phone: the search box below, behind this small button instead of shown inline. */}
         <div className="desktop:hidden">
-          <MobileFiltersButton>
+          <MobileFiltersButton icon={Search} label="Search">
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Search..." className="h-8 pl-7 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />

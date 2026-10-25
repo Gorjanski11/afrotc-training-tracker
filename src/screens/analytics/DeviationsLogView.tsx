@@ -79,8 +79,8 @@ function CategoryBox({ category, count, index }: { category: DeviationCategory; 
 }
 
 const UNIT_AXIS_OPTIONS = [
-  { value: "flight", label: "Flight" },
-  { value: "group", label: "Group" },
+  { value: "flight", label: "FLT" },
+  { value: "group", label: "GRP" },
 ];
 
 /** SAE's/Cadre's detachment-wide deviation-memo overview (Section: Deviation's Log) -- same Flight/Group filter as the other 3 Analytics sub-tabs, no owner/assigner restriction (unlike Memorandums Analytics' default "concerning me only" scope), since this is a statistical overview rather than a personal review queue. */

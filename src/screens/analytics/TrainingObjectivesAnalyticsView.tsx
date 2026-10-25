@@ -459,8 +459,8 @@ export function TrainingObjectivesAnalyticsView({
           <LiquidToggle
             layoutId="cadet-view-toggle"
             options={[
-              { value: "crosstab", label: "Completed TO's" },
-              { value: "timeline", label: "PMT Timeline" },
+              { value: "crosstab", label: "C-TO's" },
+              { value: "timeline", label: "PMT-T" },
             ]}
             value={cadetView}
             onChange={(v) => setCadetView(v as typeof cadetView)}

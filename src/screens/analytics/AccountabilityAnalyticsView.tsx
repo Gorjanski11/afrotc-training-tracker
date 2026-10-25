@@ -111,8 +111,8 @@ export function CadetBucketStats({ label, tally, fixedTotal }: { label: string; 
 }
 
 const AXIS_OPTIONS: { value: UnitAxis; label: string }[] = [
-  { value: "flight", label: "Flight" },
-  { value: "group", label: "Group" },
+  { value: "flight", label: "FLT" },
+  { value: "group", label: "GRP" },
 ];
 
 const CLASS_OPTIONS = ["POC", "GMC"] as const;
@@ -988,7 +988,7 @@ export function AccountabilityAnalyticsView({
                 layoutId="master-table-bucket-toggle"
                 options={[
                   { value: "PT", label: "PT" },
-                  { value: "LLAB_FM", label: "LLAB/FM/D&C" },
+                  { value: "LLAB_FM", label: "LLAB" },
                 ]}
                 value={tableBucketChoice}
                 onChange={(v) => setTableBucketChoice(v as "PT" | "LLAB_FM")}

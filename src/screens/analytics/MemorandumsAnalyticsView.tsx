@@ -131,15 +131,11 @@ export function MemorandumsAnalyticsView({
   const scopedGroupOptions = unitScope?.kind === "group-and-gmc" ? [unitScope.group] : GROUPS;
   const [mode, setMode] = useState<ViewMode>("all");
   const [sortBy, setSortBy] = useState<"date" | "cadet">("date");
-  // Local to this view (unlike Flight/Group/Cadet, which are lifted up so they survive switching
-  // sub-tabs) -- each ViewMode has its own status universe (Absence/Deviation barely overlap), so a
-  // value from one wouldn't mean anything in another. Resets to "All" on every mode switch rather
-  // than risk silently carrying over a status that doesn't exist on the new mode.
+  // Kept across mode switches on purpose (same as Flight/Group/Cadet, which are lifted a level up for
+  // the same reason) -- a status that doesn't exist in the other mode's universe (e.g. Absence's
+  // "Pending" while on Deviation) just filters that table to empty instead of carrying over, which is
+  // an acceptable tradeoff for not silently dropping the filter the moment you switch tabs.
   const [statusFilter, setStatusFilter] = useState<string>("All");
-  const handleModeChange = (v: ViewMode) => {
-    setMode(v);
-    setStatusFilter("All");
-  };
   const statusOptionsForMode: string[] =
     mode === "absence" ? ABSENCE_STATUS_OPTIONS : mode === "deviation" ? DEVIATION_STATUS_OPTIONS : [...new Set([...ABSENCE_STATUS_OPTIONS, ...DEVIATION_STATUS_OPTIONS])];
 
@@ -332,7 +328,7 @@ export function MemorandumsAnalyticsView({
           </div>
         </div>
         {/* Desktop only -- phone switches mode via the right-edge EdgeSidebar below instead. */}
-        <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)} className="hidden shrink-0 desktop:block">
+        <Tabs value={mode} onValueChange={(v) => setMode(v as ViewMode)} className="hidden shrink-0 desktop:block">
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
@@ -345,7 +341,7 @@ export function MemorandumsAnalyticsView({
         title="Memorandum mode"
         side="right"
         active={mode}
-        onChange={(v) => handleModeChange(v)}
+        onChange={(v) => setMode(v)}
         items={[
           { value: "all" as const, label: "ALL" },
           ...(showAbsence ? [{ value: "absence" as const, label: "ABS" }] : []),

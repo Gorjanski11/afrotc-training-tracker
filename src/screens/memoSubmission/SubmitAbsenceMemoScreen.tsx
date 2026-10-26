@@ -58,6 +58,19 @@ function eventLabel(events: PmtEvent[], id: string): string {
   return `${e.eventType} — ${e.title} (${shortDate(e.eventDate)})`;
 }
 
+/** History row text: a single covered PMT keeps the full eventLabel, but several at once (e.g. a
+ * combined PT + D&C memo for one day) collapse to just the event types + the date -- the full
+ * "TYPE — Title (date)" for each, comma-joined, was both unreadably long and what forced the row
+ * to overflow the screen width on phone. */
+function historyLabel(events: PmtEvent[], memo: AbsenceMemo): string {
+  if (memo.pmtEventIds.length === 0) return `${memo.asClass} class`;
+  if (memo.pmtEventIds.length === 1) return eventLabel(events, memo.pmtEventIds[0]);
+  const matched = memo.pmtEventIds.map((id) => events.find((e) => e.id === id)).filter((e): e is PmtEvent => !!e);
+  if (matched.length === 0) return "Multiple PMTs";
+  const types = [...new Set(matched.map((e) => e.eventType))];
+  return `${types.join(" + ")} - ${shortDate(matched[0].eventDate)}`;
+}
+
 export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, updateMemo, deleteMemo }: Props) {
   const cadetId = cadet.id;
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -426,9 +439,7 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               <div className="space-y-1.5">
                 <Label>Absences needing a memo</Label>
                 {myAssigned.length === 0 ? (
-                  <p className="rounded-md border border-input p-3 text-sm text-muted-foreground">
-                    Nothing on file right now -- if you were just marked absent, check back shortly.
-                  </p>
+                  <p className="rounded-md border border-input p-3 text-sm text-muted-foreground">Nothing on file here</p>
                 ) : (
                   <div className="space-y-1.5 rounded-md border border-input p-2">
                     {myAssigned.map((m) => (
@@ -537,8 +548,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                 {file ? (
                   <div className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{file.name}</span>
-                    <Button type="button" variant="ghost" size="sm" className="ml-auto h-7 shrink-0" onClick={() => setFile(undefined)}>
+                    <span className="min-w-0 flex-1 truncate">{file.name}</span>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0" onClick={() => setFile(undefined)}>
                       Change
                     </Button>
                   </div>
@@ -718,8 +729,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
                 {futureFile ? (
                   <div className="flex items-center gap-2 rounded-md border border-input p-2 text-sm">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">{futureFile.name}</span>
-                    <Button type="button" variant="ghost" size="sm" className="ml-auto h-7 shrink-0" onClick={() => setFutureFile(undefined)}>
+                    <span className="min-w-0 flex-1 truncate">{futureFile.name}</span>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0" onClick={() => setFutureFile(undefined)}>
                       Change
                     </Button>
                   </div>
@@ -748,9 +759,14 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
               </CardHeader>
               <CardContent className="space-y-1.5">
                 {myHistory.map((m) => (
-                  <div key={m.id} className="flex items-center justify-between text-sm">
-                    <span className="truncate">{m.pmtEventIds.length > 0 ? m.pmtEventIds.map((id) => eventLabel(events, id)).join(", ") : `${m.asClass} class`}</span>
-                    <Badge variant={m.status === "Accepted" ? "success" : m.status === "Rejected" ? "destructive" : "secondary"}>{m.status}</Badge>
+                  <div key={m.id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate">{historyLabel(events, m)}</span>
+                    <Badge
+                      variant={m.status === "Accepted" ? "success" : m.status === "Rejected" ? "destructive" : "secondary"}
+                      className="shrink-0"
+                    >
+                      {m.status}
+                    </Badge>
                   </div>
                 ))}
               </CardContent>

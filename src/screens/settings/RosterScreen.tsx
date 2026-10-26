@@ -224,45 +224,43 @@ export function RosterScreen({
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-2xl font-semibold">Roster</h2>
         <div className="flex items-center gap-2">
-          {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
-          <div className="desktop:hidden">
-            <MobileFiltersButton>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input placeholder="Search..." className="h-8 pl-7 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-              {!scoped && (
-                <Select value={flightFilter} onValueChange={handleFlightChange}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Flight" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All flights</SelectItem>
-                    {FLIGHTS.map((f) => (
-                      <SelectItem key={f} value={f}>
-                        {f} Flight
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {!scoped && (
-                <Select value={groupFilter} onValueChange={handleGroupChange}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All groups</SelectItem>
-                    {GROUPS.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </MobileFiltersButton>
-          </div>
+          {/* Filters live behind this small button on every screen size now instead of a separate inline row on desktop. */}
+          <MobileFiltersButton>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input placeholder="Search..." className="h-8 pl-7 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            {!scoped && (
+              <Select value={flightFilter} onValueChange={handleFlightChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Flight" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All flights</SelectItem>
+                  {FLIGHTS.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} Flight
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            {!scoped && (
+              <Select value={groupFilter} onValueChange={handleGroupChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Group" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All groups</SelectItem>
+                  {GROUPS.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </MobileFiltersButton>
           {!scoped && (
             <Button
               onClick={() => {
@@ -296,42 +294,6 @@ export function RosterScreen({
         </div>
       )}
 
-      <div className="mb-4 hidden flex-wrap items-center gap-4 desktop:flex">
-        <div className="relative w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Look up a cadet by name or email..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        {!scoped && (
-          <Select value={flightFilter} onValueChange={handleFlightChange}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Flight" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All flights</SelectItem>
-              {FLIGHTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} Flight
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {!scoped && (
-          <Select value={groupFilter} onValueChange={handleGroupChange}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
 
       <div className="overflow-x-auto">
         <Table aria-label="Roster">

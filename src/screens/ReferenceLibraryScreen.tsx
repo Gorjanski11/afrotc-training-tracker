@@ -61,25 +61,13 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-2xl font-semibold">Reference Library</h2>
-        {/* Phone: the search box below, behind this small button instead of shown inline. */}
-        <div className="desktop:hidden">
-          <MobileFiltersButton icon={Search} label="Search">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search..." className="h-8 pl-7 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
-            </div>
-          </MobileFiltersButton>
-        </div>
-      </div>
-
-      <div className="relative mb-4 hidden w-full desktop:block desktop:w-80">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search by number, title, requirements, performance measures..."
-          className="pl-8"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        {/* The search box lives behind this small button on every screen size now instead of a separate inline row on desktop. */}
+        <MobileFiltersButton icon={Search} label="Search">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Search..." className="h-8 pl-7 text-xs" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        </MobileFiltersButton>
       </div>
 
       <Accordion type="multiple" value={openValue} onValueChange={(v) => !searching && setManualOpen(v)}>

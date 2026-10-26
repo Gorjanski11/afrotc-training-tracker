@@ -145,14 +145,14 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-2xl font-semibold">Roster Dashboard</h2>
-        <div className="flex items-center gap-2 desktop:hidden">
-          {/* Phone: the POC/GMC toggle from the nav above (desktop) becomes a single press-to-switch button here, right next to Filters. */}
+        <div className="flex items-center gap-2">
+          {/* Phone: the POC/GMC toggle from the nav above (desktop) becomes a single press-to-switch button here, right next to Filters. Desktop already shows the equivalent LiquidToggle in the nav above, so this stays phone-only. */}
           {showCohortToggle && (
-            <Button type="button" variant="outline" size="sm" onClick={onToggleCohort}>
+            <Button type="button" variant="outline" size="sm" onClick={onToggleCohort} className="desktop:hidden">
               {cohort === "poc" ? "POC" : "GMC"}
             </Button>
           )}
-          {/* Phone: same filters as the desktop row below, compact and stacked behind this small button instead of shown inline. */}
+          {/* Filters live behind this small button on every screen size now instead of a separate inline row on desktop. */}
           <MobileFiltersButton>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -264,58 +264,9 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
         </DialogContent>
       </Dialog>
 
-      <div className="mb-4 hidden flex-wrap items-center gap-4 desktop:flex">
-        <div className="relative w-full sm:w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Look up a cadet by name..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <Select value={devLevelFilter} onValueChange={(v) => setDevLevelFilter(v as DevLevel | "All")}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by dev level" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All levels</SelectItem>
-            {levels.map((lvl) => (
-              <SelectItem key={lvl} value={lvl}>
-                {lvl}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {cohort === "poc" && (
-          <Select value={groupFilter} onValueChange={(v) => setGroupFilter(v as Group | "All")}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All groups</SelectItem>
-              {GROUPS.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {cohort === "gmc" && (
-          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Flight" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All flights</SelectItem>
-              {FLIGHTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} Flight
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <span className="text-sm text-muted-foreground">
-          Flagging cadets with at least one Training Objective that's run out of PMTs (all its sessions have passed with nothing logged).
-        </span>
-      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Flagging cadets with at least one Training Objective that's run out of PMTs (all its sessions have passed with nothing logged).
+      </p>
 
       <div className="overflow-x-auto">
       <Table aria-label="Cadet roster">

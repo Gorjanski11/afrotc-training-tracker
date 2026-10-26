@@ -479,8 +479,8 @@ export function QuickLogScreen({
 
   return (
     <div>
-      {/* Phone: this screen's own tab label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. The same filters as the desktop row below sit behind the small button alongside it, compact and stacked instead of shown inline. */}
-      <div className="mb-4 hidden items-center justify-between gap-2 phone:flex">
+      {/* This screen's own nav label is icon-only (both the phone bar and the desktop dock just show a hover tooltip), so the title shows inline here on every screen size. Filters live behind the small button next to it instead of a separate inline row. */}
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-xl font-semibold">{mobileTitle}</h2>
         <MobileFiltersButton>
           <div className="relative">
@@ -574,86 +574,6 @@ export function QuickLogScreen({
         </div>
       </div>
 
-      <div className="mb-4 hidden flex-wrap items-center gap-4 desktop:flex">
-        <div className="relative w-56">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Filter cadets..." className="pl-8" value={cadetSearch} onChange={(e) => setCadetSearch(e.target.value)} />
-        </div>
-        <div className="relative w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Filter Training Objective columns..."
-            className="pl-8"
-            value={objectiveSearch}
-            onChange={(e) => setObjectiveSearch(e.target.value)}
-          />
-        </div>
-        {availableTWs.length > 0 && (
-          <Select value={twFilter === undefined ? "All" : String(twFilter)} onValueChange={(v) => setTwFilter(v === "All" ? undefined : Number(v))}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Training Week" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All weeks</SelectItem>
-              {availableTWs.map((tw) => (
-                <SelectItem key={tw} value={String(tw)}>
-                  TW {tw}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {!hideFlightFilter && availableFlights.length > 0 && (
-          <Select value={flightFilter} onValueChange={(v) => setFlightFilter(v as Flight | "All")}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Flight" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All flights</SelectItem>
-              {availableFlights.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} Flight
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {availableLevels.length > 0 && (
-          <Select value={levelFilter} onValueChange={(v) => setLevelFilter(v as DevLevel | "All")}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All levels</SelectItem>
-              {availableLevels.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {l}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className={cn(showAllCadets && "border-primary bg-primary text-primary-foreground hover:bg-primary/90")}
-          title="Default: only cadets with an overdue Training Objective"
-          onClick={() => setShowAllCadets((v) => !v)}
-        >
-          Show All
-        </Button>
-        <Select value={columnScope} onValueChange={(v) => setColumnScope(v as ColumnScope)}>
-          <SelectTrigger className="w-48">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="overdueAndScheduledOptional">PMT Schedule</SelectItem>
-            <SelectItem value="all">Show All</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
       <div className="overflow-x-auto rounded-md border border-input">
         <Table aria-label="Quick log grid">

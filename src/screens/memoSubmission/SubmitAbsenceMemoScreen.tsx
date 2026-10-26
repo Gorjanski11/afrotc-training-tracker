@@ -370,8 +370,8 @@ export function SubmitAbsenceMemoScreen({ cadet, events, memos, createMemo, upda
 
   return (
     <div>
-      {/* Phone: this screen's own tab label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. */}
-      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">Absence Memo</h2>
+      {/* This screen's own nav label is icon-only on every screen size now (hover tooltip only), so the title shows inline here instead. */}
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">Absence Memo</h2>
 
       {justSubmitted && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-success/50 bg-success/10 p-3 text-sm text-success">

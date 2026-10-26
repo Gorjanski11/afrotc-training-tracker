@@ -136,8 +136,8 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="min-w-0 flex-1 truncate text-xl font-semibold desktop:text-2xl">Deviation's Log</h2>
-        {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
-        <div className="shrink-0 desktop:hidden">
+        {/* Filters live behind this small button on every screen size now instead of a separate inline row on desktop. */}
+        <div className="shrink-0">
           <MobileFiltersButton>
             {!hideFlightFilter && (
               <Select value={flightFilter} onValueChange={handleFlightChange}>
@@ -171,39 +171,6 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
             )}
           </MobileFiltersButton>
         </div>
-      </div>
-
-      <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
-        {!hideFlightFilter && (
-          <Select value={flightFilter} onValueChange={handleFlightChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Flight" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All flights</SelectItem>
-              {FLIGHTS.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} Flight
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {!hideGroupFilter && (
-          <Select value={groupFilter} onValueChange={handleGroupChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Group" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All groups</SelectItem>
-              {scopedGroupOptions.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
       </div>
 
       <div className="mb-6 grid grid-cols-4 gap-2 phone:gap-1.5 desktop:gap-4">

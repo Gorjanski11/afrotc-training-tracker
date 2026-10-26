@@ -136,37 +136,22 @@ export function EventsScreen({
       {tab === "pmt" ? (
         <>
           <div className="mb-4 flex items-center justify-between gap-2">
-            <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
-              <SelectTrigger className="hidden w-40 desktop:flex">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All types</SelectItem>
-                {PMT_EVENT_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {/* Phone: the same type filter, behind this small button instead of shown inline. */}
-            <div className="desktop:hidden">
-              <MobileFiltersButton>
-                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All">All types</SelectItem>
-                    {PMT_EVENT_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </MobileFiltersButton>
-            </div>
+            {/* The type filter lives behind this small button on every screen size now instead of a separate inline row on desktop. */}
+            <MobileFiltersButton>
+              <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PmtEventType | "All")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All">All types</SelectItem>
+                  {PMT_EVENT_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </MobileFiltersButton>
             {canEdit && (
               <Button
                 onClick={() => {

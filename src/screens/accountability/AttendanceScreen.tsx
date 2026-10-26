@@ -457,8 +457,8 @@ export function AttendanceScreen({
 
   return (
     <div>
-      {/* Phone: this tab's label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. */}
-      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">Attendance</h2>
+      {/* This tab's nav label is icon-only on every screen size now (hover tooltip only), so the title shows inline here instead. */}
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">Attendance</h2>
 
       <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">

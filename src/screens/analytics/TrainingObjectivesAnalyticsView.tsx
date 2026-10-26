@@ -373,7 +373,7 @@ export function TrainingObjectivesAnalyticsView({
           icon={<CheckCircle2 className="h-4.5 w-4.5" />}
           label="Ratio"
           value={`${summary.totalCompleted}/${summary.totalRequired}`}
-          valueClassName="text-lg desktop:text-xl"
+          valueClassName="text-sm desktop:text-base"
           index={1}
         />
         <StatTile

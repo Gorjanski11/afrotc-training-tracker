@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ShieldAlert } from "lucide-react";
 import { isEntryOutsideWindow } from "../../domain/attendance";
 import { shortDate, shortDateTime } from "../../domain/memoAnalytics";
 import { accountabilityFlags, toFlags, type AccountabilityFlag, type ToFlag } from "../../domain/saeReviewDeadlines";
@@ -76,10 +75,7 @@ export function SaeReviewScreen({ roster, events, attendance, catalog, completio
 
   return (
     <div>
-      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">
-        <ShieldAlert className="h-5 w-5 text-primary" />
-        SAE Review
-      </h2>
+      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">SAE Review</h2>
 
       {weekNumbers.length === 0 ? (
         <Card>

@@ -1,8 +1,8 @@
 import { useCallback, useRef } from "react";
 
 interface Options {
-  /** Which screen edge this gesture opens from -- "left" in portrait, "bottom" once rotated (landscape swaps the sidebar to the bottom edge, matching the LiquidTabBar moving to the side). */
-  edge: "left" | "bottom";
+  /** Which screen edge this gesture opens from -- "left"/"bottom" for the main subtab sidebar ("bottom" once rotated to landscape, matching the LiquidTabBar moving to the side); "right"/"top" for a second, mirrored sidebar (e.g. Memorandum Analytics' mode switcher) that needs the opposite edges so the two don't collide. */
+  edge: "left" | "right" | "bottom" | "top";
   isOpen: boolean;
   onOpen: () => void;
   onClose: () => void;
@@ -34,14 +34,18 @@ export function useEdgeSwipe({ edge, isOpen, onOpen, onClose, threshold = 48 }: 
       if (!t) return;
       const dx = t.clientX - origin.x;
       const dy = t.clientY - origin.y;
-      if (edge === "left") {
+      if (edge === "left" || edge === "right") {
         if (Math.abs(dy) >= Math.abs(dx)) return;
-        if (!isOpen && dx > threshold) onOpen();
-        else if (isOpen && dx < -threshold) onClose();
+        const opens = edge === "left" ? dx > threshold : dx < -threshold;
+        const closes = edge === "left" ? dx < -threshold : dx > threshold;
+        if (!isOpen && opens) onOpen();
+        else if (isOpen && closes) onClose();
       } else {
         if (Math.abs(dx) >= Math.abs(dy)) return;
-        if (!isOpen && dy < -threshold) onOpen();
-        else if (isOpen && dy > threshold) onClose();
+        const opens = edge === "bottom" ? dy < -threshold : dy > threshold;
+        const closes = edge === "bottom" ? dy > threshold : dy < -threshold;
+        if (!isOpen && opens) onOpen();
+        else if (isOpen && closes) onClose();
       }
     },
     [edge, isOpen, onOpen, onClose, threshold]

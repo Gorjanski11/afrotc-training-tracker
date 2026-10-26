@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarPlus, Upload, Download, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
+import { Upload, Download, AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 import { AS_CLASSES, DEV_LEVELS, FLIGHTS, GROUPS, PMT_EVENT_TYPES } from "../../domain/constants";
 import { isCadreOrCortesGaray } from "../../domain/access";
 import {
@@ -204,10 +204,7 @@ export function NewSemesterScreen({
   if (!authorized) {
     return (
       <div>
-        <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-          <CalendarPlus className="h-5 w-5 text-primary" />
-          New Semester
-        </h2>
+        <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">New Semester</h2>
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">Only Cadre or Cortes Garay can run the New Semester reset.</CardContent>
         </Card>
@@ -420,10 +417,7 @@ export function NewSemesterScreen({
 
   return (
     <div>
-      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">
-        <CalendarPlus className="h-5 w-5 text-primary" />
-        New Semester
-      </h2>
+      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">New Semester</h2>
 
       {step === "upload" && (
         <Card>

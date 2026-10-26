@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Circle, Clock, Info, TriangleAlert, UserRound } from "lucide-react";
+import { CheckCircle2, Circle, Clock, Info, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProficiencyCode } from "../domain/constants";
 import { shortDate } from "../domain/memoAnalytics";
@@ -66,10 +66,7 @@ export function CadetDetailScreen({ cadetId, cadets, sections, completions, pmtE
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-4">
         <CadetCombobox cadets={cadets} value={cadet.id} onChange={onSelectCadet} />
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <UserRound className="h-5 w-5 text-primary" />
-          {formatCadetName(cadet)}
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">{formatCadetName(cadet)}</h2>
         <Badge variant="outline">{cadet.devLevel ?? "No dev level set"}</Badge>
         <div className="flex min-w-56 items-center gap-2">
           <Progress value={progress.percent} className="w-40" />

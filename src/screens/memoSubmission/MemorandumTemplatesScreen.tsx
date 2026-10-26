@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, LibraryBig } from "lucide-react";
+import { FileText, Download } from "lucide-react";
 import { listMemorandumTemplates, type MemorandumTemplate } from "../../lib/storage";
 
 /** Known templates get a friendly display name + one-line description; anything else uploaded later falls back to a prettified filename. */
@@ -51,10 +51,7 @@ export function MemorandumTemplatesScreen() {
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <LibraryBig className="h-5 w-5 text-primary" />
-        Memorandum Templates
-      </h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">Memorandum Templates</h2>
 
       <Card>
         <CardHeader>

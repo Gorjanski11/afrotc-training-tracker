@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Wrench } from "lucide-react";
 import { useMaintenanceMode } from "../../hooks/useMaintenanceMode";
 import { shortDateTime } from "../../domain/memoAnalytics";
 
@@ -29,10 +28,7 @@ export function MaintenanceScreen() {
 
   return (
     <div>
-      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">
-        <Wrench className="h-5 w-5 text-primary" />
-        Maintenance Mode
-      </h2>
+      <h2 className="mb-1 flex items-center gap-2 text-2xl font-semibold">Maintenance Mode</h2>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { AlertTriangle, LayoutDashboard, Search, Users, TrendingUp, Clock } from "lucide-react";
+import { AlertTriangle, Search, Users, TrendingUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { PLO_SHORT_CODE, FLIGHTS, GROUPS, type DevLevel, type Flight, type Group, type PloSection } from "../domain/constants";
@@ -144,10 +144,7 @@ export function DashboardScreen({ cohort, levels, cadets, catalog, completions, 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <LayoutDashboard className="h-5 w-5 text-primary" />
-          Roster Dashboard
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">Roster Dashboard</h2>
         <div className="flex items-center gap-2 desktop:hidden">
           {/* Phone: the POC/GMC toggle from the nav above (desktop) becomes a single press-to-switch button here, right next to Filters. */}
           {showCohortToggle && (

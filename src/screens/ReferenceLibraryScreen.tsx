@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { BookOpen, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { DEV_LEVELS, type DevLevel } from "../domain/constants";
 import type { ProgramLearningOutcomeSection, TrainingObjective } from "../domain/types";
@@ -60,10 +60,7 @@ export function ReferenceLibraryScreen({ sections, devLevels = DEV_LEVELS }: Pro
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <BookOpen className="h-5 w-5 text-primary" />
-          Reference Library
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">Reference Library</h2>
         {/* Phone: the search box below, behind this small button instead of shown inline. */}
         <div className="desktop:hidden">
           <MobileFiltersButton icon={Search} label="Search">

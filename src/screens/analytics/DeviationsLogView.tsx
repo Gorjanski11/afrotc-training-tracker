@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { ShieldAlert, CalendarClock, Shirt, Handshake, MoreHorizontal, BarChart2, PieChart as PieChartIcon, Table2 } from "lucide-react";
+import { CalendarClock, Shirt, Handshake, MoreHorizontal, BarChart2, PieChart as PieChartIcon, Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { DEVIATION_REASONS, FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
@@ -66,7 +66,12 @@ function CategoryBox({ category, count, index }: { category: DeviationCategory; 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}>
       <Card className="hover:shadow-md">
-        <CardContent className="flex items-center gap-3">
+        {/* Phone: just the number over its label, no icon circle, 4 fit side by side (see the grid below). Desktop is unchanged. */}
+        <CardContent className="hidden flex-col items-center gap-0 py-3 text-center phone:flex">
+          <div className="text-xl font-semibold tabular-nums">{count}</div>
+          <div className="truncate text-[11px] font-medium text-muted-foreground">{category}</div>
+        </CardContent>
+        <CardContent className="flex items-center gap-3 phone:hidden">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">{CATEGORY_ICON[category]}</span>
           <div>
             <div className="text-xs font-medium text-muted-foreground">{category}</div>
@@ -130,12 +135,9 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <ShieldAlert className="h-5 w-5 text-primary" />
-          Deviation's Log
-        </h2>
+        <h2 className="min-w-0 flex-1 truncate text-xl font-semibold desktop:text-2xl">Deviation's Log</h2>
         {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
-        <div className="desktop:hidden">
+        <div className="shrink-0 desktop:hidden">
           <MobileFiltersButton>
             {!hideFlightFilter && (
               <Select value={flightFilter} onValueChange={handleFlightChange}>
@@ -204,7 +206,7 @@ export function DeviationsLogView({ roster, deviationMemos, unitScope, flightFil
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 grid grid-cols-4 gap-2 phone:gap-1.5 desktop:gap-4">
         {categoryCounts.map((c, i) => (
           <CategoryBox key={c.category} category={c.category} count={c.count} index={i} />
         ))}

@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BarChart2, TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays } from "lucide-react";
+import { TrendingUp, Scale, PieChart as PieChartIcon, Table2, Users, Gauge, TriangleAlert, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, deriveClass, bucketForEventType, type Flight, type Group, type Standing } from "../../domain/constants";
@@ -58,7 +58,12 @@ function StatTile({ icon, label, value, tone, index }: { icon: React.ReactNode; 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25, delay: index * 0.05, ease: "easeOut" }}>
       <Card className="hover:shadow-md">
-        <CardContent className="flex items-center gap-3">
+        {/* Phone: just the number over its label, no icon circle, 4 fit side by side (see the grid below). Desktop is unchanged. */}
+        <CardContent className="hidden flex-col items-center gap-0 py-3 text-center phone:flex">
+          <div className={cn("text-xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+          <div className="truncate text-[11px] font-medium text-muted-foreground">{label}</div>
+        </CardContent>
+        <CardContent className="flex items-center gap-3 phone:hidden">
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
@@ -120,10 +125,10 @@ type ClassFilter = (typeof CLASS_OPTIONS)[number];
 
 type TrendView = "combined" | "split" | "pt" | "llab";
 const TREND_VIEW_OPTIONS: { value: TrendView; label: string }[] = [
-  { value: "combined", label: "All Combined" },
-  { value: "split", label: "Split (PT + LLAB/FM/D&C)" },
-  { value: "pt", label: "PT only" },
-  { value: "llab", label: "LLAB/FM/D&C only" },
+  { value: "combined", label: "All" },
+  { value: "split", label: "Split" },
+  { value: "pt", label: "PT" },
+  { value: "llab", label: "LLAB" },
 ];
 
 function pct(n: number | undefined): string {
@@ -251,7 +256,9 @@ export function AccountabilityAnalyticsView({
   // page, including the table (Section: master table filters -> whole page). PMT type is NOT part of
   // this group -- the trend chart has its own view toggle and the table has its own dedicated stepper.
   const [filterClass, setFilterClass] = useState<ClassFilter | "All">("All");
-  const [filterStanding, setFilterStanding] = useState<Standing | "All">("All");
+  // "NotGood" is a combined Warning+Hard Limit filter -- there's no such Standing value, it's purely a
+  // UI shortcut for "anyone below Good", checked explicitly below instead of matching a single value.
+  const [filterStanding, setFilterStanding] = useState<Standing | "All" | "NotGood">("All");
   const [trendView, setTrendView] = useState<TrendView>("combined");
   const [axis, setAxis] = useState<UnitAxis>("flight");
   // A day can have both a PT and a LLAB/FM/D&C session -- the Combined trend view merges them into
@@ -297,6 +304,7 @@ export function AccountabilityAnalyticsView({
           if (filterStanding === "All") return true;
           const summary = computeCadetAttendanceSummary(p.id, attendance, pmtEventsById);
           const standing = tableBucketChoice === "PT" ? summary.pt.standing : summary.llabFm.standing;
+          if (filterStanding === "NotGood") return standing === "Warning" || standing === "Hard Limit";
           return standing === filterStanding;
         }),
     [sortedActiveRoster, flightFilter, groupFilter, filterClass, filterStanding, tableBucketChoice, attendance, pmtEventsById]
@@ -606,13 +614,10 @@ export function AccountabilityAnalyticsView({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <BarChart2 className="h-5 w-5 text-primary" />
-          Accountability Analytics
-        </h2>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h2 className="min-w-0 flex-1 truncate text-xl font-semibold desktop:text-2xl">Accountability Analytics</h2>
         {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
-        <div className="desktop:hidden">
+        <div className="shrink-0 desktop:hidden">
           <MobileFiltersButton>
             <CadetFilterCombobox
               roster={sortedActiveRoster}
@@ -666,7 +671,7 @@ export function AccountabilityAnalyticsView({
                 </SelectContent>
               </Select>
             )}
-            <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All")}>
+            <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All" | "NotGood")}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Standing" />
               </SelectTrigger>
@@ -675,6 +680,7 @@ export function AccountabilityAnalyticsView({
                 <SelectItem value="Good">Good</SelectItem>
                 <SelectItem value="Warning">Warning</SelectItem>
                 <SelectItem value="Hard Limit">Hard Limit</SelectItem>
+                <SelectItem value="NotGood">Warning + Hard Limit</SelectItem>
               </SelectContent>
             </Select>
           </MobileFiltersButton>
@@ -728,7 +734,7 @@ export function AccountabilityAnalyticsView({
             </SelectContent>
           </Select>
         )}
-        <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All")}>
+        <Select value={filterStanding} onValueChange={(v) => setFilterStanding(v as Standing | "All" | "NotGood")}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Standing" />
           </SelectTrigger>
@@ -737,23 +743,24 @@ export function AccountabilityAnalyticsView({
             <SelectItem value="Good">Good</SelectItem>
             <SelectItem value="Warning">Warning</SelectItem>
             <SelectItem value="Hard Limit">Hard Limit</SelectItem>
+            <SelectItem value="NotGood">Warning + Hard Limit</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile icon={<Users className="h-4.5 w-4.5" />} label="Active roster" value={String(statsRoster.length)} index={0} />
-        <StatTile icon={<Gauge className="h-4.5 w-4.5" />} label="Cohort combined %" value={pct(cohortCombinedPercent)} index={1} />
+      <div className="mb-6 grid grid-cols-4 gap-2 phone:gap-1.5 desktop:gap-4">
+        <StatTile icon={<Users className="h-4.5 w-4.5" />} label="Active" value={String(statsRoster.length)} index={0} />
+        <StatTile icon={<Gauge className="h-4.5 w-4.5" />} label="Comb %" value={pct(cohortCombinedPercent)} index={1} />
         <StatTile
           icon={<TriangleAlert className="h-4.5 w-4.5" />}
-          label="Below-Good standing flags"
+          label="Flags"
           value={hasUnitFilter ? `${belowGoodCount}/${statsRoster.length}` : String(belowGoodCount)}
           tone={belowGoodCount > 0 ? "critical" : undefined}
           index={2}
         />
         <StatTile
           icon={<CalendarDays className="h-4.5 w-4.5" />}
-          label="PMT sessions tracked"
+          label="PMT's"
           value={hasUnitFilter ? `${trackedSessionsCount}/${fixedTotalCombined}` : String(trackedSessionsCount)}
           index={3}
         />
@@ -761,23 +768,12 @@ export function AccountabilityAnalyticsView({
 
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="mb-6">
         <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
             <CardTitle>
               <TrendingUp className="h-4 w-4 text-primary" />
               Attendance trend
             </CardTitle>
-            <Select value={trendView} onValueChange={(v) => setTrendView(v as TrendView)}>
-              <SelectTrigger className="w-52">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TREND_VIEW_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LiquidToggle layoutId="attendance-trend-view-toggle" options={TREND_VIEW_OPTIONS} value={trendView} onChange={(v) => setTrendView(v as TrendView)} />
           </CardHeader>
           <CardContent>
             {trendView === "split" ? (

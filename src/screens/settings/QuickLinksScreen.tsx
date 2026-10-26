@@ -1,5 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { ExternalLink, Link2, Flame, FolderGit2 } from "lucide-react";
+import { ExternalLink, Flame, FolderGit2 } from "lucide-react";
 
 const LINKS = [
   {
@@ -19,10 +19,7 @@ const LINKS = [
 export function QuickLinksScreen() {
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <Link2 className="h-5 w-5 text-primary" />
-        Quick Links
-      </h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">Quick Links</h2>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {LINKS.map(({ label, description, href, icon: Icon }) => (
           <a key={href} href={href} target="_blank" rel="noreferrer" className="block">

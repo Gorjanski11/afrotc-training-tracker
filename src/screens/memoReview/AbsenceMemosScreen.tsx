@@ -231,10 +231,7 @@ export function AbsenceMemosScreen({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <FileText className="h-5 w-5 text-primary" />
-          Absence Memos
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">Absence Memos</h2>
         {pendingMemos.length > 0 && <Badge variant="destructive">{pendingMemos.length} pending</Badge>}
       </div>
 

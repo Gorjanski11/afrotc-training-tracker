@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Check, Copy, Dices, KeyRound, LogIn, Pencil, Plus, Search, Trash2, UserCheck, UserX, Users } from "lucide-react";
+import { Check, Copy, Dices, KeyRound, LogIn, Pencil, Plus, Search, Trash2, UserCheck, UserX } from "lucide-react";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { deriveClass, isCwlMember, FLIGHTS, GROUPS, type Flight, type Group, type Standing } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
@@ -222,10 +222,7 @@ export function RosterScreen({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <Users className="h-5 w-5 text-primary" />
-          Roster
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">Roster</h2>
         <div className="flex items-center gap-2">
           {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
           <div className="desktop:hidden">

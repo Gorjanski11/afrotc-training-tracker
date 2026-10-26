@@ -8,7 +8,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ClipboardList, ExternalLink, UserPlus, Pencil, Trash2, Highlighter } from "lucide-react";
+import { ExternalLink, UserPlus, Pencil, Trash2, Highlighter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CadetCombobox } from "../../components/CadetCombobox";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
@@ -382,7 +382,6 @@ export function DeviationMemosScreen({
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h2 className="flex min-w-0 items-center gap-2 truncate text-xl font-semibold desktop:text-2xl">
-          <ClipboardList className="h-5 w-5 shrink-0 text-primary" />
           <span className="truncate">Deviation Memos</span>
         </h2>
         <div className="flex shrink-0 items-center gap-2">

@@ -5,7 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Database, Download, RefreshCw, Trash2 } from "lucide-react";
+import { Download, RefreshCw, Trash2 } from "lucide-react";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { buildAttendanceSheets } from "../../lib/exportAttendanceData";
 import { buildTrainingSheets } from "../../lib/exportTrainingData";
@@ -134,10 +134,7 @@ export function DataManagementScreen({ roster, events, attendance, catalog, comp
 
   return (
     <div className="space-y-6">
-      <h2 className="flex items-center gap-2 text-2xl font-semibold">
-        <Database className="h-5 w-5 text-primary" />
-        Data Management
-      </h2>
+      <h2 className="flex items-center gap-2 text-2xl font-semibold">Data Management</h2>
 
       <Card>
         <CardHeader>

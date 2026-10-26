@@ -8,8 +8,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, ArrowUpDown, Pencil } from "lucide-react";
+import { ArrowUpDown, Pencil } from "lucide-react";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
+import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
 import { PdfLinkButton } from "../../components/PdfLinkButton";
 import { FLIGHTS, GROUPS, SEMESTER_PMT_TOTALS, type Flight, type Group } from "../../domain/constants";
 import { computeCadetAttendanceSummary } from "../../domain/attendance";
@@ -257,20 +258,10 @@ export function MemorandumsAnalyticsView({
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <FileText className="h-5 w-5 text-primary" />
-          Memorandums Analytics
-        </h2>
-        <div className="flex items-center gap-2">
-          <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
-              <TabsTrigger value="deviation">Deviation</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. */}
-          <div className="desktop:hidden">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <h2 className="min-w-0 truncate text-xl font-semibold desktop:text-2xl">Memorandum Analytics</h2>
+          {/* Phone: the same filters as the row below, compact and stacked behind this small button instead of shown inline. The All/Absence/Deviation mode switch moved into its own hiding sidebar on the right edge (below), mirroring the subtab sidebar on the left -- it no longer needs room in this row. */}
+          <div className="shrink-0 desktop:hidden">
             <MobileFiltersButton>
               <CadetFilterCombobox roster={roster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="h-8 w-full text-xs" />
               {isTrueCadreViewer && (
@@ -340,7 +331,27 @@ export function MemorandumsAnalyticsView({
             </MobileFiltersButton>
           </div>
         </div>
+        {/* Desktop only -- phone switches mode via the right-edge EdgeSidebar below instead. */}
+        <Tabs value={mode} onValueChange={(v) => handleModeChange(v as ViewMode)} className="hidden shrink-0 desktop:block">
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            {showAbsence && <TabsTrigger value="absence">Absence</TabsTrigger>}
+            <TabsTrigger value="deviation">Deviation</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
+
+      <EdgeSidebar
+        title="Memorandum mode"
+        side="right"
+        active={mode}
+        onChange={(v) => handleModeChange(v)}
+        items={[
+          { value: "all" as const, label: "ALL" },
+          ...(showAbsence ? [{ value: "absence" as const, label: "ABS" }] : []),
+          { value: "deviation" as const, label: "DEV" },
+        ]}
+      />
 
       <div className="mb-6 hidden flex-wrap items-center gap-3 rounded-md border border-input bg-card p-3 desktop:flex">
         <CadetFilterCombobox roster={roster} value={cadetFilter} onChange={(v) => setExclusiveFilter("cadet", v)} allLabel="All cadets" className="w-56" />

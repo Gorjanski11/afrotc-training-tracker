@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, TriangleAlert, ChevronLeft, ChevronRight, Eye } from "lucide-react";
 import { MobileFiltersButton } from "@/components/mobile/MobileFiltersButton";
 import { cn } from "@/lib/utils";
 import { PMT_EVENT_TYPES, type PmtEventType } from "../../domain/constants";
@@ -113,10 +113,7 @@ export function EventsScreen({
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-2xl font-semibold">
-          <CalendarDays className="h-5 w-5 text-primary" />
-          Events
-        </h2>
+        <h2 className="flex items-center gap-2 text-2xl font-semibold">Events</h2>
         <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
           <TabsList>
             <TabsTrigger value="pmt">PMTs</TabsTrigger>

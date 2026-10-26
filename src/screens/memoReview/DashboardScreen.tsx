@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Clock, CalendarClock, Undo2 } from "lucide-react";
+import { FileText, ClipboardList, TriangleAlert, Clock, CalendarClock, Undo2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { effectiveAbsenceMemoDeadline } from "../../domain/constants";
 import { shortDate, isReturnedOverdue } from "../../domain/memoAnalytics";
@@ -122,10 +122,7 @@ export function DashboardScreen({ events, absenceMemos, deviationMemos, roster, 
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <LayoutDashboard className="h-5 w-5 text-primary" />
-        Dashboard
-      </h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">Dashboard</h2>
 
       <div className="grid gap-4 lg:grid-cols-3">
         {/* Column 1: Absence */}

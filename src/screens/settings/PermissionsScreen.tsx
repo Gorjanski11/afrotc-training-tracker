@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Search, ShieldCheck, ShieldAlert, Pencil, Trash2 } from "lucide-react";
+import { Search, ShieldAlert, Pencil, Trash2 } from "lucide-react";
 import { FLIGHTS, GROUPS, type Flight, type Group } from "../../domain/constants";
 import { excludeInactive } from "../../domain/access";
 import { compareByLastName, formatCadetName } from "../../domain/nameUtils";
@@ -183,10 +183,7 @@ export function PermissionsScreen({ roster, updateCadetFields, config, updateCon
 
   return (
     <div className="space-y-6">
-      <h2 className="flex items-center gap-2 text-2xl font-semibold">
-        <ShieldCheck className="h-5 w-5 text-primary" />
-        Permissions
-      </h2>
+      <h2 className="flex items-center gap-2 text-2xl font-semibold">Permissions</h2>
       <p className="text-sm text-muted-foreground">
         Everything here used to require a code change and a redeploy to adjust. Changes take effect immediately for anyone who signs in (or
         refreshes) after you save.

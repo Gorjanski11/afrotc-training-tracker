@@ -3,7 +3,7 @@ import { motion } from "motion/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, FileText, ClipboardList, TriangleAlert, Users, BarChart2 } from "lucide-react";
+import { FileText, ClipboardList, TriangleAlert, Users, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { computeCadetAttendanceSummary } from "../domain/attendance";
 import { computeUnitComparison } from "../domain/accountabilityAnalytics";
@@ -128,10 +128,7 @@ export function CadreDashboardScreen({ roster, events, attendance, absenceMemos,
 
   return (
     <div>
-      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">
-        <LayoutDashboard className="h-5 w-5 text-primary" />
-        Dashboard
-      </h2>
+      <h2 className="mb-4 flex items-center gap-2 text-2xl font-semibold">Dashboard</h2>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <HeroStat

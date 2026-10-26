@@ -3,7 +3,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Save, TriangleAlert, X, ClipboardCheck } from "lucide-react";
+import { Save, TriangleAlert, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE_STATUSES, ABSENCE_REASONS, FLIGHTS, GROUPS, absenceMemoDeadline, type AttendanceStatus, type AbsenceReason, type Flight, type Group } from "../../domain/constants";
@@ -458,10 +458,7 @@ export function AttendanceScreen({
   return (
     <div>
       {/* Phone: this tab's label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. */}
-      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">
-        <ClipboardCheck className="h-5 w-5 text-primary" />
-        Attendance
-      </h2>
+      <h2 className="mb-4 hidden items-center gap-2 text-xl font-semibold phone:flex">Attendance</h2>
 
       <div className="mb-4 flex items-center justify-end">
         <div className="flex items-center gap-2">

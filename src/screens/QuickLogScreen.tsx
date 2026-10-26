@@ -135,7 +135,7 @@ export function QuickLogScreen({
   roster,
   userEmail,
   mobileTitle,
-  mobileTitleIcon: MobileTitleIcon,
+  mobileTitleIcon: _mobileTitleIcon,
 }: Props) {
   // Section 5: every quick-marked entry is attributed to the signed-in person, by name lookup
   // against the roster -- to backdate or credit a different evaluator, edit the entry from Cadet
@@ -481,10 +481,7 @@ export function QuickLogScreen({
     <div>
       {/* Phone: this screen's own tab label is icon-only there, so show the title inline instead -- desktop already has it in the tab strip. The same filters as the desktop row below sit behind the small button alongside it, compact and stacked instead of shown inline. */}
       <div className="mb-4 hidden items-center justify-between gap-2 phone:flex">
-        <h2 className="flex items-center gap-2 text-xl font-semibold">
-          <MobileTitleIcon className="h-5 w-5 text-primary" />
-          {mobileTitle}
-        </h2>
+        <h2 className="flex items-center gap-2 text-xl font-semibold">{mobileTitle}</h2>
         <MobileFiltersButton>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

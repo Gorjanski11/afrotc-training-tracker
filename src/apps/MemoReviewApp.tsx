@@ -1,9 +1,10 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, LayoutDashboard, ClipboardList } from "lucide-react";
 import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { FloatingDock } from "@/components/desktop/FloatingDock";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
@@ -75,40 +76,20 @@ export function MemoReviewApp({ showAbsence, userEmail, permissionsConfig, initi
   const dataLoading = cadetsState.loading || eventsState.loading || absenceState.loading || deviationState.loading || attendanceLink.loading;
   const loadError = cadetsState.error || eventsState.error || absenceState.error || deviationState.error || attendanceLink.error;
 
+  // Shared between the phone off-canvas sidebar and the desktop floating dock so the two never drift apart.
+  const navItems = [
+    { value: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    ...(showAbsence ? [{ value: "absence" as const, label: "Absence Memos", icon: FileText }] : []),
+    { value: "deviation" as const, label: "Deviation Memos", icon: ClipboardList },
+  ];
+
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
-          <TabsList>
-            <TabsTrigger value="dashboard">
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              <span>Dashboard</span>
-            </TabsTrigger>
-            {showAbsence && (
-              <TabsTrigger value="absence">
-                <FileText className="h-3.5 w-3.5" />
-                <span>Absence Memos</span>
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="deviation">
-              <ClipboardList className="h-3.5 w-3.5" />
-              <span>Deviation Memos</span>
-            </TabsTrigger>
-          </TabsList>
-        </nav>
+        <EdgeSidebar title="Memo Review" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
+        <FloatingDock orientation="vertical" ariaLabel="Memo Review navigation" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
 
-        <EdgeSidebar
-          title="Memo Review"
-          active={screen}
-          onChange={(v) => setScreen(v)}
-          items={[
-            { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-            ...(showAbsence ? [{ value: "absence" as const, label: "Absence Memos", icon: FileText }] : []),
-            { value: "deviation", label: "Deviation Memos", icon: ClipboardList },
-          ]}
-        />
-
-        <main className="flex-1 overflow-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6 desktop:pl-24">
           {dataLoading ? (
             <div className="space-y-4">
               <div className="flex gap-4">

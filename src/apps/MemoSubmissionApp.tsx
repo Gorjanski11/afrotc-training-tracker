@@ -1,9 +1,10 @@
 import { motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, ClipboardList, LibraryBig } from "lucide-react";
 import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { FloatingDock } from "@/components/desktop/FloatingDock";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
 import { useAbsenceMemos } from "../hooks/useAbsenceMemos";
@@ -55,38 +56,20 @@ export function MemoSubmissionApp({ userEmail, initialScreen, onConsumeInitialSc
     return cadetsState.cadets.find((p) => p.email?.trim().toLowerCase() === normalized);
   }, [userEmail, cadetsState.cadets]);
 
+  // Shared between the phone off-canvas sidebar and the desktop floating dock so the two never drift apart.
+  const navItems = [
+    { value: "absence" as const, label: "Absence Memo", icon: FileText },
+    { value: "deviation" as const, label: "Deviation Memo", icon: ClipboardList },
+    { value: "templates" as const, label: "Memorandum Templates", icon: LibraryBig },
+  ];
+
   return (
     <div className="flex h-full flex-col">
       <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
-          <TabsList>
-            <TabsTrigger value="absence">
-              <FileText className="h-3.5 w-3.5" />
-              <span>Absence Memo</span>
-            </TabsTrigger>
-            <TabsTrigger value="deviation">
-              <ClipboardList className="h-3.5 w-3.5" />
-              <span>Deviation Memo</span>
-            </TabsTrigger>
-            <TabsTrigger value="templates">
-              <LibraryBig className="h-3.5 w-3.5" />
-              <span>Memorandum Templates</span>
-            </TabsTrigger>
-          </TabsList>
-        </nav>
+        <EdgeSidebar title="Memo Submission" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
+        <FloatingDock orientation="vertical" ariaLabel="Memo Submission navigation" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
 
-        <EdgeSidebar
-          title="Memo Submission"
-          active={screen}
-          onChange={(v) => setScreen(v)}
-          items={[
-            { value: "absence", label: "Absence Memo", icon: FileText },
-            { value: "deviation", label: "Deviation Memo", icon: ClipboardList },
-            { value: "templates", label: "Memorandum Templates", icon: LibraryBig },
-          ]}
-        />
-
-        <main className="flex-1 overflow-auto p-3 sm:p-6">
+        <main className="flex-1 overflow-auto p-3 sm:p-6 desktop:pl-24">
           {dataLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-24 w-full" />

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LayoutDashboard, UserRound, BookOpen } from "lucide-react";
 import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { FloatingDock } from "@/components/desktop/FloatingDock";
 import { C3CRankIcon, CCaptRankIcon } from "@/components/mobile/rankIcons";
 import { useCadets } from "../hooks/useCadets";
 import { useTrainingObjectives } from "../hooks/useTrainingObjectives";
@@ -100,6 +101,15 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
   const dataLoading = cadetsState.loading || catalogState.loading || completionsState.loading || pmtEventsState.loading || attendanceState.loading;
   const loadError = cadetsState.error || catalogState.error || completionsState.error || pmtEventsState.error || attendanceState.error;
 
+  // Shared between the phone off-canvas sidebar and the desktop floating dock so the two never drift apart.
+  const navItems = [
+    { value: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    ...(selectedCadetId ? [{ value: "cadet" as const, label: "Cadet Review", icon: UserRound }] : []),
+    { value: "reference" as const, label: "Reference Library", icon: BookOpen },
+    ...(showPoc ? [{ value: "pocLog" as const, label: "POC Log", icon: CCaptRankIcon }] : []),
+    ...(showGmc ? [{ value: "gmcLog" as const, label: "GMC Log", icon: C3CRankIcon }] : []),
+  ];
+
   return (
     <div className="flex h-full flex-col">
       {dataLoading ? (
@@ -119,64 +129,26 @@ export function TrainingObjectivesApp({ cohortAccess, unitScope, userEmail }: Pr
         </div>
       ) : (
         <Tabs value={screen} onValueChange={(v) => setScreen(v as Screen)} className="flex flex-1 flex-col overflow-hidden">
-          <nav className="flex flex-wrap items-center gap-3 px-3 pt-2 desktop:px-8 desktop:pt-0">
-            <TabsList className="hidden desktop:flex">
-              <TabsTrigger value="dashboard">
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Dashboard</span>
-              </TabsTrigger>
-              <TabsTrigger value="cadet" disabled={!selectedCadetId}>
-                <UserRound className="h-3.5 w-3.5" />
-                <span>Cadet Review</span>
-              </TabsTrigger>
-              <TabsTrigger value="reference">
-                <BookOpen className="h-3.5 w-3.5" />
-                <span>Reference Library</span>
-              </TabsTrigger>
-              {showPoc && (
-                <TabsTrigger value="pocLog">
-                  <CCaptRankIcon className="h-3.5 w-3.5" />
-                  <span>POC Log</span>
-                </TabsTrigger>
-              )}
-              {showGmc && (
-                <TabsTrigger value="gmcLog">
-                  <C3CRankIcon className="h-3.5 w-3.5" />
-                  <span>GMC Log</span>
-                </TabsTrigger>
-              )}
-            </TabsList>
-            {/* Desktop only -- phone gets a single press-to-switch button next to the Dashboard's own Filters button instead (DashboardScreen). */}
-            {screen === "dashboard" && cohortAccess === "full" && (
-              <div className="hidden desktop:block">
-                <LiquidToggle
-                  layoutId="to-dashboard-cohort-toggle"
-                  options={[
-                    { value: "poc", label: "POC" },
-                    { value: "gmc", label: "GMC" },
-                  ]}
-                  value={dashboardCohort}
-                  onChange={(v) => setDashboardCohort(v as "poc" | "gmc")}
-                />
-              </div>
-            )}
-          </nav>
+          {/* Desktop only -- phone gets a single press-to-switch button next to the Dashboard's own Filters button instead (DashboardScreen). */}
+          {screen === "dashboard" && cohortAccess === "full" && (
+            <nav className="hidden items-center px-3 pt-2 desktop:flex desktop:px-8 desktop:pt-0">
+              <LiquidToggle
+                layoutId="to-dashboard-cohort-toggle"
+                options={[
+                  { value: "poc", label: "POC" },
+                  { value: "gmc", label: "GMC" },
+                ]}
+                value={dashboardCohort}
+                onChange={(v) => setDashboardCohort(v as "poc" | "gmc")}
+              />
+            </nav>
+          )}
 
-          {/* Phone-only: off-canvas subtab nav, swipe from the left edge (bottom edge in landscape) instead of the desktop TabsList above. Each screen's own filters show via its own small "Filters" button (MobileFiltersButton) instead of living in this sidebar. */}
-          <EdgeSidebar
-            title="Training Objectives"
-            active={screen}
-            onChange={(v) => setScreen(v)}
-            items={[
-              { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-              ...(selectedCadetId ? [{ value: "cadet" as const, label: "Cadet Review", icon: UserRound }] : []),
-              { value: "reference", label: "Reference Library", icon: BookOpen },
-              ...(showPoc ? [{ value: "pocLog" as const, label: "POC Log", icon: CCaptRankIcon }] : []),
-              ...(showGmc ? [{ value: "gmcLog" as const, label: "GMC Log", icon: C3CRankIcon }] : []),
-            ]}
-          />
+          {/* Phone-only: off-canvas subtab nav, swipe from the left edge (bottom edge in landscape); desktop gets the equivalent floating dock on the left edge instead. Each screen's own filters show via its own small "Filters" button (MobileFiltersButton) instead of living in either. */}
+          <EdgeSidebar title="Training Objectives" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
+          <FloatingDock orientation="vertical" ariaLabel="Training Objectives navigation" active={screen} onChange={(v) => setScreen(v)} items={navItems} />
 
-          <main className="flex-1 overflow-auto p-3 sm:p-6">
+          <main className="flex-1 overflow-auto p-3 sm:p-6 desktop:pl-24">
             <TabsContent value="dashboard">
               <AnimatedPanel>
                 <DashboardScreen

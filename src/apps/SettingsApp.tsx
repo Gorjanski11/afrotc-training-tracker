@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { Users, CalendarDays, Link2, Mail, Database, CalendarPlus, ShieldAlert, Wrench } from "lucide-react";
 import { useCadets } from "../hooks/useCadets";
 import { usePmtEvents } from "../hooks/usePmtEvents";
@@ -27,6 +25,7 @@ import { MaintenanceScreen } from "../screens/settings/MaintenanceScreen";
 import { PermissionsScreen } from "../screens/settings/PermissionsScreen";
 import { ShieldCheck } from "lucide-react";
 import { EdgeSidebar } from "@/components/mobile/EdgeSidebar";
+import { FloatingDock } from "@/components/desktop/FloatingDock";
 
 type Section = "roster" | "events" | "links" | "templates" | "data" | "newSemester" | "saeReview" | "maintenance" | "permissions";
 
@@ -123,24 +122,11 @@ export function SettingsApp({ userEmail, initialSection, onConsumeInitialSection
   const activeSection = navItems.some((n) => n.value === section) ? section : navItems[0].value;
 
   return (
-    <div className="flex h-full flex-col desktop:flex-row">
-      <nav className="hidden shrink-0 gap-1 overflow-x-auto border-b border-input p-2 [-ms-overflow-style:none] [scrollbar-width:none] desktop:flex desktop:w-56 desktop:flex-col desktop:gap-0 desktop:space-y-1 desktop:overflow-y-auto desktop:border-b-0 desktop:border-r desktop:p-4 [&::-webkit-scrollbar]:hidden">
-        {navItems.map((item) => (
-          <Button
-            key={item.value}
-            variant={activeSection === item.value ? "secondary" : "ghost"}
-            className={cn("shrink-0 justify-start gap-2 desktop:w-full")}
-            onClick={() => setSection(item.value)}
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </Button>
-        ))}
-      </nav>
-
+    <div className="flex h-full flex-col">
       <EdgeSidebar title="Settings" active={activeSection} onChange={setSection} items={navItems} />
+      <FloatingDock orientation="vertical" ariaLabel="Settings navigation" active={activeSection} onChange={setSection} items={navItems} />
 
-      <main className="flex-1 overflow-auto p-3 sm:p-6">
+      <main className="flex-1 overflow-auto p-3 sm:p-6 desktop:pl-24">
         {dataLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-10 w-72" />

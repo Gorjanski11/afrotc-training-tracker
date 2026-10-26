@@ -1,11 +1,12 @@
 import { motion } from "motion/react";
 import { AnimatePresence } from "motion/react";
 import { useEffect, useState } from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { LiquidTabBar } from "@/components/mobile/LiquidTabBar";
+import { FloatingDock } from "@/components/desktop/FloatingDock";
 import {
   LogOut,
   KeyRound,
@@ -50,7 +51,7 @@ type HubTab = "accountability" | "trainingObjectives" | "memoSubmission" | "myDa
 /** sessionStorage (not localStorage) -- matches the session itself only lasting until the tab closes (lib/firebase.ts's browser-session-only auth persistence), so a reload keeps the same tab but a genuinely new browser session doesn't carry one over. */
 const TAB_STORAGE_KEY = "activeTab";
 
-/** Label + icon per tab, shared by the desktop TabsList and the phone dropdown (Section H) so the two never drift apart. */
+/** Label + icon per tab, shared by the desktop bottom dock and the phone bottom bar so the two never drift apart. */
 const TAB_META: Record<HubTab, { label: string; icon: typeof LayoutDashboard }> = {
   myDashboard: { label: "My Dashboard", icon: LayoutDashboard },
   accountability: { label: "Attendance", icon: ClipboardCheck },
@@ -283,20 +284,6 @@ function App() {
       />
 
       <Tabs value={activeTab} onValueChange={(v) => setTab(v as HubTab)} className="flex flex-1 flex-col overflow-hidden">
-        <nav className="hidden desktop:block desktop:px-8 desktop:pt-2">
-          <TabsList>
-            {visibleTabs.map((t) => {
-              const { label, icon: Icon } = TAB_META[t];
-              return (
-                <TabsTrigger key={t} value={t}>
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </nav>
-
         {/* Phone-only: a fixed liquid-glass bottom bar (right edge in landscape) replaces the desktop tab strip -- icons only, no dropdown. */}
         <LiquidTabBar
           items={visibleTabs.map((t) => ({ value: t, label: TAB_META[t].label, icon: TAB_META[t].icon }))}
@@ -304,7 +291,16 @@ function App() {
           onChange={(t) => setTab(t)}
         />
 
-        <main className="flex-1 overflow-hidden phone:pb-[calc(3.25rem+env(safe-area-inset-bottom))] phone:landscape:pb-0 phone:landscape:pe-16">
+        {/* Desktop-only: a floating pill dock at the bottom of the screen, mirroring the phone bar's position -- icons only, hover reveals the label. */}
+        <FloatingDock
+          orientation="horizontal"
+          ariaLabel="Main navigation"
+          items={visibleTabs.map((t) => ({ value: t, label: TAB_META[t].label, icon: TAB_META[t].icon }))}
+          active={activeTab}
+          onChange={(t) => setTab(t)}
+        />
+
+        <main className="flex-1 overflow-hidden phone:pb-[calc(3.25rem+env(safe-area-inset-bottom))] phone:landscape:pb-0 phone:landscape:pe-16 desktop:pb-24">
           <AnimatePresence mode="wait" initial={false}>
             {activeTab === "accountability" && tabAccess.accountability && (
               <TabsContent value="accountability" className="h-full" forceMount>

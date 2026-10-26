@@ -69,7 +69,7 @@ function CategoryBox({ category, count, index }: { category: DeviationCategory; 
         {/* Phone: just the number over its label, no icon circle, 4 fit side by side (see the grid below). Desktop is unchanged. */}
         <CardContent className="hidden flex-col items-center gap-0 py-3 text-center phone:flex">
           <div className="text-xl font-semibold tabular-nums">{count}</div>
-          <div className="truncate text-[11px] font-medium text-muted-foreground">{category}</div>
+          <div className="line-clamp-2 text-[11px] leading-tight font-medium text-muted-foreground">{category}</div>
         </CardContent>
         <CardContent className="flex items-center gap-3 phone:hidden">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">{CATEGORY_ICON[category]}</span>

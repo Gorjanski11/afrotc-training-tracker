@@ -42,6 +42,7 @@ function StatTile({
   icon,
   label,
   value,
+  valueClassName,
   tone,
   index,
   onClick,
@@ -49,6 +50,8 @@ function StatTile({
   icon: React.ReactNode;
   label: string;
   value: string;
+  /** Overrides the value's default text-xl (phone) / text-2xl (desktop) size -- e.g. the Ratio tile's fraction needs to shrink a step to fit the box. */
+  valueClassName?: string;
   tone?: "critical";
   index: number;
   onClick?: () => void;
@@ -64,7 +67,7 @@ function StatTile({
       >
         {/* Phone: just the number over its label, no icon circle, 4 fit side by side (see the grid below). Desktop is unchanged. */}
         <CardContent className="hidden flex-col items-center gap-0 py-3 text-center phone:flex">
-          <div className={cn("text-xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+          <div className={cn("truncate text-xl font-semibold tabular-nums", tone === "critical" && "text-destructive", valueClassName)}>{value}</div>
           <div className="truncate text-[11px] font-medium text-muted-foreground">{label}</div>
         </CardContent>
         <CardContent className="flex items-center gap-3 phone:hidden">
@@ -76,9 +79,9 @@ function StatTile({
           >
             {icon}
           </span>
-          <div>
+          <div className="min-w-0">
             <div className="text-xs font-medium text-muted-foreground">{label}</div>
-            <div className={cn("text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive")}>{value}</div>
+            <div className={cn("truncate text-2xl font-semibold tabular-nums", tone === "critical" && "text-destructive", valueClassName)}>{value}</div>
           </div>
         </CardContent>
       </Card>
@@ -366,7 +369,13 @@ export function TrainingObjectivesAnalyticsView({
 
       <div className="mb-6 grid grid-cols-4 gap-2 phone:gap-1.5 desktop:gap-4">
         <StatTile icon={<TrendingUp className="h-4.5 w-4.5" />} label="Overall" value={`${summary.overallPercent}%`} index={0} />
-        <StatTile icon={<CheckCircle2 className="h-4.5 w-4.5" />} label="Ratio (Required/Completed)" value={`${summary.totalCompleted}/${summary.totalRequired}`} index={1} />
+        <StatTile
+          icon={<CheckCircle2 className="h-4.5 w-4.5" />}
+          label="Ratio"
+          value={`${summary.totalCompleted}/${summary.totalRequired}`}
+          valueClassName="text-lg desktop:text-xl"
+          index={1}
+        />
         <StatTile
           icon={<AlertTriangle className="h-4.5 w-4.5" />}
           label="Flags"
